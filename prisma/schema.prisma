@@ -1,0 +1,761 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  String            @id
+  name                String
+  email               String            @unique
+  emailVerified       Boolean           @default(false)
+  image               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+  role                String?
+  banned              Boolean?          @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  surname             String?
+  phoneNumber         String?           @unique
+  phoneNumberVerified Boolean           @default(false)
+  pushToken           String?
+  Activity            Activity[]
+  workspaceOwner      Workspace[]
+  workspaces          WorkspaceMember[]
+  accounts            Account[]
+  audit_log           audit_log[]
+  comments            Comment[]
+  commentReads        CommentRead[]
+  dailyReports        DailyReport[]
+  sessions            Session[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+model Workspace {
+  id               String            @id @default(uuid())
+  name             String
+  slug             String            @unique
+  description      String?
+  ownerId          String
+  createdAt        DateTime          @default(now())
+  image_url        String            @default("")
+  updatedAt        DateTime          @updatedAt
+  inviteCode       String            @unique
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  companyType      String?
+  country          String?
+  email            String?
+  gstNumber        String?
+  industry         String?
+  legalName        String?
+  msmeNumber       String?
+  panNumber        String?
+  phone            String?
+  pincode          String?
+  state            String?
+  website          String?
+  projects         Project[]
+  tags             Tag[]
+  owner            User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members          WorkspaceMember[]
+  attendances      Attendance[]
+  audit_log        audit_log[]
+  board_items      board_items[]
+  dailyReports     DailyReport[]
+  materials        Material[]
+  procurementTasks ProcurementTask[]
+  purchaseOrders   PurchaseOrder[]
+  units            Unit[]
+  vendors          Vendor[]
+}
+
+model WorkspaceMember {
+  id                                                    String                 @id @default(uuid())
+  userId                                                String
+  workspaceId                                           String
+  createdAt                                             DateTime               @default(now())
+  updatedAt                                             DateTime               @updatedAt
+  workspaceRole                                         WorkspaceRole          @default(MEMBER)
+  ProjectMember                                         ProjectMember[]
+  user                                                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace                                             Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  attendances                                           Attendance[]
+  board_items_board_items_assignedByIdToWorkspaceMember board_items[]          @relation("board_items_assignedByIdToWorkspaceMember")
+  board_items_board_items_memberIdToWorkspaceMember     board_items[]          @relation("board_items_memberIdToWorkspaceMember")
+  assignedIndents                                       IndentDetails[]        @relation("IndentAssignee")
+  requestedIndents                                      IndentDetails[]        @relation("IndentRequestor")
+  finalApprovedItems                                    IndentItem[]           @relation("FinalApprover")
+  quantityApprovedItems                                 IndentItem[]           @relation("QuantityApprover")
+  approvedPurchaseOrders                                PurchaseOrder[]        @relation("POApprover")
+  createdPurchaseOrders                                 PurchaseOrder[]        @relation("POCreator")
+  recordedPayments                                      PurchaseOrderPayment[] @relation("PaymentRecorder")
+  createdUnits                                          Unit[]
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId, workspaceRole])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([workspaceId, userId])
+  @@index([workspaceRole])
+}
+
+model Project {
+  id               String            @id @default(uuid())
+  name             String
+  description      String?
+  workspaceId      String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  slug             String            @unique
+  color            String
+  createdBy        String?
+  clint            Clints[]
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectMembers   ProjectMember[]
+  tasks            Task[]
+  indentDetails    IndentDetails[]
+  procurementTasks ProcurementTask[]
+  purchaseOrders   PurchaseOrder[]
+
+  @@index([workspaceId, slug])
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, createdBy])
+}
+
+model ProjectMember {
+  id                                  String          @id @default(uuid())
+  projectId                           String
+  createdAt                           DateTime        @default(now())
+  hasAccess                           Boolean         @default(false)
+  projectRole                         ProjectRole     @default(MEMBER)
+  updatedAt                           DateTime        @updatedAt
+  workspaceMemberId                   String
+  project                             Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  WorkspaceMember                     WorkspaceMember @relation(fields: [workspaceMemberId], references: [id], onDelete: Cascade)
+  Task_Task_assigneeIdToProjectMember Task[]          @relation("Task_assigneeIdToProjectMember")
+  createdTasks                        Task[]          @relation("TaskCreator")
+  reviewedTasks                       Task[]          @relation("TaskReviewer")
+
+  @@unique([workspaceMemberId, projectId])
+  @@index([projectId, projectRole])
+  @@index([projectId, workspaceMemberId])
+  @@index([workspaceMemberId])
+}
+
+model Clints {
+  id                    String         @id @default(uuid())
+  name                  String?
+  registeredCompanyName String?
+  gstNumber             String?
+  directorName          String?
+  address               String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  projectId             String?
+  clintMembers          ClintMembers[]
+  project               Project?       @relation(fields: [projectId], references: [id])
+}
+
+model ClintMembers {
+  id          String   @id @default(uuid())
+  name        String?
+  email       String?
+  clintId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  phoneNumber String?
+  clints      Clints?  @relation(fields: [clintId], references: [id], onDelete: Cascade)
+
+  @@index([clintId])
+}
+
+model Tag {
+  id              String    @id @default(uuid())
+  name            String
+  workspaceId     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  requirePurchase Boolean?  @default(false)
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks           Task[]
+
+  @@unique([workspaceId, name])
+}
+
+model Task {
+  id                                           String             @id @default(uuid())
+  projectId                                    String
+  description                                  String?
+  status                                       TaskStatus?
+  createdAt                                    DateTime           @default(now())
+  updatedAt                                    DateTime           @updatedAt
+  createdById                                  String
+  days                                         Int?
+  name                                         String
+  parentTaskId                                 String?
+  startDate                                    DateTime?
+  taskSlug                                     String             @unique
+  tagId                                        String?
+  assigneeId                                   String?
+  completedSubtaskCount                        Int                @default(0)
+  dueDate                                      DateTime?
+  isParent                                     Boolean            @default(true)
+  path                                         String?
+  reviewerId                                   String?
+  subtaskCount                                 Int                @default(0)
+  workspaceId                                  String
+  position                                     Int                @default(0)
+  Activity                                     Activity[]
+  ProjectMember_Task_assigneeIdToProjectMember ProjectMember?     @relation("Task_assigneeIdToProjectMember", fields: [assigneeId], references: [id])
+  createdBy                                    ProjectMember      @relation("TaskCreator", fields: [createdById], references: [id])
+  parentTask                                   Task?              @relation("Task_subTasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subTasks                                     Task[]             @relation("Task_subTasks")
+  project                                      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer                                     ProjectMember?     @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  tag                                          Tag?               @relation(fields: [tagId], references: [id])
+  comments                                     Comment[]
+  dailyReportEntries                           DailyReportEntry[]
+  indentDetails                                IndentDetails[]
+  procurementTask                              ProcurementTask?
+  Task_TaskDependency_A                        Task[]             @relation("TaskDependency")
+  Task_TaskDependency_B                        Task[]             @relation("TaskDependency")
+
+  @@index([projectId, status, isParent, createdAt(sort: Desc)])
+  @@index([workspaceId, tagId, status, isParent])
+  @@index([workspaceId, projectId, status, isParent, dueDate, createdAt(sort: Desc)])
+  @@index([parentTaskId, createdAt])
+  @@index([workspaceId, parentTaskId, status, isParent, createdAt(sort: Desc)])
+  @@index([name, id])
+  @@index([startDate, id])
+  @@index([dueDate, id])
+  @@index([createdAt(sort: Desc), id])
+  @@index([projectId, assigneeId, status, createdAt])
+  @@index([workspaceId, assigneeId, status, createdAt])
+  @@index([workspaceId, assigneeId, updatedAt(sort: Desc)])
+}
+
+model Comment {
+  id              String        @id @default(uuid())
+  content         String
+  userId          String
+  taskId          String
+  parentCommentId String?
+  isEdited        Boolean       @default(false)
+  editedAt        DateTime?
+  isDeleted       Boolean       @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  parentComment   Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[]     @relation("CommentReplies")
+  task            Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readBy          CommentRead[]
+
+  @@index([taskId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@map("comment")
+}
+
+model CommentRead {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
+  @@map("comment_read")
+}
+
+model ProcurementTask {
+  id            String    @id @default(uuid())
+  taskId        String    @unique
+  projectId     String
+  workspaceId   String
+  createdAt     DateTime  @default(now())
+  indentCreated Boolean   @default(false)
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@map("procurement_task")
+}
+
+model IndentDetails {
+  id               String           @id @default(uuid())
+  key              String           @unique
+  name             String
+  workspaceId      String
+  projectId        String
+  taskId           String?
+  description      String?
+  expectedDelivery DateTime?
+  requiresVendor   Boolean          @default(true)
+  requestedAt      DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  assignedTo       String?
+  requestedBy      String
+  assignee         WorkspaceMember? @relation("IndentAssignee", fields: [assignedTo], references: [id])
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestor        WorkspaceMember  @relation("IndentRequestor", fields: [requestedBy], references: [id])
+  task             Task?            @relation(fields: [taskId], references: [id])
+  items            IndentItem[]
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([requestedBy])
+  @@index([assignedTo])
+  @@index([key])
+  @@map("indent_details")
+}
+
+model IndentItem {
+  id                  String              @id @default(uuid())
+  indentDetailsId     String
+  materialId          String
+  quantity            Float
+  unitId              String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  estimatedPrice      Float?
+  vendorId            String?
+  status              IndentItemStatus    @default(PENDING)
+  quantityApproved    Boolean             @default(false)
+  quantityApprovedAt  DateTime?
+  finalApproved       Boolean             @default(false)
+  finalApprovedAt     DateTime?
+  rejectionReason     String?
+  finalApprovedBy     String?
+  quantityApprovedBy  String?
+  documentDisplayName String              @default("")
+  finalApprover       WorkspaceMember?    @relation("FinalApprover", fields: [finalApprovedBy], references: [id])
+  indentDetails       IndentDetails       @relation(fields: [indentDetailsId], references: [id], onDelete: Cascade)
+  material            Material            @relation(fields: [materialId], references: [id])
+  quantityApprover    WorkspaceMember?    @relation("QuantityApprover", fields: [quantityApprovedBy], references: [id])
+  unit                Unit?               @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  vendor              Vendor?             @relation(fields: [vendorId], references: [id])
+  purchaseOrderItems  PurchaseOrderItem[]
+
+  @@index([indentDetailsId])
+  @@index([materialId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([quantityApprovedBy])
+  @@index([finalApprovedBy])
+  @@map("indent_item")
+}
+
+model Unit {
+  id                 String              @id @default(uuid())
+  name               String
+  abbreviation       String
+  category           String?
+  isDefault          Boolean             @default(false)
+  isActive           Boolean             @default(true)
+  workspaceId        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  createdBy          String?
+  indentItems        IndentItem[]
+  materials          Material[]
+  purchaseOrderItems PurchaseOrderItem[]
+  creator            WorkspaceMember?    @relation(fields: [createdBy], references: [id])
+  workspace          Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, abbreviation])
+  @@index([isActive])
+  @@index([isDefault])
+  @@index([createdBy])
+  @@index([workspaceId])
+  @@map("unit")
+}
+
+model Material {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  specifications     String?
+  defaultUnitId      String
+  workspaceId        String
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  indentItems        IndentItem[]
+  defaultUnit        Unit                @relation(fields: [defaultUnitId], references: [id])
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  purchaseOrderItems PurchaseOrderItem[]
+  vendors            Vendor[]            @relation("MaterialToVendor")
+
+  @@index([workspaceId])
+  @@index([isActive])
+  @@index([name])
+  @@map("material")
+}
+
+model Vendor {
+  id             String          @id @default(uuid())
+  name           String
+  companyName    String?
+  contactPerson  String?
+  email          String?
+  address        String?
+  gstNumber      String?
+  workspaceId    String
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  phoneNumber    String?
+  indentItems    IndentItem[]
+  purchaseOrders PurchaseOrder[]
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  materials      Material[]      @relation("MaterialToVendor")
+
+  @@index([workspaceId])
+  @@index([name])
+  @@map("vendor")
+}
+
+model PurchaseOrder {
+  id                    String                 @id @default(uuid())
+  poNumber              String                 @unique
+  workspaceId           String
+  vendorId              String
+  projectId             String
+  subtotalAmount        Decimal                @default(0) @db.Decimal(15, 2)
+  totalTaxAmount        Decimal                @default(0) @db.Decimal(15, 2)
+  totalAmount           Decimal                @db.Decimal(15, 2)
+  currency              String                 @default("INR")
+  createdById           String
+  approvedById          String?
+  createdAt             DateTime               @default(now())
+  approvedAt            DateTime?
+  updatedAt             DateTime               @updatedAt
+  deliveryAddressLine1  String
+  deliveryAddressLine2  String?
+  deliveryCity          String
+  deliveryCountry       String
+  deliveryPincode       String?
+  deliveryState         String
+  deliveryingAt         DateTime
+  termsAndConditions    String?
+  purchaseOrderTerms    PurchaseOrderTerm[]
+  approvedBy            WorkspaceMember?       @relation("POApprover", fields: [approvedById], references: [id])
+  createdBy             WorkspaceMember        @relation("POCreator", fields: [createdById], references: [id])
+  project               Project                @relation(fields: [projectId], references: [id])
+  vendor                Vendor                 @relation(fields: [vendorId], references: [id])
+  workspace             Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items                 PurchaseOrderItem[]
+  purchaseOrderPayments PurchaseOrderPayment[]
+
+  @@index([workspaceId])
+  @@index([vendorId])
+  @@index([projectId])
+  @@index([createdById])
+  @@index([approvedById])
+  @@index([poNumber])
+  @@index([workspaceId, createdAt])
+  @@map("purchase_order")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  materialId      String
+  unitId          String
+  orderedQuantity Decimal       @db.Decimal(15, 3)
+  unitPrice       Decimal       @db.Decimal(15, 2)
+  sgstPercent     Decimal?      @db.Decimal(5, 2)
+  cgstPercent     Decimal?      @db.Decimal(5, 2)
+  lineTotal       Decimal       @db.Decimal(15, 2)
+  taxAmount       Decimal       @default(0) @db.Decimal(15, 2)
+  totalAmount     Decimal       @db.Decimal(15, 2)
+  indentItemId    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  status          POStatus      @default(ORDERED)
+  indentItem      IndentItem?   @relation(fields: [indentItemId], references: [id])
+  material        Material      @relation(fields: [materialId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  unit            Unit          @relation(fields: [unitId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([materialId])
+  @@index([indentItemId])
+  @@map("purchase_order_item")
+}
+
+model PurchaseOrderTerm {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  termNumber      Int
+  title           String?
+  content         String
+  createdAt       DateTime      @default(now())
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseOrderId, termNumber])
+  @@index([purchaseOrderId])
+}
+
+model PurchaseOrderPayment {
+  id              String          @id @default(uuid())
+  purchaseOrderId String
+  amountPaid      Decimal         @db.Decimal(15, 2)
+  paymentDate     DateTime
+  remarks         String?
+  workspaceId     String
+  recordedById    String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  purchaseOrder   PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  recordedBy      WorkspaceMember @relation("PaymentRecorder", fields: [recordedById], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([workspaceId])
+  @@index([recordedById])
+  @@index([paymentDate])
+  @@index([purchaseOrderId, paymentDate])
+  @@map("purchase_order_payment")
+}
+
+model DailyReport {
+  id              String             @id @default(uuid())
+  workspaceId     String
+  userId          String
+  date            DateTime           @db.Date
+  status          ReportStatus
+  submittedAt     DateTime?
+  isAutoGenerated Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  entries         DailyReportEntry[]
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId, date])
+  @@index([workspaceId, date])
+  @@map("daily_reports")
+}
+
+model DailyReportEntry {
+  id          String          @id @default(uuid())
+  reportId    String
+  taskId      String?
+  type        ReportEntryType
+  description String?
+  createdAt   DateTime        @default(now())
+  report      DailyReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  task        Task?           @relation(fields: [taskId], references: [id])
+
+  @@index([reportId])
+  @@index([taskId])
+  @@map("daily_report_entries")
+}
+
+model Attendance {
+  id                String           @id @default(uuid())
+  workspaceId       String
+  workspaceMemberId String
+  date              DateTime         @db.Date
+  checkIn           DateTime?
+  checkOut          DateTime?
+  checkInLatitude   Float?
+  checkInLongitude  Float?
+  checkOutLatitude  Float?
+  checkOutLongitude Float?
+  status            AttendanceStatus @default(PRESENT)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceMember   WorkspaceMember  @relation(fields: [workspaceMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceMemberId, date])
+  @@index([workspaceId, date])
+  @@map("attendance")
+}
+
+model audit_log {
+  id          String     @id
+  workspaceId String?
+  userId      String
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+model board_items {
+  id                                                        String          @id
+  workspaceId                                               String
+  memberId                                                  String
+  assignedById                                              String
+  note                                                      String
+  status                                                    BoardStatus     @default(NOT_DONE)
+  createdAt                                                 DateTime        @default(now())
+  updatedAt                                                 DateTime
+  WorkspaceMember_board_items_assignedByIdToWorkspaceMember WorkspaceMember @relation("board_items_assignedByIdToWorkspaceMember", fields: [assignedById], references: [id], onDelete: Cascade)
+  WorkspaceMember_board_items_memberIdToWorkspaceMember     WorkspaceMember @relation("board_items_memberIdToWorkspaceMember", fields: [memberId], references: [id], onDelete: Cascade)
+  Workspace                                                 Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([assignedById])
+  @@index([memberId])
+  @@index([workspaceId])
+}
+
+model Activity {
+  id          String   @id
+  subTaskId   String
+  authorId    String
+  text        String
+  attachment  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  workspaceId String
+  user        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  Task        Task     @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([subTaskId, createdAt(sort: Desc)])
+  @@index([workspaceId])
+}
+
+enum IndentItemStatus {
+  PENDING
+  QUANTITY_APPROVED
+  VENDOR_PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERPAID
+}
+
+enum POStatus {
+  ORDERED
+  DELIVERED
+  CANCELLED
+  CLOSED
+}
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+  OWNER
+  VIEWER
+  MANAGER
+}
+
+enum ProjectRole {
+  LEAD
+  MEMBER
+  VIEWER
+  PROJECT_MANAGER
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  REVIEW
+  HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportStatus {
+  SUBMITTED
+  NOT_SUBMITTED
+  ABSENT
+}
+
+enum ReportEntryType {
+  TASK
+  OTHER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  ON_LEAVE
+  LATE
+}
+
+enum BoardStatus {
+  DONE
+  NOT_DONE
+}

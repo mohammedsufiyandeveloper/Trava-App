@@ -1,0 +1,27 @@
+# CODEOWNERS — release-core-v1 Branch Protection
+#
+# These rules require explicit approval before procurement/inventory/orders
+# code can be merged into the release branch.
+#
+# Assign your team lead's GitHub username below.
+# Replace @your-username with the actual approver.
+
+# ============================================
+# PROCUREMENT MODULE (Phase 2 — disabled)
+# ============================================
+src/app/w/*/procurement/           @your-username
+src/app/w/*/inventory/             @your-username
+src/app/w/*/orders/                @your-username
+src/app/api/procurement/           @your-username
+src/actions/procurement/           @your-username
+src/actions/inventory/             @your-username
+src/data/procurement/              @your-username
+src/data/inventory/                @your-username
+src/lib/procurement/               @your-username
+
+# ============================================
+# CRITICAL RELEASE FILES
+# ============================================
+# Sidebar & feature flags should always be reviewed
+src/app/w/_components/sidebar/workspace-sidebar.tsx  @your-username
+src/lib/constants/feature-flags.ts                    @your-username

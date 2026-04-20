@@ -1,0 +1,137 @@
+// src/data/workspace/get-workspaces.ts
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { notFound } from "next/navigation";
+import prisma from "@/lib/db";
+import { requireUser } from "@/lib/auth/require-user";
+import { WorkspaceRole } from"@prisma/client";
+import { CacheTags } from "@/data/cache-tags";
+
+/**
+ * Types for workspace list data
+ */
+export type WorkspaceListItem = {
+    id: string;
+    name: string;
+    slug: string | null;
+    ownerId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    workspaceRole: WorkspaceRole;
+    memberCount?: number;
+};
+
+export type WorkspacesResult = {
+    workspaces: WorkspaceListItem[];
+    totalCount: number;
+};
+
+export function invalidateWorkspacesCache(userId: string) {
+    // With memory cache removed, we rely entirely on revalidateTag via our actions
+    // This is still exported for consistency in the codebase
+}
+
+async function _fetchWorkspacesInternal(userId: string): Promise<WorkspacesResult> {
+    // Fetch all workspaces where the user is a member
+    const workspacesData = await prisma.workspace.findMany({
+        where: {
+            members: {
+                some: { userId }
+            }
+        },
+        select: {
+            id: true,
+            name: true,
+            slug: true,
+            ownerId: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
+                select: {
+                    members: true,
+                },
+            },
+            members: {
+                where: { userId },
+                select: {
+                    workspaceRole: true,
+                },
+            },
+        },
+        orderBy: [
+            { createdAt: "desc" },
+            { id: "desc" },
+        ],
+    });
+
+    // Transform to WorkspaceListItem format
+    const workspaces: WorkspaceListItem[] = workspacesData.map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        ownerId: workspace.ownerId,
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
+        workspaceRole: workspace.members[0]?.workspaceRole || "VIEWER",
+        memberCount: workspace._count.members,
+    }));
+
+    return {
+        workspaces,
+        totalCount: workspaces.length,
+    };
+}
+
+/**
+ * Cached version with Next.js unstable_cache
+ */
+const getCachedWorkspaces = (userId: string, bypass: boolean) => {
+    const cacheKey = `user-workspaces-${userId}`;
+
+    // Use Next.js App Router Cache with tags and a short revalidate for manual DB sync
+    return unstable_cache(
+        async () => _fetchWorkspacesInternal(userId),
+        [cacheKey],
+        {
+            tags: CacheTags.userWorkspaces(userId),
+            revalidate: 5, // Fast revalidation for manual DB changes
+        }
+    )();
+};
+
+/**
+ * Public function — returns all workspaces for the current authenticated user
+ *
+ * Behavior:
+ * - Validates user via requireUser()
+ * - Fetches all workspaces where user is a member (cached)
+ * - Returns workspaces with user's role in each workspace
+ * - Includes member count for each workspace
+ * - Ordered by creation date (newest first)
+ *
+ * @returns WorkspacesResult containing array of workspaces and total count
+ *
+ * @example
+ * const { workspaces, totalCount } = await getWorkspaces();
+ * workspaces.forEach(ws => {
+ *   console.log(`${ws.name} - Role: ${ws.workspaceRole}`);
+ * });
+ */
+export const getWorkspaces = cache(async (providedUserId?: string): Promise<WorkspacesResult> => {
+    // Ensure authenticated user
+    const userId = providedUserId || (await requireUser()).id;
+    if (!userId) {
+        return notFound();
+    }
+
+    // Fetch workspaces (bypass cache for troubleshooting)
+    const result = await _fetchWorkspacesInternal(userId);
+
+    return result;
+});
+
+/**
+ * Export types for callers
+ */
+export type WorkspacesType = WorkspacesResult;
+export type WorkspaceItemType = WorkspaceListItem;

@@ -1,0 +1,93 @@
+
+> tusker-management@0.1.0 test D:\Github\Tusker-managment
+> vitest "run" "src/actions/team/__tests__/team-actions.test.ts"
+
+
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90mD:/Github/Tusker-managment[39m
+
+[90mstderr[2m | src/actions/team/__tests__/team-actions.test.ts[2m > [22m[2mTeam Management Actions[2m > [22m[2minviteMemberAction[2m > [22m[2mshould succeed and broadcast event if all checks pass
+[22m[39minviteMemberAction error: Error: [vitest] No "invalidateWorkspaceMembers" export is defined on the "@/lib/cache/invalidation" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+    at VitestMocker.createError [90m(file:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/vitest@4.0.15_@types+node@2_98ff0766a1fc3ae2fe5988d06aa088db/node_modules/[4mvitest[24m/dist/chunks/startModuleRunner.Iz2V0ESw.js:311:17[90m)[39m
+    at Object.get [90m(file:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/vitest@4.0.15_@types+node@2_98ff0766a1fc3ae2fe5988d06aa088db/node_modules/[4mvitest[24m/dist/chunks/startModuleRunner.Iz2V0ESw.js:384:16[90m)[39m
+    at inviteMemberAction (D:/Github/Tusker-managment/src/actions/team/invite-member.ts:97:43)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at D:/Github/Tusker-managment/src/actions/team/__tests__/team-actions.test.ts:40:28
+    at [90mfile:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.0.15/node_modules/[4m@vitest/runner[24m/dist/index.js:915:20 {
+  codeFrame: [32m'vi.mock(import("@/lib/cache/invalidation"), async (importOriginal) => {\n'[39m +
+    [32m'  const actual = await importOriginal()\n'[39m +
+    [32m'  return {\n'[39m +
+    [32m'    ...actual,\n'[39m +
+    [32m'    // your mocked methods\n'[39m +
+    [32m'  }\n'[39m +
+    [32m'})'[39m
+}
+
+[90mstderr[2m | src/actions/team/__tests__/team-actions.test.ts[2m > [22m[2mTeam Management Actions[2m > [22m[2mdeleteMemberAction[2m > [22m[2mshould successfully delete a member
+[22m[39mdeleteMemberAction error: Error: [vitest] No "invalidateWorkspaceMembers" export is defined on the "@/lib/cache/invalidation" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+    at VitestMocker.createError [90m(file:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/vitest@4.0.15_@types+node@2_98ff0766a1fc3ae2fe5988d06aa088db/node_modules/[4mvitest[24m/dist/chunks/startModuleRunner.Iz2V0ESw.js:311:17[90m)[39m
+    at Object.get [90m(file:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/vitest@4.0.15_@types+node@2_98ff0766a1fc3ae2fe5988d06aa088db/node_modules/[4mvitest[24m/dist/chunks/startModuleRunner.Iz2V0ESw.js:384:16[90m)[39m
+    at deleteMemberAction (D:/Github/Tusker-managment/src/actions/team/delete-member.ts:91:43)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at D:/Github/Tusker-managment/src/actions/team/__tests__/team-actions.test.ts:95:28
+    at [90mfile:///D:/Github/Tusker-managment/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.0.15/node_modules/[4m@vitest/runner[24m/dist/index.js:915:20 {
+  codeFrame: [32m'vi.mock(import("@/lib/cache/invalidation"), async (importOriginal) => {\n'[39m +
+    [32m'  const actual = await importOriginal()\n'[39m +
+    [32m'  return {\n'[39m +
+    [32m'    ...actual,\n'[39m +
+    [32m'    // your mocked methods\n'[39m +
+    [32m'  }\n'[39m +
+    [32m'})'[39m
+}
+
+ [31m❯[39m src/actions/team/__tests__/team-actions.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 28[2mms[22m[39m
+       [32m✓[39m should fail if user is not a workspace admin[32m 2[2mms[22m[39m
+[31m       [31m×[31m should succeed and broadcast event if all checks pass[39m[32m 22[2mms[22m[39m
+       [32m✓[39m should fail if current user is not an owner or admin[32m 1[2mms[22m[39m
+       [32m✓[39m should prevent removing the owner[32m 0[2mms[22m[39m
+[31m       [31m×[31m should successfully delete a member[39m[32m 2[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/actions/team/__tests__/team-actions.test.ts[2m > [22mTeam Management Actions[2m > [22minviteMemberAction[2m > [22mshould succeed and broadcast event if all checks pass
+[31m[1mAssertionError[22m: expected 'error' to be 'success' // Object.is equality[39m
+
+Expected: [32m"success"[39m
+Received: [31m"error"[39m
+
+[36m [2m❯[22m src/actions/team/__tests__/team-actions.test.ts:[2m42:35[22m[39m
+    [90m 40| [39m            [35mconst[39m result [33m=[39m [35mawait[39m [34minviteMemberAction[39m(invitePayload)[33m;[39m
+    [90m 41| [39m
+    [90m 42| [39m            [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"success"[39m)[33m;[39m
+    [90m   | [39m                                  [31m^[39m
+    [90m 43| [39m            expect(broadcastTeamUpdate).toHaveBeenCalledWith(expect.ob…
+    [90m 44| [39m                type[33m:[39m [32m"INVITE"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/actions/team/__tests__/team-actions.test.ts[2m > [22mTeam Management Actions[2m > [22mdeleteMemberAction[2m > [22mshould successfully delete a member
+[31m[1mAssertionError[22m: expected 'error' to be 'success' // Object.is equality[39m
+
+Expected: [32m"success"[39m
+Received: [31m"error"[39m
+
+[36m [2m❯[22m src/actions/team/__tests__/team-actions.test.ts:[2m97:35[22m[39m
+    [90m 95| [39m            const result = await deleteMemberAction("them_id", "ws_123…
+    [90m 96| [39m
+    [90m 97| [39m            [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"success"[39m)[33m;[39m
+    [90m   | [39m                                  [31m^[39m
+    [90m 98| [39m            [34mexpect[39m(prisma[33m.[39muser[33m.[39m[35mdelete[39m)[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m 99| [39m            expect(broadcastTeamUpdate).toHaveBeenCalledWith(expect.ob…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 22:29:25
+[2m   Duration [22m 525ms[2m (transform 167ms, setup 56ms, import 209ms, tests 28ms, environment 0ms)[22m
+
+ ELIFECYCLE  Test failed. See above for more details.

@@ -1,0 +1,45 @@
+
+> tusker-management@0.1.0 test D:\Github\Tusker-managment
+> vitest "run" "src/actions/task/__tests__/task-actions.test.ts"
+
+
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90mD:/Github/Tusker-managment[39m
+
+[90mstderr[2m | src/actions/task/__tests__/task-actions.test.ts[2m > [22m[2mTask Actions[2m > [22m[2mbulkUploadTasksAndSubtasks[2m > [22m[2mshould successfully bulk upload if user has permission
+[22m[39mError bulk uploading tasks: TypeError: Cannot read properties of undefined (reading 'id')
+    at __vite_ssr_import_3__.default.$transaction.timeout (D:/Github/Tusker-managment/src/actions/task/bulk-create-taskAndSubTask.ts:337:58)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at Object.<anonymous> (D:/Github/Tusker-managment/src/tests/setup.ts:60:24)
+
+ [31m❯[39m src/actions/task/__tests__/task-actions.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 12[2mms[22m[39m
+       [32m✓[39m should fail if no tasks are provided[32m 2[2mms[22m[39m
+[31m       [31m×[31m should successfully bulk upload if user has permission[39m[32m 8[2mms[22m[39m
+       [32m✓[39m should fail if assignee email is not in project[32m 0[2mms[22m[39m
+       [32m✓[39m should fail if date format is invalid[32m 0[2mms[22m[39m
+       [32m✓[39m should fail if days value is negative[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/actions/task/__tests__/task-actions.test.ts[2m > [22mTask Actions[2m > [22mbulkUploadTasksAndSubtasks[2m > [22mshould successfully bulk upload if user has permission
+[31m[1mAssertionError[22m: expected 'error' to be 'success' // Object.is equality[39m
+
+Expected: [32m"success"[39m
+Received: [31m"error"[39m
+
+[36m [2m❯[22m src/actions/task/__tests__/task-actions.test.ts:[2m51:35[22m[39m
+    [90m 49| [39m            [35mconst[39m result [33m=[39m [35mawait[39m [34mbulkUploadTasksAndSubtasks[39m(bulkData)[33m;[39m
+    [90m 50| [39m
+    [90m 51| [39m            [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m"success"[39m)[33m;[39m
+    [90m   | [39m                                  [31m^[39m
+    [90m 52| [39m            expect(result.message).toContain("Successfully created 1 t…
+    [90m 53| [39m            [34mexpect[39m(prisma[33m.[39m$transaction)[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 22:27:14
+[2m   Duration [22m 439ms[2m (transform 149ms, setup 67ms, import 125ms, tests 12ms, environment 0ms)[22m
+
+ ELIFECYCLE  Test failed. See above for more details.

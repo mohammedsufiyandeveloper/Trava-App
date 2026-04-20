@@ -1,0 +1,97 @@
+# Release Guard — Prevents procurement modules from entering release-core-v1
+#
+# This workflow runs on every PR targeting the release-core-v1 branch and
+# fails if any procurement/inventory/orders page routes are detected.
+# 
+# Backend code (actions, data, schemas) is allowed to remain as dead code.
+
+name: Release Guard
+
+on:
+  pull_request:
+    branches:
+      - release-core-v1
+
+jobs:
+  check-disabled-modules:
+    name: Check Disabled Modules
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Block procurement page routes
+        run: |
+          echo "🔍 Checking for disabled module routes..."
+          FAILED=0
+
+          if [ -d "src/app/w/[workspaceId]/procurement" ]; then
+            echo "❌ BLOCKED: src/app/w/[workspaceId]/procurement/ exists"
+            echo "   Procurement page routes are not allowed in release-core-v1"
+            FAILED=1
+          fi
+
+          if [ -d "src/app/w/[workspaceId]/inventory" ]; then
+            echo "❌ BLOCKED: src/app/w/[workspaceId]/inventory/ exists"
+            echo "   Inventory page routes are not allowed in release-core-v1"
+            FAILED=1
+          fi
+
+          if [ -d "src/app/w/[workspaceId]/orders" ]; then
+            echo "❌ BLOCKED: src/app/w/[workspaceId]/orders/ exists"
+            echo "   Orders page routes are not allowed in release-core-v1"
+            FAILED=1
+          fi
+
+          if [ -d "src/app/api/procurement" ]; then
+            echo "❌ BLOCKED: src/app/api/procurement/ exists"
+            echo "   Procurement API routes are not allowed in release-core-v1"
+            FAILED=1
+          fi
+
+          # Check sidebar for procurement links
+          if grep -q "procurement\|inventory\|orders" "src/app/w/_components/sidebar/workspace-sidebar.tsx" 2>/dev/null; then
+            echo "⚠️  WARNING: Sidebar may contain procurement/inventory/orders links"
+            echo "   Please verify workspace-sidebar.tsx manually"
+          fi
+
+          # Check feature flags
+          if [ -f "src/lib/constants/feature-flags.ts" ]; then
+            if grep -q "PROCUREMENT: true\|INVENTORY: true\|PURCHASE_ORDERS: true" "src/lib/constants/feature-flags.ts"; then
+              echo "❌ BLOCKED: Feature flags show disabled modules are enabled"
+              FAILED=1
+            fi
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "========================================="
+            echo "🚫 Release Guard FAILED"
+            echo "========================================="
+            echo "Procurement, Inventory, and Purchase Order modules"
+            echo "are not permitted in the release-core-v1 branch."
+            echo ""
+            echo "If you need to merge a fix from main, use:"
+            echo "  git cherry-pick <commit-hash>"
+            echo ""
+            echo "Do NOT merge the full main branch into release-core-v1."
+            echo "========================================="
+            exit 1
+          fi
+
+          echo "✅ Release Guard PASSED — no disabled modules detected"
+
+      - name: Verify build compiles
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install -g pnpm && pnpm install --frozen-lockfile
+
+      - name: Build check
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}

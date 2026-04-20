@@ -1,0 +1,11 @@
+{
+    "apps": [
+        {
+            "name": "Project_management",
+            "script": "./node_modules/next/dist/bin/next",
+            "env": {
+                "PORT": "5454"
+            }
+        }
+    ]
+}
