@@ -752,8 +752,8 @@ export class TasksService {
         if (subtaskId === dependsOnId) throw AppError.ValidationError("A task cannot depend on itself");
 
         const [subtask, dependsOnTask] = await Promise.all([
-            prisma.task.findUnique({ where: { id: subtaskId }, select: { id: true, createdById: true, startDate: true, days: true } }),
-            prisma.task.findUnique({ where: { id: dependsOnId }, select: { id: true, startDate: true, days: true } })
+            prisma.task.findUnique({ where: { id: subtaskId }, select: { id: true, name: true, createdById: true, startDate: true, days: true } }),
+            prisma.task.findUnique({ where: { id: dependsOnId }, select: { id: true, name: true, startDate: true, days: true } })
         ]);
 
         if (!subtask || !dependsOnTask) throw AppError.NotFound("One or both tasks not found");
@@ -789,6 +789,26 @@ export class TasksService {
             }
         }
 
+        // Record activity
+        try {
+            const project = await prisma.project.findUnique({ where: { id: projectId }, select: { workspaceId: true } });
+            if (project) {
+                await recordActivity({
+                    userId: permissions.userId,
+                    userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                    workspaceId: project.workspaceId,
+                    action: "TASK_UPDATED",
+                    entityType: "TASK",
+                    entityId: subtaskId,
+                    customMessage: `added a dependency: ${subtask.name} now depends on ${dependsOnTask.name}`,
+                    broadcastEvent: "team_update",
+                    targetUserIds: await getTaskInvolvedUserIds(subtaskId),
+                });
+            }
+        } catch (e) {
+            console.error("[SERVICE_ERROR] Dependency activity failed:", e);
+        }
+
         return { success: true };
     }
 
@@ -818,6 +838,26 @@ export class TasksService {
             where: { id: subtaskId },
             data: { Task_TaskDependency_A: { disconnect: { id: dependsOnId } } }
         });
+
+        // Record activity
+        try {
+            const task = await prisma.task.findUnique({ where: { id: subtaskId }, select: { workspaceId: true, name: true } });
+            if (task) {
+                await recordActivity({
+                    userId: permissions.userId,
+                    userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                    workspaceId: task.workspaceId,
+                    action: "TASK_UPDATED",
+                    entityType: "TASK",
+                    entityId: subtaskId,
+                    customMessage: `removed a dependency from ${task.name}`,
+                    broadcastEvent: "team_update",
+                    targetUserIds: await getTaskInvolvedUserIds(subtaskId),
+                });
+            }
+        } catch (e) {
+            console.error("[SERVICE_ERROR] Dependency removal activity failed:", e);
+        }
 
         return { success: true };
     }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/require-user";
 import prisma from "@/lib/db";
+import { recordActivity } from "@/lib/audit";
+import { getTaskInvolvedUserIds } from "@/lib/involved-users";
 
 /**
  * GET /api/tasks/[taskId]/comments
@@ -93,6 +95,24 @@ export async function POST(
                 }
             }
         });
+
+        // ─── Record Activity & Trigger Notifications ───
+        try {
+            const targetUserIds = await getTaskInvolvedUserIds(taskId);
+            await recordActivity({
+                userId: session.user.id,
+                userName: comment.user?.surname || comment.user?.name || "Someone",
+                workspaceId: task.workspaceId,
+                action: "COMMENT_CREATED",
+                entityType: "TASK",
+                entityId: taskId,
+                newData: { content: comment.content },
+                broadcastEvent: "team_update",
+                targetUserIds,
+            });
+        } catch (e) {
+            console.error("[AUDIT_ERROR] Comment activity failed:", e);
+        }
 
         return NextResponse.json({
             success: true,

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8e1416a4-5ca1-45fd-b21f-3eaa400cd7dc"
+      }
+    },
+    "android": {
+      "package": "com.suf007.tuskermanagement"
+    }
+  }
+}

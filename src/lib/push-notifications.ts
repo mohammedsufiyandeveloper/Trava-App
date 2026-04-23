@@ -31,6 +31,7 @@ export async function sendPushNotification(
         });
 
         const tokens = users.map(u => u.pushToken).filter(Boolean) as string[];
+        console.log(`[PUSH] Found ${tokens.length} tokens for users:`, userIds);
 
         if (tokens.length === 0) {
             console.log("[PUSH] No valid push tokens found for users:", userIds);

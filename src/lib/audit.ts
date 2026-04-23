@@ -30,6 +30,7 @@ interface RecordActivityOptions {
   userAgent?: string;
   broadcastEvent?: string;
   targetUserIds?: string[]; // New: list of specific users to notify
+  customMessage?: string;   // New: allow override of auto-generated message
 }
 
 // ─── In-Memory Audit Buffer ───────────────────────────────
@@ -160,31 +161,31 @@ export async function recordActivity(options: RecordActivityOptions) {
       if (action === "MEMBER_INVITED") actionLabel = "invited a new member";
       if (action === "MEMBER_REMOVED") actionLabel = "removed a member";
       if (action === "TASK_CREATED") actionLabel = "created a new task";
-      if (action === "TASK_UPDATED") actionLabel = "updated a task";
       if (action === "TASK_DELETED") actionLabel = "deleted a task";
       if (action === "SUBTASK_CREATED") actionLabel = "created a subtask";
       if (action === "SUBTASK_DELETED") actionLabel = "deleted a subtask";
-      if (action === "SUBTASK_UPDATED") {
+      
+      if (action === "TASK_UPDATED" || action === "SUBTASK_UPDATED") {
         const delta = oldData && newData ? calculateDelta(oldData, newData) : null;
-
         if (delta?.status) {
           const statusLabel = delta.status.to.replace(/_/g, " ");
           actionLabel = `updated status to ${statusLabel}`;
-        } else if (delta?.startDate || delta?.dueDate) {
-          actionLabel = "updated task dates";
         } else if (delta?.assigneeId) {
           actionLabel = "reassigned the task";
+        } else if (delta?.startDate || delta?.dueDate) {
+          actionLabel = "updated task dates";
         } else if (delta?.name) {
           actionLabel = "renamed the task";
-        } else if (delta?.reviewerId) {
-          actionLabel = "updated the reviewer";
         } else {
           actionLabel = "updated the task";
         }
       }
+      
       if (action === "COMMENT_CREATED") actionLabel = "added a comment";
+      if (action === "CHECKED_IN") actionLabel = "checked in for work";
+      if (action === "CHECKED_OUT") actionLabel = "checked out for the day";
 
-      const message = `${userName} ${actionLabel}`;
+      const message = options.customMessage || `${userName} ${actionLabel}`;
       const eventPayload = {
         userId,
         userName,

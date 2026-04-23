@@ -112,7 +112,8 @@ export async function inviteMemberAction(
             entityType: "MEMBER",
             entityId: authUserId,
             newData: { email, name, role },
-            broadcastEvent: "team_update"
+            broadcastEvent: "team_update",
+            targetUserIds: [authUserId],
         });
 
         return {

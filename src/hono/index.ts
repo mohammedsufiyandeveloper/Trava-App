@@ -4,7 +4,9 @@ import { logger } from "hono/logger";
 import cron from "./routes/cron";
 import units from "./routes/units";
 import tasks from "./routes/tasks";
+import user from "./routes/user";
 import { attendanceRouter } from "./routes/attendance";
+import { aiRouter } from "./routes/ai";
 import { getProjectReviewers } from "@/actions/project/get-project-reviewers";
 import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
@@ -75,6 +77,13 @@ app.route("/attendance", attendanceRouter);
 
 // Tasks API
 app.route("/tasks", tasks);
+
+// User API
+app.route("/user", user);
+
+// AI API
+app.route("/ai", aiRouter);
+
 
 // Project Reviewers (Legacy / Temporary - will be moved to service later)
 app.get("/projects/:projectId/reviewers", async (c) => {
