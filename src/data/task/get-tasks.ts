@@ -467,6 +467,40 @@ async function _fetchFilteredHierarchy(
     const expansionMatchWhere = { ...matchWhere };
     delete (expansionMatchWhere as any).isParent;
     delete (expansionMatchWhere as any).parentTaskId;
+    // CRITICAL: We must remove these constraints so expansion can find children
+    delete (expansionMatchWhere as any).isParent; 
+    // The matchWhere might have been built with onlyParents: true, which adds isParent: true
+    // We need to make sure the subtask fetch doesn't inherit that.
+    // Actually, matchWhere is an object already built. We need to find if it has isParent.
+    if ((expansionMatchWhere as any).isParent !== undefined) {
+        delete (expansionMatchWhere as any).isParent;
+    }
+    
+    // Also, if matchWhere was built with hierarchy logic, it might have isParent inside an AND/OR.
+    // But the easiest way is to ensure buildWorkspaceFilterWhere is called with the right flags.
+    
+    // Let's re-build expansionMatchWhere specifically for subtasks
+    const subtaskMatchWhere = buildWorkspaceFilterWhere(
+        {
+            workspaceId,
+            projectId: opts.projectId,
+            assigneeId: toArray(opts.assigneeId),
+            status: toArray(opts.status),
+            tagId: toArray(opts.tagId),
+            dueAfter: toUTCDateOnly(opts.dueAfter),
+            dueBefore: opts.dueBefore ? addOneDayUTC(toUTCDateOnly(opts.dueBefore)!) : undefined,
+            search: opts.search,
+            isAdmin,
+            fullAccessProjectIds,
+            restrictedProjectIds,
+            projectIds: (!opts.projectId && opts.expandedProjectIds?.length) ? opts.expandedProjectIds : undefined,
+            includeSubTasks: false, // Don't recurse infinitely
+            onlyParents: false,    // WE WANT SUBTASKS
+            onlySubtasks: false,
+            view_mode: opts.view_mode,
+        },
+        userId
+    );
 
     // 1. Fetch matches directly
     const startMatches = performance.now();
@@ -539,7 +573,7 @@ async function _fetchFilteredHierarchy(
             orConditions.push({
                 AND: [
                     { parentTaskId: { in: parentIdsToExpand } },
-                    expansionMatchWhere
+                    subtaskMatchWhere
                 ]
             });
         }
@@ -782,6 +816,9 @@ async function _getTasksInternal(
                 opts.dueBefore ||
                 opts.startDate ||
                 opts.endDate ||
+                opts.onlySubtasks ||
+                opts.onlyParents ||
+                opts.excludeParents ||
                 (opts.sorts && opts.sorts.length > 0)
             );
 
@@ -824,11 +861,21 @@ async function _getTasksInternal(
                 if (parentIds.length > 0) {
                     const hasFullAccess = isAdmin || (projectId ? fullAccessProjectIds.includes(projectId) : false);
 
+                    // Resolve the ProjectMember ID to ensure direct assigneeId filtering works (User ID vs PM ID parity)
+                    let subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
+                    if (!hasFullAccess && userId && projectId) {
+                        const pm = await prisma.projectMember.findFirst({
+                            where: { projectId, WorkspaceMember: { userId } },
+                            select: { id: true }
+                        });
+                        if (pm) subtaskAssigneeIds.push(pm.id);
+                    }
+
                     const subtasks = await prisma.task.findMany({
                         where: buildSubtaskExpansionWhere(undefined, {
                             parentIds,
                             status: toArray(opts.status),
-                            assigneeId: toArray(opts.assigneeId),
+                            assigneeId: subtaskAssigneeIds.length > 0 ? subtaskAssigneeIds : undefined,
                             tagId: toArray(opts.tagId),
                             search: opts.search,
                             userId,
@@ -920,18 +967,30 @@ async function _getTasksInternal(
             if (opts.includeSubTasks && tasks.length > 0) {
                 const parentIds = tasks.filter(t => t.isParent).map(t => t.id);
                 if (parentIds.length > 0) {
+                    const hasFullAccess = isAdmin || (opts.projectId ? fullAccessProjectIds.includes(opts.projectId) : false);
+
+                    // Resolve ProjectMember ID for robust filtering
+                    let subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
+                    if (!hasFullAccess && userId && opts.projectId) {
+                        const pm = await prisma.projectMember.findFirst({
+                            where: { projectId: opts.projectId, WorkspaceMember: { userId } },
+                            select: { id: true }
+                        });
+                        if (pm) subtaskAssigneeIds.push(pm.id);
+                    }
+
                     const subtasks = await prisma.task.findMany({
                         where: buildSubtaskExpansionWhere(undefined, {
                             parentIds,
                             status: toArray(opts.status),
-                            assigneeId: toArray(opts.assigneeId),
+                            assigneeId: subtaskAssigneeIds.length > 0 ? subtaskAssigneeIds : undefined,
                             tagId: toArray(opts.tagId),
                             search: opts.search,
                             dueAfter: toUTCDateOnly(opts.dueAfter),
                             dueBefore: opts.dueBefore ? addOneDayUTC(toUTCDateOnly(opts.dueBefore)!) : undefined,
                             userId,
                             isAdmin,
-                            isRestrictedMember: !isAdmin && restrictedProjectIds.length > 0 && restrictedProjectIds.includes(opts.projectId || "")
+                            isRestrictedMember: !hasFullAccess
                         }),
                         select: getTaskSelect(opts.view_mode),
                         orderBy: buildOrderBy(opts.sorts)

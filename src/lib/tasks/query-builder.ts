@@ -157,30 +157,27 @@ export function buildProjectRootWhere(
     }
 
     const assigneeClauses: Prisma.TaskWhereInput[] = [];
-
     const isRestricted = opts.userId && !opts.isAdmin && (!opts.fullAccessProjectIds || !opts.fullAccessProjectIds.includes(projectId));
 
-    if (isRestricted && opts.userId) {
-        assigneeClauses.push({
-            OR: [
-                { assigneeId: opts.userId as any },
-                { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: opts.userId } } },
-                { subTasks: { some: { OR: [{ assigneeId: opts.userId as any }, { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: opts.userId } } }] } } }
-            ]
-        });
-    }
+    // If it's a restricted member, they MUST see only their tasks.
+    // If an explicit assigneeId is provided, they MUST see only that person's tasks.
+    // We combine these: if both are present, we use the explicit one (assuming it's a sub-filter of what they can see).
+    const targetAssigneeId = opts.assigneeId || (isRestricted ? [opts.userId] : undefined);
 
-    if (opts.assigneeId) {
-        const aVal = Array.isArray(opts.assigneeId) ? { in: opts.assigneeId } : opts.assigneeId;
-        const aValRel = (Array.isArray(opts.assigneeId) ? { in: opts.assigneeId } : opts.assigneeId) as any;
-
-        assigneeClauses.push({
-            OR: [
-                { assigneeId: aVal },
-                { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: aValRel } } },
-                { subTasks: { some: { OR: [{ assigneeId: aVal }, { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: aValRel } } }] } } }
-            ]
-        });
+    if (targetAssigneeId) {
+        const ids = (Array.isArray(targetAssigneeId) ? targetAssigneeId : [targetAssigneeId]).filter((id): id is string => !!id);
+        if (ids.length > 0) {
+            assigneeClauses.push({
+                OR: [
+                    { assigneeId: { in: ids } },
+                    { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } },
+                    { subTasks: { some: { OR: [
+                        { assigneeId: { in: ids } }, 
+                        { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } }
+                    ] } } }
+                ]
+            });
+        }
     }
 
     if (assigneeClauses.length > 0) {
@@ -253,26 +250,19 @@ export function buildSubtaskExpansionWhere(
 
     const assigneeClauses: Prisma.TaskWhereInput[] = [];
 
-    // Assignee filter: Support both ProjectMemberId and User ID (relational)
-    if (opts.isRestrictedMember && opts.userId) {
-        assigneeClauses.push({
-            OR: [
-                { assigneeId: opts.userId as any },
-                { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: opts.userId } } }
-            ]
-        });
-    }
+    // Combine restricted member filter and explicit assigneeId filter
+    const targetAssigneeId = opts.assigneeId || (opts.isRestrictedMember ? [opts.userId] : undefined);
 
-    if (opts.assigneeId) {
-        const aVal = Array.isArray(opts.assigneeId) ? { in: opts.assigneeId } : opts.assigneeId;
-        const aValRel = (Array.isArray(opts.assigneeId) ? { in: opts.assigneeId } : opts.assigneeId) as any;
-
-        assigneeClauses.push({
-            OR: [
-                { assigneeId: aVal },
-                { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: aValRel } } }
-            ]
-        });
+    if (targetAssigneeId) {
+        const ids = (Array.isArray(targetAssigneeId) ? targetAssigneeId : [targetAssigneeId]).filter((id): id is string => !!id);
+        if (ids.length > 0) {
+            assigneeClauses.push({
+                OR: [
+                    { assigneeId: { in: ids } },
+                    { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } }
+                ]
+            });
+        }
     }
 
     if (assigneeClauses.length > 0) {
@@ -416,10 +406,10 @@ export function buildWorkspaceFilterWhere(
         } else {
             // Mixed access
             const restrictedCondition: Prisma.TaskWhereInput = {
-                ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: userId } },
+                projectId: { in: restrictedIds },
                 OR: [
-                    { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: userId } } },
                     { assigneeId: userId as any },
+                    { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: userId } } },
                     {
                         subTasks: {
                             some: {
@@ -502,7 +492,8 @@ export function buildWorkspaceFilterWhere(
         where.isParent = false;
     } else if (isList || isGantt || isCalendar) {
         // Default to hierarchy only if NO filters are active AND not explicitly including/excluding parents
-        if (!hasFilters && !opts.excludeParents && !opts.onlySubtasks && !opts.includeSubTasks) {
+        // Also skip this for Admins or specific project views to ensure we see everything
+        if (!hasFilters && !opts.excludeParents && !opts.onlySubtasks && !opts.includeSubTasks && !opts.isAdmin && !opts.projectId) {
             where.isParent = true;
             where.parentTaskId = null;
         }
