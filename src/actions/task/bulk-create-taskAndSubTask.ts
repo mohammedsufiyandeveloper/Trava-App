@@ -287,7 +287,7 @@ export async function bulkUploadTasksAndSubtasks(data: {
                         reviewerId: parentReviewerId,
                         startDate: parentStartDate,
                         days: firstRow.days,
-                        tagId: parentTagId,
+                        Tag: parentTagId ? { connect: { id: parentTagId } } : undefined,
                         subtaskCount: subtaskCountVal,
                         completedSubtaskCount: completedSubtaskCountVal,
                     },
@@ -342,7 +342,7 @@ export async function bulkUploadTasksAndSubtasks(data: {
                                 days: subtaskRow.days,
                                 dueDate: calculateDueDate(subtaskStartDate, subtaskRow.days),
                                 status: subtaskRow.status ? (subtaskRow.status as any) : undefined,
-                                tagId: resolvedTagId,
+                                Tag: resolvedTagId ? { connect: { id: resolvedTagId } } : undefined,
                             },
                         });
 

@@ -33,15 +33,33 @@ export async function GET(
 
         try {
             const statusStr = url.searchParams.get("status");
-            if (statusStr) filters.status = JSON.parse(statusStr);
+            if (statusStr) {
+                try {
+                    filters.status = JSON.parse(statusStr);
+                } catch {
+                    filters.status = statusStr.split(',');
+                }
+            }
 
             const assigneeStr = url.searchParams.get("assigneeId");
-            if (assigneeStr) filters.assigneeId = JSON.parse(assigneeStr);
+            if (assigneeStr) {
+                try {
+                    filters.assigneeId = JSON.parse(assigneeStr);
+                } catch {
+                    filters.assigneeId = assigneeStr.split(',');
+                }
+            }
 
             const tagStr = url.searchParams.get("tagId");
-            if (tagStr) filters.tagId = JSON.parse(tagStr);
+            if (tagStr) {
+                try {
+                    filters.tagId = JSON.parse(tagStr);
+                } catch {
+                    filters.tagId = tagStr.split(',');
+                }
+            }
         } catch (e) {
-            // Ignoring JSON parse errors
+            // Ignoring errors
         }
 
         const search = url.searchParams.get("search");
@@ -109,7 +127,7 @@ export async function POST(
         // Fetch parent task to get projectId and other context
         const parentTask = await prisma.task.findUnique({
             where: { id: parentTaskId },
-            select: { projectId: true, workspaceId: true, tagId: true }
+            select: { projectId: true, workspaceId: true, Tag: { select: { id: true } } }
         });
 
         if (!parentTask) {
@@ -128,7 +146,7 @@ export async function POST(
             permissions,
             assigneeUserId: body.assigneeUserId || session.user.id,
             reviewerId: body.reviewerId || body.reviewerUserId || null,
-            tagId: body.tagId || parentTask.tagId || null,
+            tagId: body.tagId || parentTask.Tag?.[0]?.id || null,
             startDate: body.startDate,
             dueDate: body.dueDate,
             days: body.days || 1,

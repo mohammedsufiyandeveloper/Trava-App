@@ -23,10 +23,11 @@ user.get("/profile", async (c) => {
                 email: true,
                 image: true,
                 phoneNumber: true,
-                jobTitle: true,
                 createdAt: true,
             } as any
         });
+        
+        console.log("[DEBUG] User Profile Data for ID", userId, ":", JSON.stringify(userData));
 
         if (!userData) {
             return c.json({ success: false, error: "User not found" }, 404);
@@ -86,13 +87,13 @@ user.patch("/profile", async (c) => {
 
     try {
         const body = await c.req.json();
-        const { name, surname, phoneNumber, image, jobTitle } = body;
+        const { name, surname, phoneNumber, image } = body;
 
         const updateData: any = {};
         if (name !== undefined) updateData.name = name;
         if (surname !== undefined) updateData.surname = surname;
         if (image !== undefined) updateData.image = image;
-        if (jobTitle !== undefined) updateData.jobTitle = jobTitle;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
 
         if (Object.keys(updateData).length === 0) {
             return c.json({ success: false, error: "No update data provided" }, 400);
@@ -107,6 +108,33 @@ user.patch("/profile", async (c) => {
             success: true,
             user: updatedUser
         });
+    } catch (error: any) {
+        return c.json({ success: false, error: error.message }, 500);
+    }
+});
+
+/**
+ * POST /api/user/push-token
+ * Registers an Expo push token for the user
+ */
+user.post("/push-token", async (c) => {
+    const authUser = c.get("user");
+    const userId = authUser.id;
+
+    try {
+        const body = await c.req.json();
+        const { pushToken } = body;
+
+        if (!pushToken) {
+            return c.json({ success: false, error: "Push token is required" }, 400);
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { pushToken } as any
+        });
+
+        return c.json({ success: true });
     } catch (error: any) {
         return c.json({ success: false, error: error.message }, 500);
     }

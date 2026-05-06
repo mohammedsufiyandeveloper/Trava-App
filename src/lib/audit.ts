@@ -2,6 +2,7 @@ import prisma from "./db";
 import { pusherServer } from "./pusher";
 import { randomUUID } from "crypto";
 import { sendPushNotification } from "./push-notifications";
+import { sendNotificationToUsers } from "./notifications";
 
 export type AuditAction =
   | "USER_LOGIN"
@@ -126,9 +127,20 @@ export async function recordActivity(options: RecordActivityOptions) {
       metadata = { payload: newData };
     }
 
+    // New: Resolve targetUserIds if missing for tasks/subtasks
+    let finalTargetUserIds = options.targetUserIds;
+    if (!finalTargetUserIds && entityId && (entityType === "TASK" || entityType === "SUBTASK")) {
+      try {
+        const { getTaskInvolvedUserIds } = await import("./involved-users");
+        finalTargetUserIds = await getTaskInvolvedUserIds(entityId);
+      } catch (e) {
+        console.error("[AUDIT] Failed to auto-resolve targetUserIds:", e);
+      }
+    }
+
     // New: Include targetUserIds in metadata for later history fetching
-    if (options.targetUserIds) {
-      metadata = { ...(metadata || {}), targetUserIds: options.targetUserIds };
+    if (finalTargetUserIds && finalTargetUserIds.length > 0) {
+      metadata = { ...(metadata || {}), targetUserIds: finalTargetUserIds };
     }
 
     // 2. BUFFER the DB write (non-blocking)
@@ -198,28 +210,34 @@ export async function recordActivity(options: RecordActivityOptions) {
         message,
       };
 
-      // 3a. Targeted Activity Log (Individual Channels)
+      // 3a. Persistent Notifications (Database + Mobile Push)
+      const recipientIds = (finalTargetUserIds || []).filter(tid => tid !== userId);
+      if (recipientIds.length > 0) {
+        sendNotificationToUsers(
+          recipientIds,
+          {
+            workspaceId,
+            title: "Tusker Update",
+            body: message,
+            type: action,
+            entityId,
+            entityType,
+            metadata
+          }
+        ).catch(err => console.error("[NOTIFICATION_SERVICE_ERROR]", err));
+      }
+
+      // 3b. Real-time Broadcast (Web)
       if (pusherServer) {
-        if (options.targetUserIds && options.targetUserIds.length > 0) {
+        if (finalTargetUserIds && finalTargetUserIds.length > 0) {
           // Broadcast only to involved users (except the actor if they are already in the UI)
-          const channels = options.targetUserIds
+          const channels = finalTargetUserIds
             .filter(tid => tid !== userId) // Still send to actor if they want toast, but usually they don't
             .map(tid => `user-${tid}`);
 
           if (channels.length > 0) {
             await pusherServer.trigger(channels, "activity_log", eventPayload)
               .catch((err: any) => console.error("[PUSHER_TRIGGER_ERROR] targeted activity_log:", err));
-
-            // Trigger native push notification
-            const recipientIds = options.targetUserIds.filter(tid => tid !== userId);
-            if (recipientIds.length > 0) {
-              sendPushNotification(
-                recipientIds,
-                "Tusker Update",
-                message,
-                { entityId, entityType, action }
-              ).catch(err => console.error("[PUSH_NOTIFICATION_ERROR]", err));
-            }
           }
         } else {
           // Fallback: General activity log for the whole team

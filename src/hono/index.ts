@@ -7,6 +7,8 @@ import tasks from "./routes/tasks";
 import user from "./routes/user";
 import { attendanceRouter } from "./routes/attendance";
 import { aiRouter } from "./routes/ai";
+import notifications from "./routes/notifications";
+import activities from "./routes/activities";
 import { getProjectReviewers } from "@/actions/project/get-project-reviewers";
 import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
@@ -83,6 +85,12 @@ app.route("/user", user);
 
 // AI API
 app.route("/ai", aiRouter);
+
+// Notifications API
+app.route("/notifications", notifications);
+
+// Activities API
+app.route("/activities", activities);
 
 
 // Project Reviewers (Legacy / Temporary - will be moved to service later)

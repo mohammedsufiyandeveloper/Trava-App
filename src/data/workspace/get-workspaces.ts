@@ -18,6 +18,7 @@ export type WorkspaceListItem = {
     createdAt: Date;
     updatedAt: Date;
     workspaceRole: WorkspaceRole;
+    isProjectManager?: boolean;
     memberCount?: number;
 };
 
@@ -55,6 +56,13 @@ async function _fetchWorkspacesInternal(userId: string): Promise<WorkspacesResul
                 where: { userId },
                 select: {
                     workspaceRole: true,
+                    ProjectMember: {
+                        where: {
+                            projectRole: { in: ["PROJECT_MANAGER", "LEAD"] }
+                        },
+                        select: { id: true },
+                        take: 1
+                    }
                 },
             },
         },
@@ -65,16 +73,22 @@ async function _fetchWorkspacesInternal(userId: string): Promise<WorkspacesResul
     });
 
     // Transform to WorkspaceListItem format
-    const workspaces: WorkspaceListItem[] = workspacesData.map((workspace) => ({
-        id: workspace.id,
-        name: workspace.name,
-        slug: workspace.slug,
-        ownerId: workspace.ownerId,
-        createdAt: workspace.createdAt,
-        updatedAt: workspace.updatedAt,
-        workspaceRole: workspace.members[0]?.workspaceRole || "VIEWER",
-        memberCount: workspace._count.members,
-    }));
+    const workspaces: WorkspaceListItem[] = workspacesData.map((workspace) => {
+        const member = workspace.members[0];
+        const isProjectManager = (member?.ProjectMember?.length ?? 0) > 0;
+        
+        return {
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug,
+            ownerId: workspace.ownerId,
+            createdAt: workspace.createdAt,
+            updatedAt: workspace.updatedAt,
+            workspaceRole: member?.workspaceRole || "VIEWER",
+            isProjectManager,
+            memberCount: workspace._count.members,
+        };
+    });
 
     return {
         workspaces,

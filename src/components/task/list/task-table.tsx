@@ -1201,11 +1201,11 @@ function TaskTable({
           prevTasks.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  subTasks: combinedSubTasks,
-                  subTasksHasMore: resultData.hasMore,
-                  subTasksNextCursor: resultData.nextCursor,
-                }
+                ...t,
+                subTasks: combinedSubTasks,
+                subTasksHasMore: resultData.hasMore,
+                subTasksNextCursor: resultData.nextCursor,
+              }
               : t,
           ),
         );
@@ -1288,268 +1288,268 @@ function TaskTable({
           )}
         >
           <table className="w-full caption-bottom text-sm table-fixed">
-              <thead className="[&_tr]:border-b">
-                <tr className="sticky top-0 z-10 bg-background border-b shadow-sm hover:bg-muted/50">
-                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[40px] md:w-[50px] bg-background">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-muted"
-                        >
-                          <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={handleExpandAll}>
-                          <Maximize2 className="mr-2 h-4 w-4" />
-                          Expand All
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleCollapseAll}>
-                          <Minimize2 className="mr-2 h-4 w-4" />
-                          Collapse All
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            <thead className="[&_tr]:border-b">
+              <tr className="sticky top-0 z-10 bg-background border-b shadow-sm hover:bg-muted/50">
+                <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[40px] md:w-[50px] bg-background">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-muted"
+                      >
+                        <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={handleExpandAll}>
+                        <Maximize2 className="mr-2 h-4 w-4" />
+                        Expand All
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleCollapseAll}>
+                        <Minimize2 className="mr-2 h-4 w-4" />
+                        Collapse All
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </th>
+                <SortableHeader
+                  field="name"
+                  label="Task Name"
+                  sorts={sorts}
+                  onSortChange={handleSort}
+                  className="w-[180px] sm:w-[250px] md:w-[350px]"
+                />
+                {/* Project column removed (using grouping instead) */}
+                {columnVisibility.description && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[150px] sm:w-[200px] bg-background">
+                    Description
                   </th>
+                )}
+                {columnVisibility.assignee && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[80px] sm:w-[100px] bg-background">
+                    {/* ⚠️ Not sortable — sorting by FK id is meaningless.
+                                                Re-enable once assigneeDisplayName is denormalized onto Task. */}
+                    Assignee
+                  </th>
+                )}
+                {columnVisibility.reviewer && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[80px] sm:w-[100px] bg-background">
+                    Reviewer
+                  </th>
+                )}
+                {columnVisibility.status && (
                   <SortableHeader
-                    field="name"
-                    label="Task Name"
+                    field="status"
+                    label="Status"
                     sorts={sorts}
                     onSortChange={handleSort}
-                    className="w-[180px] sm:w-[250px] md:w-[350px]"
-                  />
-                  {/* Project column removed (using grouping instead) */}
-                  {columnVisibility.description && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[150px] sm:w-[200px] bg-background">
-                      Description
-                    </th>
-                  )}
-                  {columnVisibility.assignee && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[80px] sm:w-[100px] bg-background">
-                      {/* ⚠️ Not sortable — sorting by FK id is meaningless.
-                                                Re-enable once assigneeDisplayName is denormalized onto Task. */}
-                      Assignee
-                    </th>
-                  )}
-                  {columnVisibility.reviewer && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[80px] sm:w-[100px] bg-background">
-                      Reviewer
-                    </th>
-                  )}
-                  {columnVisibility.status && (
-                    <SortableHeader
-                      field="status"
-                      label="Status"
-                      sorts={sorts}
-                      onSortChange={handleSort}
-                      className="w-[90px] sm:w-[120px]"
-                    />
-                  )}
-                  {columnVisibility.startDate && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[90px] sm:w-[120px] bg-background">
-                      Start Date
-                    </th>
-                  )}
-                  {columnVisibility.dueDate && (
-                    <SortableHeader
-                      field="dueDate"
-                      label="Due Date"
-                      sorts={sorts}
-                      onSortChange={handleSort}
-                      className="w-[90px] sm:w-[120px]"
-                    />
-                  )}
-                  {columnVisibility.progress && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[100px] sm:w-[150px] bg-background">
-                      Deadline
-                    </th>
-                  )}
-                  {columnVisibility.tag && (
-                    <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[100px] sm:w-[120px] bg-background">
-                      Tag
-                    </th>
-                  )}
-                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[40px] bg-background"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* SORTED VIEW: Flat task rows grouped by project */}
-                {mode === "sorted" ? (
-                  <SortedTaskList
-                    sortedTasks={sortedTasks}
-                    isLoading={isSortedViewLoading}
-                    hasMore={sortedHasMore}
-                    isLoadingMore={isLoadingMoreSorted}
-                    columnVisibility={columnVisibility}
-                    visibleColumnsCount={visibleColumnsCount}
-                    sortedSentinelRef={sortedSentinelRef}
-                    handleSubTaskClick={handleSubTaskClick}
-                  />
-                ) : groupedTasks ? (
-                  // Sort project IDs to match the order in the 'projects' array (which is server-sorted newest-first)
-                  projects
-                    .filter((p) => groupedTasks[p.id])
-                    .map((project) => {
-                      const currentProjectId = project.id;
-                      const projectTasks = groupedTasks[currentProjectId];
-
-                      return (
-                        <ProjectTaskGroup
-                          key={currentProjectId}
-                          projectId={currentProjectId}
-                          project={project}
-                          initialTasks={projectTasks}
-                          totalTasksCount={
-                            projectCounts
-                              ? projectCounts[currentProjectId] || 0
-                              : projectTaskCounts[currentProjectId]
-                          }
-                          isExpanded={
-                            expandedProjects[currentProjectId] === true
-                          }
-                          onToggle={() => toggleProjectExpand(currentProjectId)}
-                          visibleColumnsCount={visibleColumnsCount}
-                          columnVisibility={columnVisibility}
-                          expandedTasks={expanded}
-                          onToggleExpandTask={toggleExpand}
-                          updatingTaskId={updatingTaskId}
-                          setUpdatingTaskId={setUpdatingTaskId}
-                          permissions={permissions}
-                          userId={userId}
-                          isWorkspaceAdmin={isWorkspaceAdmin}
-                          leadProjectIds={leadProjectIds}
-                          projects={projects}
-                          onRequestSubtasks={handleRequestSubtasks}
-                          getCachedSubTasks={getCachedSubTasks}
-                          tags={tags}
-                          scrollContainerRef={scrollContainerRef}
-                          members={members}
-                          workspaceId={workspaceId}
-                          canCreateSubTask={canCreateSubTask}
-                          loadingSubTasks={loadingSubTasks}
-                          loadingMoreSubTasks={loadingMoreSubTasks}
-                          onLoadMoreSubTasks={loadMoreSubTasks}
-                          handleSubTaskClick={handleSubTaskClick}
-                          level={level}
-                          paginationState={projectPagination[currentProjectId]}
-                          getObserver={getObserver}
-                          filtersActive={filtersActive}
-                          activeInlineProjectId={activeInlineProjectId}
-                          setActiveInlineProjectId={setActiveInlineProjectId}
-                          onUpdateParentTaskLists={(updatedProjectTasks) => {
-                            // Maintain newest-first: updated tasks should stay in their relative created order.
-                            // For simplicity in a flat array, we just update the specific matching tasks in the main list.
-                            setTasks((prev) => {
-                              const taskMap = new Map(
-                                prev.map((t) => [t.id, t]),
-                              );
-                              updatedProjectTasks.forEach((t) =>
-                                taskMap.set(t.id, t),
-                              );
-                              return Array.from(taskMap.values());
-                            });
-                          }}
-                        />
-                      );
-                    })
-                ) : (
-                  <FlatTaskList
-                    initialTasks={tasks}
-                    columnVisibility={columnVisibility}
-                    visibleColumnsCount={visibleColumnsCount}
-                    expandedTasks={expanded}
-                    onToggleExpandTask={toggleExpand}
-                    updatingTaskId={updatingTaskId}
-                    setUpdatingTaskId={setUpdatingTaskId}
-                    permissions={permissions}
-                    userId={userId}
-                    isWorkspaceAdmin={isWorkspaceAdmin}
-                    leadProjectIds={leadProjectIds}
-                    projects={projects}
-                    onRequestSubtasks={handleRequestSubtasks}
-                    getCachedSubTasks={getCachedSubTasks}
-                    tags={tags}
-                    scrollContainerRef={scrollContainerRef}
-                    members={members}
-                    workspaceId={workspaceId}
-                    projectId={projectId}
-                    canCreateSubTask={canCreateSubTask}
-                    loadingSubTasks={loadingSubTasks}
-                    loadingMoreSubTasks={loadingMoreSubTasks}
-                    onLoadMoreSubTasks={loadMoreSubTasks}
-                    handleSubTaskClick={handleSubTaskClick}
-                    level={level}
-                    filtersActive={filtersActive}
-                    activeInlineProjectId={activeInlineProjectId}
-                    setActiveInlineProjectId={setActiveInlineProjectId}
-                    onUpdateParentTaskLists={(updatedTasks) => {
-                      setTasks(updatedTasks);
-                    }}
+                    className="w-[90px] sm:w-[120px]"
                   />
                 )}
-                {!groupedTasks && projectPagination[projectId]?.hasMore && (
+                {columnVisibility.startDate && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[90px] sm:w-[120px] bg-background">
+                    Start Date
+                  </th>
+                )}
+                {columnVisibility.dueDate && (
+                  <SortableHeader
+                    field="dueDate"
+                    label="Due Date"
+                    sorts={sorts}
+                    onSortChange={handleSort}
+                    className="w-[90px] sm:w-[120px]"
+                  />
+                )}
+                {columnVisibility.progress && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[100px] sm:w-[150px] bg-background">
+                    Deadline
+                  </th>
+                )}
+                {columnVisibility.tag && (
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[100px] sm:w-[120px] bg-background">
+                    Tag
+                  </th>
+                )}
+                <th className="text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap w-[40px] bg-background"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* SORTED VIEW: Flat task rows grouped by project */}
+              {mode === "sorted" ? (
+                <SortedTaskList
+                  sortedTasks={sortedTasks}
+                  isLoading={isSortedViewLoading}
+                  hasMore={sortedHasMore}
+                  isLoadingMore={isLoadingMoreSorted}
+                  columnVisibility={columnVisibility}
+                  visibleColumnsCount={visibleColumnsCount}
+                  sortedSentinelRef={sortedSentinelRef}
+                  handleSubTaskClick={handleSubTaskClick}
+                />
+              ) : groupedTasks ? (
+                // Sort project IDs to match the order in the 'projects' array (which is server-sorted newest-first)
+                projects
+                  .filter((p) => groupedTasks[p.id])
+                  .map((project) => {
+                    const currentProjectId = project.id;
+                    const projectTasks = groupedTasks[currentProjectId];
+
+                    return (
+                      <ProjectTaskGroup
+                        key={currentProjectId}
+                        projectId={currentProjectId}
+                        project={project}
+                        initialTasks={projectTasks}
+                        totalTasksCount={
+                          projectCounts
+                            ? projectCounts[currentProjectId] || 0
+                            : projectTaskCounts[currentProjectId]
+                        }
+                        isExpanded={
+                          expandedProjects[currentProjectId] === true
+                        }
+                        onToggle={() => toggleProjectExpand(currentProjectId)}
+                        visibleColumnsCount={visibleColumnsCount}
+                        columnVisibility={columnVisibility}
+                        expandedTasks={expanded}
+                        onToggleExpandTask={toggleExpand}
+                        updatingTaskId={updatingTaskId}
+                        setUpdatingTaskId={setUpdatingTaskId}
+                        permissions={permissions}
+                        userId={userId}
+                        isWorkspaceAdmin={isWorkspaceAdmin}
+                        leadProjectIds={leadProjectIds}
+                        projects={projects}
+                        onRequestSubtasks={handleRequestSubtasks}
+                        getCachedSubTasks={getCachedSubTasks}
+                        tags={tags}
+                        scrollContainerRef={scrollContainerRef}
+                        members={members}
+                        workspaceId={workspaceId}
+                        canCreateSubTask={canCreateSubTask}
+                        loadingSubTasks={loadingSubTasks}
+                        loadingMoreSubTasks={loadingMoreSubTasks}
+                        onLoadMoreSubTasks={loadMoreSubTasks}
+                        handleSubTaskClick={handleSubTaskClick}
+                        level={level}
+                        paginationState={projectPagination[currentProjectId]}
+                        getObserver={getObserver}
+                        filtersActive={filtersActive}
+                        activeInlineProjectId={activeInlineProjectId}
+                        setActiveInlineProjectId={setActiveInlineProjectId}
+                        onUpdateParentTaskLists={(updatedProjectTasks) => {
+                          // Maintain newest-first: updated tasks should stay in their relative created order.
+                          // For simplicity in a flat array, we just update the specific matching tasks in the main list.
+                          setTasks((prev) => {
+                            const taskMap = new Map(
+                              prev.map((t) => [t.id, t]),
+                            );
+                            updatedProjectTasks.forEach((t) =>
+                              taskMap.set(t.id, t),
+                            );
+                            return Array.from(taskMap.values());
+                          });
+                        }}
+                      />
+                    );
+                  })
+              ) : (
+                <FlatTaskList
+                  initialTasks={tasks}
+                  columnVisibility={columnVisibility}
+                  visibleColumnsCount={visibleColumnsCount}
+                  expandedTasks={expanded}
+                  onToggleExpandTask={toggleExpand}
+                  updatingTaskId={updatingTaskId}
+                  setUpdatingTaskId={setUpdatingTaskId}
+                  permissions={permissions}
+                  userId={userId}
+                  isWorkspaceAdmin={isWorkspaceAdmin}
+                  leadProjectIds={leadProjectIds}
+                  projects={projects}
+                  onRequestSubtasks={handleRequestSubtasks}
+                  getCachedSubTasks={getCachedSubTasks}
+                  tags={tags}
+                  scrollContainerRef={scrollContainerRef}
+                  members={members}
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                  canCreateSubTask={canCreateSubTask}
+                  loadingSubTasks={loadingSubTasks}
+                  loadingMoreSubTasks={loadingMoreSubTasks}
+                  onLoadMoreSubTasks={loadMoreSubTasks}
+                  handleSubTaskClick={handleSubTaskClick}
+                  level={level}
+                  filtersActive={filtersActive}
+                  activeInlineProjectId={activeInlineProjectId}
+                  setActiveInlineProjectId={setActiveInlineProjectId}
+                  onUpdateParentTaskLists={(updatedTasks) => {
+                    setTasks(updatedTasks);
+                  }}
+                />
+              )}
+              {!groupedTasks && projectPagination[projectId]?.hasMore && (
+                <LoadMoreSentinel
+                  visibleColumnsCount={visibleColumnsCount}
+                  projectId={projectId}
+                  observer={getObserver()}
+                />
+              )}
+
+              {isLoadingFilters && tasks.length === 0 && (
+                <TableLoading visibleColumnsCount={visibleColumnsCount} />
+              )}
+
+              {mode !== "sorted" &&
+                tasks.length === 0 &&
+                !isLoadingFilters &&
+                !groupedTasks && (
+                  <EmptyState
+                    message="No tasks found"
+                    visibleColumnsCount={visibleColumnsCount}
+                  />
+                )}
+
+              {/* Global Pagination for Workspace Filtered View */}
+              {level === "workspace" &&
+                filtersActive &&
+                projectPagination["__global_filter__"]?.hasMore && (
                   <LoadMoreSentinel
                     visibleColumnsCount={visibleColumnsCount}
-                    projectId={projectId}
+                    projectId="__global_filter__"
                     observer={getObserver()}
                   />
                 )}
 
-                {isLoadingFilters && tasks.length === 0 && (
-                  <TableLoading visibleColumnsCount={visibleColumnsCount} />
+              {/* Global "No more tasks" marker */}
+              {!isLoadingFilters &&
+                ((mode === "sorted" &&
+                  !sortedHasMore &&
+                  sortedTasks.length > 0) ||
+                  (level === "project" &&
+                    mode !== "sorted" &&
+                    !projectPagination[projectId]?.hasMore &&
+                    tasks.length > 0) ||
+                  (level === "workspace" &&
+                    groupedTasks &&
+                    Object.keys(groupedTasks).length > 0 &&
+                    (filtersActive
+                      ? !projectPagination["__global_filter__"]?.hasMore
+                      : !Object.values(projectPagination).some(
+                        (p) => p.hasMore,
+                      )))) && (
+                  <TableRow className="hover:bg-transparent border-0">
+                    <TableCell
+                      colSpan={visibleColumnsCount}
+                      className="py-12 text-center text-muted-foreground/30 text-[10px] font-bold uppercase tracking-[0.4em] pointer-events-none select-none"
+                    >
+                      no more tasks found
+                    </TableCell>
+                  </TableRow>
                 )}
-
-                {mode !== "sorted" &&
-                  tasks.length === 0 &&
-                  !isLoadingFilters &&
-                  !groupedTasks && (
-                    <EmptyState
-                      message="No tasks found"
-                      visibleColumnsCount={visibleColumnsCount}
-                    />
-                  )}
-
-                {/* Global Pagination for Workspace Filtered View */}
-                {level === "workspace" &&
-                  filtersActive &&
-                  projectPagination["__global_filter__"]?.hasMore && (
-                    <LoadMoreSentinel
-                      visibleColumnsCount={visibleColumnsCount}
-                      projectId="__global_filter__"
-                      observer={getObserver()}
-                    />
-                  )}
-
-                {/* Global "No more tasks" marker */}
-                {!isLoadingFilters &&
-                  ((mode === "sorted" &&
-                    !sortedHasMore &&
-                    sortedTasks.length > 0) ||
-                    (level === "project" &&
-                      mode !== "sorted" &&
-                      !projectPagination[projectId]?.hasMore &&
-                      tasks.length > 0) ||
-                    (level === "workspace" &&
-                      groupedTasks &&
-                      Object.keys(groupedTasks).length > 0 &&
-                      (filtersActive
-                        ? !projectPagination["__global_filter__"]?.hasMore
-                        : !Object.values(projectPagination).some(
-                            (p) => p.hasMore,
-                          )))) && (
-                    <TableRow className="hover:bg-transparent border-0">
-                      <TableCell
-                        colSpan={visibleColumnsCount}
-                        className="py-12 text-center text-muted-foreground/30 text-[10px] font-bold uppercase tracking-[0.4em] pointer-events-none select-none"
-                      >
-                        no more tasks found
-                      </TableCell>
-                    </TableRow>
-                  )}
-              </tbody>
-            </table>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

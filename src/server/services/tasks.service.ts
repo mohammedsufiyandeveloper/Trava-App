@@ -119,7 +119,7 @@ export class TasksService {
                 createdById: projectMember.id,
                 assigneeId,
                 reviewerId: resolvedReviewerId,
-                tagId: tagId || null,
+                Tag: tagId ? { connect: { id: tagId } } : undefined,
                 startDate: startDate ? parseIST(startDate) : null,
                 dueDate: dueDate ? parseIST(dueDate) : null,
                 days,
@@ -244,7 +244,7 @@ export class TasksService {
                     createdById: projectMember.id,
                     assigneeId,
                     reviewerId: resolvedReviewerId!,
-                    tagId: tagId || null,
+                    Tag: tagId ? { connect: { id: tagId } } : undefined,
                     startDate: parseIST(startDate),
                     dueDate: parseIST(dueDate),
                     days,
@@ -253,7 +253,7 @@ export class TasksService {
                 },
                 include: {
                     ProjectMember_Task_assigneeIdToProjectMember: { include: { WorkspaceMember: { include: { user: { select: { id: true, surname: true } } } } } },
-                    tag: { select: { id: true, name: true } },
+                    Tag: { select: { id: true, name: true } },
                     reviewer: { include: { WorkspaceMember: { include: { user: { select: { id: true, surname: true } } } } } }
                 }
             });
@@ -442,7 +442,7 @@ export class TasksService {
             include: {
                 ProjectMember_Task_assigneeIdToProjectMember: { include: { WorkspaceMember: { include: { user: { select: { id: true, name: true, surname: true, image: true, email: true } } } } } },
                 reviewer: { include: { WorkspaceMember: { include: { user: { select: { id: true, name: true, surname: true, image: true } } } } } },
-                tag: true,
+                Tag: true,
                 project: { select: { id: true, name: true, slug: true, workspaceId: true } },
                 _count: { select: { subTasks: true } },
                 Task_TaskDependency_A: { select: { id: true } }
@@ -511,7 +511,11 @@ export class TasksService {
         if (data.name) updateData.name = data.name;
         if (data.description !== undefined) updateData.description = data.description;
         if (data.status) updateData.status = data.status;
-        if (data.tagId !== undefined) updateData.tagId = data.tagId;
+        if (data.tagId !== undefined) {
+            updateData.Tag = {
+                set: data.tagId ? [{ id: data.tagId }] : []
+            };
+        }
         if (data.days !== undefined) updateData.days = data.days;
         if (data.startDate !== undefined) updateData.startDate = parseIST(data.startDate as any);
         if (data.dueDate !== undefined) updateData.dueDate = parseIST(data.dueDate as any);

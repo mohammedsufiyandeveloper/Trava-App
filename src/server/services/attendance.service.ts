@@ -51,12 +51,14 @@ export class AttendanceService {
         workspaceId,
         userId,
         latitude,
-        longitude
+        longitude,
+        address
     }: {
         workspaceId: string;
         userId: string;
         latitude?: number;
         longitude?: number;
+        address?: string;
     }) {
         const member = await this.getWorkspaceMember(workspaceId, userId);
         
@@ -89,6 +91,7 @@ export class AttendanceService {
                 checkIn: now,
                 checkInLatitude: latitude,
                 checkInLongitude: longitude,
+                checkInAddress: address,
                 status: AttendanceStatus.PRESENT,
                 updatedAt: now,
             }
@@ -103,7 +106,7 @@ export class AttendanceService {
             action: "CHECKED_IN",
             entityType: "ATTENDANCE",
             entityId: id,
-            newData: { checkIn: now.toISOString(), latitude, longitude },
+            newData: { checkIn: now.toISOString(), latitude, longitude, address },
             broadcastEvent: "team_update",
         });
 
@@ -117,12 +120,14 @@ export class AttendanceService {
         workspaceId,
         userId,
         latitude,
-        longitude
+        longitude,
+        address
     }: {
         workspaceId: string;
         userId: string;
         latitude?: number;
         longitude?: number;
+        address?: string;
     }) {
         const member = await this.getWorkspaceMember(workspaceId, userId);
         
@@ -153,6 +158,7 @@ export class AttendanceService {
                 checkOut: now,
                 checkOutLatitude: latitude,
                 checkOutLongitude: longitude,
+                checkOutAddress: address,
                 updatedAt: now,
             }
         });
@@ -165,7 +171,7 @@ export class AttendanceService {
             action: "CHECKED_OUT",
             entityType: "ATTENDANCE",
             entityId: existing.id,
-            newData: { checkOut: now.toISOString(), latitude, longitude },
+            newData: { checkOut: now.toISOString(), latitude, longitude, address },
             broadcastEvent: "team_update",
         });
 

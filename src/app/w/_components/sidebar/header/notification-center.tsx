@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getNotificationsAction, markTaskCommentsReadAction } from "@/actions/comment";
+import { getNotificationsAction, markNotificationReadAction } from "@/actions/comment";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -89,8 +89,8 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
         router.push(`${pathname}?${params.toString()}`);
 
         // 3. Mark as read and close popover
-        if (notif.isNew !== false) {
-            handleMarkRead(notif.taskId);
+        if (notif.isRead === false) {
+            handleMarkRead(notif.id);
         } else {
             setIsOpen(false);
         }
@@ -117,13 +117,13 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
             } else {
                 // Merge and deduplicate
                 setUnreadNotifications(prev => {
-                    const existingIds = new Set(prev.map(n => n.taskId));
-                    const newUnread = (result.unreadNotifications || []).filter(n => !existingIds.has(n.taskId));
+                    const existingIds = new Set(prev.map(n => n.id));
+                    const newUnread = (result.unreadNotifications || []).filter((n: any) => !existingIds.has(n.id));
                     return [...prev, ...newUnread];
                 });
                 setReadNotifications(prev => {
-                    const existingIds = new Set(prev.map(n => n.taskId));
-                    const newRead = (result.readNotifications || []).filter(n => !existingIds.has(n.taskId));
+                    const existingIds = new Set(prev.map(n => n.id));
+                    const newRead = (result.readNotifications || []).filter((n: any) => !existingIds.has(n.id));
                     return [...prev, ...newRead];
                 });
                 setOffset(currentOffset);
@@ -135,20 +135,20 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
         setLoadingMore(false);
     };
 
-    const handleMarkRead = async (taskId: string) => {
+    const handleMarkRead = async (notificationId: string) => {
         // Optimistic UI Update: Move from New to Old
-        const target = unreadNotifications.find(n => n.taskId === taskId);
+        const target = unreadNotifications.find(n => n.id === notificationId);
         if (target) {
-            setUnreadNotifications(prev => prev.filter(n => n.taskId !== taskId));
+            setUnreadNotifications(prev => prev.filter(n => n.id !== notificationId));
             setReadNotifications(prev => [
-                { ...target, isNew: false },
+                { ...target, isRead: true },
                 ...prev.slice(0, 14) // Keep history reasonable
             ]);
             setPeopleCount(prev => Math.max(0, prev - 1));
         }
 
         // Actually mark as read in DB
-        markTaskCommentsReadAction(taskId);
+        markNotificationReadAction(notificationId);
         setIsOpen(false);
     };
 
@@ -238,7 +238,7 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
                                     <div className="flex flex-col">
                                         {unreadNotifications.map((notif) => (
                                             <div
-                                                key={notif.taskId}
+                                                key={notif.id}
                                                 className="flex gap-3 p-4 hover:bg-muted/50 transition-colors border-b last:border-0 relative overflow-hidden group cursor-pointer"
                                                 onClick={() => handleNotificationClick(notif)}
                                             >
@@ -270,9 +270,9 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
                                     <div className="flex flex-col">
                                         {readNotifications.map((notif) => (
                                             <div
-                                                key={notif.taskId}
+                                                key={notif.id}
                                                 className="flex gap-3 p-4 hover:bg-muted/50 transition-colors border-b last:border-0 opacity-80 cursor-pointer"
-                                                onClick={() => handleNotificationClick({ ...notif, isNew: false })}
+                                                onClick={() => handleNotificationClick({ ...notif, isRead: true })}
                                             >
                                                 <NotificationItem notif={notif} isRead />
                                             </div>
@@ -312,40 +312,25 @@ export function NotificationCenter({ workspaceId, initialUnread = [], initialRea
 function NotificationItem({ notif, isRead }: { notif: any, isRead?: boolean }) {
     return (
         <>
-            <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={notif.latestComment.user.image} />
-                <AvatarFallback><User size={14} /></AvatarFallback>
-            </Avatar>
+            <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bell size={14} className="text-primary" />
+            </div>
             <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center gap-1 text-[9px] text-muted-foreground uppercase tracking-wider truncate">
-                    <span className="truncate max-w-[80px] text-muted-foreground/60">{notif.projectName}</span>
-                    <span className="text-muted-foreground/30">/</span>
-                    {notif.parentTaskName && (
-                        <>
-                            <span className="truncate max-w-[60px] text-muted-foreground/60">{notif.parentTaskName}</span>
-                            <span className="text-muted-foreground/30">/</span>
-                        </>
-                    )}
-                    <span className={`truncate max-w-[120px] ${isRead ? 'font-medium' : 'font-bold text-primary'}`}>
-                        {notif.taskName}
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                        {notif.type}
                     </span>
+                    <p className="text-[9px] text-muted-foreground/60">
+                        {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                    </p>
                 </div>
 
-                <p className="text-[13px] leading-none py-0.5">
-                    <span className="font-semibold">{notif.latestComment.user.name}</span>
-                    {notif.count > 1 && (
-                        <span className={`ml-2 text-[9px] px-1.5 py-0.5 rounded-full font-bold align-middle ${isRead ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                            +{notif.count - 1} more
-                        </span>
-                    )}
+                <p className="text-sm font-semibold leading-tight">
+                    {notif.title}
                 </p>
 
-                <p className={`text-xs line-clamp-1 italic ${isRead ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
-                    "{notif.latestComment.content}"
-                </p>
-
-                <p className="text-[9px] text-muted-foreground/60">
-                    {formatDistanceToNow(new Date(notif.latestComment.createdAt), { addSuffix: true })}
+                <p className={`text-xs line-clamp-2 ${isRead ? 'text-muted-foreground/70' : 'text-muted-foreground'}`}>
+                    {notif.body}
                 </p>
             </div>
         </>

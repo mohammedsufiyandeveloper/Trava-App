@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/require-user";
 import prisma from "@/lib/db";
 import { sendPushNotification } from "@/lib/push-notifications";
+import { pusherServer } from "@/lib/pusher";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +24,14 @@ export async function GET(
         // Verify user is part of the conversation
         const conversation = await prisma.conversation.findUnique({
             where: { id: conversationId },
-            include: { participants: { select: { id: true } } }
+            include: { UserConversations: { select: { A: true } } }
         });
 
         if (!conversation) {
             return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
         }
 
-        const isParticipant = conversation.participants.some(p => p.id === session.user.id);
+        const isParticipant = conversation.UserConversations.some(p => p.A === session.user.id);
         if (!isParticipant) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -92,14 +93,14 @@ export async function POST(
         // Verify user is part of the conversation
         const conversation = await prisma.conversation.findUnique({
             where: { id: conversationId },
-            include: { participants: { select: { id: true } } }
+            include: { UserConversations: { select: { A: true } } }
         });
 
         if (!conversation) {
             return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
         }
 
-        const isParticipant = conversation.participants.some(p => p.id === session.user.id);
+        const isParticipant = conversation.UserConversations.some(p => p.A === session.user.id);
         if (!isParticipant) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -125,9 +126,28 @@ export async function POST(
 
         // ─── PUSH NOTIFICATIONS ──────────────────────────────────────────────
         // Send notification to other participants
-        const recipients = conversation.participants
-            .filter(p => p.id !== session.user.id)
-            .map(p => p.id);
+        const recipients = conversation.UserConversations
+            .filter(p => p.A !== session.user.id)
+            .map(p => p.A);
+
+        const mappedMessage = {
+            id: message.id,
+            content: message.content,
+            createdAt: message.createdAt,
+            userId: message.senderId,
+            user: {
+                id: message.sender.id,
+                name: `${message.sender.name || ""} ${(message.sender as any).surname || ""}`.trim(),
+                surname: (message.sender as any).surname,
+                image: (message.sender as any).image ?? null,
+            }
+        };
+
+        // Trigger real-time event via Pusher
+        if (pusherServer) {
+            pusherServer.trigger(conversationId, 'new-message', mappedMessage)
+                .catch(err => console.error("[PUSHER_ERROR]", err));
+        }
 
         if (recipients.length > 0) {
             const user = session.user as any;
@@ -149,18 +169,7 @@ export async function POST(
 
         return NextResponse.json({
             success: true,
-            message: {
-                id: message.id,
-                content: message.content,
-                createdAt: message.createdAt,
-                userId: message.senderId,
-                user: {
-                    id: message.sender.id,
-                    name: `${message.sender.name || ""} ${(message.sender as any).surname || ""}`.trim(),
-                    surname: (message.sender as any).surname,
-                    image: (message.sender as any).image ?? null,
-                }
-            }
+            message: mappedMessage
         });
     } catch (error: any) {
         console.error("API Error [Messages POST]:", error);

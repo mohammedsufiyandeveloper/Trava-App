@@ -1,4 +1,4 @@
-import { Prisma, TaskStatus } from"@prisma/client";
+import { Prisma, TaskStatus } from "@prisma/client";
 import { TaskFilters } from "@/types/task-filters";
 
 /**
@@ -147,11 +147,8 @@ export function buildSubTaskConditions(filters: TaskFilters): any {
     // TAG FILTER
     // ============================================================
     if (filters.tagId) {
-        if (Array.isArray(filters.tagId) && filters.tagId.length > 0) {
-            conditions.tagId = { in: filters.tagId };
-        } else if (!Array.isArray(filters.tagId)) {
-            conditions.tagId = filters.tagId;
-        }
+        const tVal = Array.isArray(filters.tagId) ? { in: filters.tagId } : filters.tagId;
+        conditions.Tag = { some: { id: tVal } };
     }
 
     // ============================================================

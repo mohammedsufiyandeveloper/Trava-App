@@ -34,6 +34,10 @@ export function mapTaskAssignee(task: any): any {
         // Map the long Prisma relation name and normalize it
         assignee: normalizeMember(task.ProjectMember_Task_assigneeIdToProjectMember || task.assignee),
         reviewer: normalizeMember(task.reviewer),
+        // Map the many-to-many Tag relation back to singular/plural fields for UI compatibility
+        tag: task.Tag?.[0] || null,
+        tags: task.Tag || [],
+        tagId: task.Tag?.[0]?.id || null,
     };
 
     if (mapped.subTasks && Array.isArray(mapped.subTasks)) {

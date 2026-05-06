@@ -468,17 +468,17 @@ async function _fetchFilteredHierarchy(
     delete (expansionMatchWhere as any).isParent;
     delete (expansionMatchWhere as any).parentTaskId;
     // CRITICAL: We must remove these constraints so expansion can find children
-    delete (expansionMatchWhere as any).isParent; 
+    delete (expansionMatchWhere as any).isParent;
     // The matchWhere might have been built with onlyParents: true, which adds isParent: true
     // We need to make sure the subtask fetch doesn't inherit that.
     // Actually, matchWhere is an object already built. We need to find if it has isParent.
     if ((expansionMatchWhere as any).isParent !== undefined) {
         delete (expansionMatchWhere as any).isParent;
     }
-    
+
     // Also, if matchWhere was built with hierarchy logic, it might have isParent inside an AND/OR.
     // But the easiest way is to ensure buildWorkspaceFilterWhere is called with the right flags.
-    
+
     // Let's re-build expansionMatchWhere specifically for subtasks
     const subtaskMatchWhere = buildWorkspaceFilterWhere(
         {

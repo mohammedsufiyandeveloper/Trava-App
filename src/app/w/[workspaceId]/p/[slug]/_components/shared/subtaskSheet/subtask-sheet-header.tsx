@@ -41,11 +41,11 @@ export const SubtaskSheetHeader = memo(function SubtaskSheetHeader({ subTask, cu
             <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 uppercase tracking-widest mb-1.5 truncate">
-                        <span className="truncate">{subTask.project?.name}</span>
-                        {subTask.parentTask && (
+                        <span className="truncate">{(subTask as any).project?.name}</span>
+                        {(subTask as any).parentTask && (
                             <>
                                 <span className="text-muted-foreground/30">/</span>
-                                <span className="truncate">{subTask.parentTask.name}</span>
+                                <span className="truncate">{(subTask as any).parentTask.name}</span>
                             </>
                         )}
                         <span className="text-muted-foreground/30">/</span>
@@ -56,7 +56,7 @@ export const SubtaskSheetHeader = memo(function SubtaskSheetHeader({ subTask, cu
                 </div>
 
                 {/* Edit Button for authorized users */}
-                {subTask && (subTask.createdBy?.WorkspaceMember?.user?.id === currentUserId || (subTask as any).createdById === currentUserId) && (
+                {subTask && ((subTask as any).createdBy?.WorkspaceMember?.user?.id === currentUserId || (subTask as any).createdById === currentUserId) && (
                     <div className="ml-4 flex-shrink-0">
                         <EditSubTaskForm
                             subTask={subTask as any}
@@ -99,7 +99,7 @@ export const SubtaskSheetHeader = memo(function SubtaskSheetHeader({ subTask, cu
                                 members={members}
                                 projectId={subTask.projectId || ""}
                                 parentTaskId={subTask.parentTaskId || ""}
-                                canEdit={!!(isAdmin || isProjectManager || subTask.createdBy?.WorkspaceMember?.user?.id === currentUserId || (subTask as any).createdById === currentUserId)}
+                                canEdit={!!(isAdmin || isProjectManager || (subTask as any).createdBy?.WorkspaceMember?.user?.id === currentUserId || (subTask as any).createdById === currentUserId)}
                                 onAssigned={(_userId, member) => {
                                     onSubTaskAssigned?.({
                                         id: member.userId,
@@ -128,9 +128,9 @@ export const SubtaskSheetHeader = memo(function SubtaskSheetHeader({ subTask, cu
                     <div className="flex items-center gap-2 sm:gap-3">
                         <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="text-xs sm:text-sm font-medium w-20 sm:w-24 shrink-0">Tag</span>
-                        {subTask.tag ? (
+                        {(subTask as any).tag || (subTask as any).Tag ? (
                             <Badge variant="secondary" className="rounded-md text-[10px] sm:text-xs">
-                                {typeof subTask.tag === 'string' ? subTask.tag : subTask.tag.name}
+                                {typeof ((subTask as any).tag || (subTask as any).Tag) === 'string' ? ((subTask as any).tag || (subTask as any).Tag) : ((subTask as any).tag || (subTask as any).Tag)[0]?.name || ((subTask as any).tag || (subTask as any).Tag).name}
                             </Badge>
                         ) : (
                             <span className="text-xs sm:text-sm text-muted-foreground">No tag</span>

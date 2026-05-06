@@ -41,7 +41,7 @@ export async function fetchSubTaskBySlugAction(workspaceId: string, slugOrId: st
                         }
                     }
                 },
-                tag: {
+                Tag: {
                     select: {
                         id: true,
                         name: true

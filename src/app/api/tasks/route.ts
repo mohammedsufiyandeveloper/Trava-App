@@ -31,9 +31,19 @@ export async function GET(request: NextRequest) {
         const assigneeId = searchParams.getAll("assigneeId");
         const tagId = searchParams.getAll("tagId");
         const search = searchParams.get("search") || undefined;
+        const dueAfter = searchParams.get("dueAfter") || undefined;
+        const dueBefore = searchParams.get("dueBefore") || undefined;
+        const sortsParam = searchParams.getAll("sorts");
+
         const hierarchyMode = (searchParams.get("hierarchyMode") as "parents" | "children" | "all") || "parents";
         const excludeParents = searchParams.get("excludeParents") === "true";
         const onlySubtasks = searchParams.get("onlySubtasks") === "true";
+        const includeSubTasksParam = searchParams.get("includeSubTasks") === "true";
+
+        const sorts = sortsParam.map(s => {
+            const [field, direction] = s.split(":");
+            return { field, direction: (direction || "desc") as "asc" | "desc" };
+        });
 
         const opts: GetTasksOptions = {
             workspaceId,
@@ -42,8 +52,11 @@ export async function GET(request: NextRequest) {
             assigneeId: assigneeId.length > 0 ? assigneeId : undefined,
             tagId: tagId.length > 0 ? tagId : undefined,
             search,
+            dueAfter,
+            dueBefore,
+            sorts: sorts.length > 0 ? sorts : undefined,
             limit: 500, // Higher limit to capture all tasks + subtasks for mobile
-            includeSubTasks: hierarchyMode === "all", // Include subtasks when mode is "all"
+            includeSubTasks: includeSubTasksParam || hierarchyMode === "all", // Include subtasks when mode is "all" or explicitly requested
             hierarchyMode,
             excludeParents,
             onlySubtasks,
@@ -70,9 +83,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { 
-            name, 
-            projectId, 
+        const {
+            name,
+            projectId,
             description,
             assigneeUserId,
             reviewerId,
@@ -102,12 +115,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
 
-        const permissions = await getUserPermissions(project.workspaceId, projectId); 
+        const permissions = await getUserPermissions(project.workspaceId, projectId);
 
         const result = await TasksService.createTask({
             name,
             projectId,
-            workspaceId: project.workspaceId, 
+            workspaceId: project.workspaceId,
             userId: session.user.id,
             permissions,
             description,

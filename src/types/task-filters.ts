@@ -1,4 +1,4 @@
-import { TaskStatus } from"@prisma/client";
+import { TaskStatus } from "@prisma/client";
 
 /**
  * Comprehensive filter interface for Tasks

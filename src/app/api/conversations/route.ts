@@ -25,13 +25,15 @@ export async function GET(req: NextRequest) {
         const conversations = await prisma.conversation.findMany({
             where: {
                 workspaceId,
-                participants: {
-                    some: { id: session.user.id }
+                UserConversations: {
+                    some: { A: session.user.id }
                 }
             },
             include: {
-                participants: {
-                    select: { id: true, name: true, surname: true, image: true }
+                UserConversations: {
+                    include: {
+                        user: { select: { id: true, name: true, surname: true, image: true } }
+                    }
                 },
                 messages: {
                     orderBy: { createdAt: "desc" },
@@ -44,7 +46,13 @@ export async function GET(req: NextRequest) {
             orderBy: { updatedAt: "desc" }
         });
 
-        return NextResponse.json({ success: true, conversations });
+        const mappedConversations = conversations.map(c => ({
+            ...c,
+            participants: c.UserConversations.map(uc => uc.user),
+            UserConversations: undefined // Remove DB-specific relation from response
+        }));
+
+        return NextResponse.json({ success: true, conversations: mappedConversations });
     } catch (error: any) {
         console.error("API Error [Conversations GET]:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -78,13 +86,15 @@ export async function POST(req: NextRequest) {
             where: {
                 workspaceId,
                 AND: [
-                    { participants: { some: { id: session.user.id } } },
-                    { participants: { some: { id: otherUserId } } }
+                    { UserConversations: { some: { A: session.user.id } } },
+                    { UserConversations: { some: { A: otherUserId } } }
                 ]
             },
             include: {
-                participants: {
-                    select: { id: true, name: true, surname: true, image: true }
+                UserConversations: {
+                    include: {
+                        user: { select: { id: true, name: true, surname: true, image: true } }
+                    }
                 }
             }
         });
@@ -94,22 +104,30 @@ export async function POST(req: NextRequest) {
             conversation = await prisma.conversation.create({
                 data: {
                     workspaceId,
-                    participants: {
-                        connect: [
-                            { id: session.user.id },
-                            { id: otherUserId }
+                    UserConversations: {
+                        create: [
+                            { A: session.user.id },
+                            { A: otherUserId }
                         ]
                     }
                 },
                 include: {
-                    participants: {
-                        select: { id: true, name: true, surname: true, image: true }
+                    UserConversations: {
+                        include: {
+                            user: { select: { id: true, name: true, surname: true, image: true } }
+                        }
                     }
                 }
             });
         }
 
-        return NextResponse.json({ success: true, conversation });
+        const mappedConversation = {
+            ...conversation,
+            participants: conversation.UserConversations.map(uc => uc.user),
+            UserConversations: undefined
+        };
+
+        return NextResponse.json({ success: true, conversation: mappedConversation });
     } catch (error: any) {
         console.error("API Error [Conversations POST]:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });

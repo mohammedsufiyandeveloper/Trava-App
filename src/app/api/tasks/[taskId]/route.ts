@@ -23,7 +23,7 @@ export async function GET(
                 ProjectMember_Task_assigneeIdToProjectMember: {
                     include: { WorkspaceMember: { include: { user: true } } }
                 },
-                tag: true,
+                Tag: true,
                 project: { select: { id: true, name: true, workspaceId: true } },
                 subTasks: { select: { id: true } },
             }

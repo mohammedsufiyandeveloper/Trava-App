@@ -13,7 +13,7 @@ export { createActivityAction } from "./create-activity";
 export { createTaskCommentAction } from "./create-task-comment";
 export { fetchCommentsAction } from "./fetch-comments";
 export { fetchActivitiesAction } from "./fetch-activities";
-export { getNotificationsAction, markTaskCommentsReadAction } from "./get-notifications";
+export { getNotificationsAction, markNotificationReadAction, markAllNotificationsReadAction, markTaskCommentsReadAction } from "./get-notifications";
 
 // Re-export types
 export type { CreateCommentResult } from "./create-comment";

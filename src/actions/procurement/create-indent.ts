@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getUserPermissions } from "@/data/user/get-user-permissions";
 import { createIndentRequestSchema, type CreateIndentRequestInput } from "@/lib/zodSchemas";
+import { recordActivity } from "@/lib/audit";
 
 export async function createIndentRequest(input: CreateIndentRequestInput) {
     try {
@@ -168,8 +169,18 @@ export async function createIndentRequest(input: CreateIndentRequestInput) {
             });
         }
 
-        // Revalidate the procurement page
-        revalidatePath(`/w/${validatedData.workspaceId}/procurement`);
+        // Record Activity & Send Notification
+        await recordActivity({
+            userId: workspaceMember.userId,
+            userName: workspaceMember.surname || workspaceMember.name || "Someone",
+            workspaceId: validatedData.workspaceId,
+            action: "TASK_CREATED", // Re-use for now or add INDENT_CREATED
+            customMessage: `${workspaceMember.surname || workspaceMember.name} created Indent ${indentKey}: ${validatedData.name}`,
+            entityType: "INDENT",
+            entityId: indentRequest.id,
+            targetUserIds: [validatedData.assignedTo], // Notify the assignee
+            broadcastEvent: "team_update",
+        });
 
         return {
             success: true,

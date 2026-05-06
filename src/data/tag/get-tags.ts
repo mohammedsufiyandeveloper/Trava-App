@@ -47,7 +47,7 @@ export const getWorkspaceTagsWithCount = cache(async (workspaceId: string) => {
                     include: {
                         _count: {
                             select: {
-                                tasks: true,
+                                Task: true,
                             },
                         },
                     },

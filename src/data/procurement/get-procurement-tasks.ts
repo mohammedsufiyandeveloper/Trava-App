@@ -35,7 +35,7 @@ async function _getProcurementTasksInternal(
                         status: true,
                         startDate: true,
                         days: true,
-                        tag: {
+                        Tag: {
                             select: {
                                 id: true,
                                 name: true,

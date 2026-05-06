@@ -19,6 +19,8 @@ export const authMiddleware = createMiddleware<{ Variables: HonoVariables }>(asy
             headers: c.req.raw.headers,
         });
 
+        console.log("[DEBUG] Auth Middleware Session:", JSON.stringify(session));
+
         if (!session || !session.user) {
             return c.json({
                 success: false,

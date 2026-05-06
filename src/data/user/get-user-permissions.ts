@@ -33,7 +33,11 @@ function setMemoryCached(key: string, data: any) {
  */
 async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: string) {
     try {
-        const [workspaceMember, projectRoles] = await Promise.all([
+        const [workspace, workspaceMember, projectRoles] = await Promise.all([
+            prisma.workspace.findUnique({
+                where: { id: workspaceId },
+                select: { ownerId: true }
+            }),
             prisma.workspaceMember.findFirst({
                 where: {
                     workspaceId: workspaceId,
@@ -54,7 +58,7 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
             }),
         ]);
 
-        if (!workspaceMember) {
+        if (!workspaceMember && workspace?.ownerId !== userId) {
             return {
                 isWorkspaceAdmin: false,
                 canCreateProject: false,
@@ -69,8 +73,11 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
             };
         }
 
-        const isWorkspaceAdmin = workspaceMember.workspaceRole === "OWNER" || workspaceMember.workspaceRole === "ADMIN";
-        const canCreateProject = isWorkspaceAdmin || workspaceMember.workspaceRole === "MANAGER";
+        const isWorkspaceAdmin = workspace?.ownerId === userId || 
+            workspaceMember?.workspaceRole === "OWNER" || 
+            workspaceMember?.workspaceRole === "ADMIN" || 
+            workspaceMember?.workspaceRole === "MANAGER";
+        const canCreateProject = isWorkspaceAdmin;
 
         // projectRoles is now the result of the separate query
         const leadProjectIds = projectRoles.filter(p => p.projectRole === "LEAD").map(p => p.projectId);
@@ -92,9 +99,9 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
             managedProjectIds,
             memberProjectIds,
             viewerProjectIds,
-            WorkspaceMemberId: workspaceMember.id,
-            WorkspaceMember: workspaceMember,
-            workspaceMember: workspaceMember,
+            WorkspaceMemberId: workspaceMember?.id || null,
+            WorkspaceMember: workspaceMember || null,
+            workspaceMember: workspaceMember || null,
         };
     } catch (error) {
         console.error("Error fetching workspace permissions:", error);

@@ -70,7 +70,7 @@ export const attendanceRouter = new Hono<{ Variables: HonoVariables }>()
     if (!workspaceId) return c.json({ success: false, error: "Workspace ID is required" }, 400);
 
     try {
-        const { latitude, longitude } = body;
+        const { latitude, longitude, address } = body;
 
         // Geolocation restriction based on user requirement
         if (!latitude || !longitude) {
@@ -82,6 +82,7 @@ export const attendanceRouter = new Hono<{ Variables: HonoVariables }>()
             userId: user.id,
             latitude,
             longitude,
+            address,
         });
         return c.json({ success: true, data: result });
     } catch (error: any) {
@@ -98,7 +99,7 @@ export const attendanceRouter = new Hono<{ Variables: HonoVariables }>()
     if (!workspaceId) return c.json({ success: false, error: "Workspace ID is required" }, 400);
 
     try {
-        const { latitude, longitude } = body;
+        const { latitude, longitude, address } = body;
 
         // Geolocation restriction based on user requirement
         if (!latitude || !longitude) {
@@ -110,6 +111,7 @@ export const attendanceRouter = new Hono<{ Variables: HonoVariables }>()
             userId: user.id,
             latitude,
             longitude,
+            address,
         });
         return c.json({ success: true, data: result });
     } catch (error: any) {

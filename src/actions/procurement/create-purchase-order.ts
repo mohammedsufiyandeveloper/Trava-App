@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { getUserPermissions } from '@/data/user/get-user-permissions';
 import { generatePONumber } from '@/utils/po-utils';
 import { CreatePOInput, createPOSchema } from '@/lib/zodSchemas';
+import { recordActivity } from '@/lib/audit';
+import { getWorkspaceAdmins } from '@/lib/notifications';
 
 export async function createPurchaseOrder(
     workspaceId: string,
@@ -154,8 +156,19 @@ export async function createPurchaseOrder(
             return po;
         });
 
-        // 9. Revalidate cache
-        revalidatePath(`/w/${workspaceId}/procurement/po`);
+        // Record Activity & Send Notification to Admins
+        const adminUserIds = await getWorkspaceAdmins(workspaceId);
+        await recordActivity({
+            userId: permissions.workspaceMember.userId,
+            userName: permissions.workspaceMember.surname || permissions.workspaceMember.name || "Someone",
+            workspaceId,
+            action: "TASK_CREATED", // Re-use for now or add PO_CREATED
+            customMessage: `${permissions.workspaceMember.surname || permissions.workspaceMember.name} created PO ${purchaseOrder.poNumber} for ${purchaseOrder.vendor.name}`,
+            entityType: "PURCHASE_ORDER",
+            entityId: purchaseOrder.id,
+            targetUserIds: adminUserIds, // Notify all admins
+            broadcastEvent: "team_update",
+        });
 
         return {
             success: true,

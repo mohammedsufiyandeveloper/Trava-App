@@ -17,7 +17,6 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
         dueDate: true,
         subtaskCount: true,
         completedSubtaskCount: true,
-        tagId: true,
         description: true,
         startDate: true,
         days: true,
@@ -57,7 +56,7 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
                 subTasks: true
             }
         };
-        select.tag = { select: { id: true, name: true } };
+        select.Tag = { select: { id: true, name: true } };
     }
 
     // 3. Project & Parent Context
@@ -171,10 +170,16 @@ export function buildProjectRootWhere(
                 OR: [
                     { assigneeId: { in: ids } },
                     { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } },
-                    { subTasks: { some: { OR: [
-                        { assigneeId: { in: ids } }, 
-                        { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } }
-                    ] } } }
+                    {
+                        subTasks: {
+                            some: {
+                                OR: [
+                                    { assigneeId: { in: ids } },
+                                    { ProjectMember_Task_assigneeIdToProjectMember: { WorkspaceMember: { userId: { in: ids } } } }
+                                ]
+                            }
+                        }
+                    }
                 ]
             });
         }
@@ -245,7 +250,7 @@ export function buildSubtaskExpansionWhere(
 
     // Tag filter
     if (opts.tagId && opts.tagId.length > 0) {
-        where.tagId = { in: opts.tagId };
+        where.Tag = { some: { id: { in: opts.tagId } } };
     }
 
     const assigneeClauses: Prisma.TaskWhereInput[] = [];
@@ -450,7 +455,11 @@ export function buildWorkspaceFilterWhere(
     };
 
     applyFilter('status', opts.status);
-    applyFilter('tagId', opts.tagId);
+
+    if (opts.tagId) {
+        const tVal = Array.isArray(opts.tagId) ? { in: opts.tagId } : opts.tagId;
+        (where as any).Tag = { some: { id: tVal } };
+    }
 
     // Filter by assignee: handle both direct ProjectMemberId and relational UserId
     if (opts.assigneeId) {

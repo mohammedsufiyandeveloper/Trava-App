@@ -26,7 +26,7 @@ export async function editSubTask(data: SubTaskSchemaType, subTaskId: string): P
 
         const subTaskContext = await prisma.task.findUnique({
             where: { id: subTaskId },
-            include: { 
+            include: {
                 project: { select: { id: true, workspaceId: true } },
                 ProjectMember_Task_assigneeIdToProjectMember: { select: { WorkspaceMember: { select: { userId: true } } } },
                 reviewer: { select: { WorkspaceMember: { select: { userId: true } } } }
@@ -73,7 +73,7 @@ export async function editSubTask(data: SubTaskSchemaType, subTaskId: string): P
             validation.data.reviewerId,
             user.id
         ])).filter(Boolean) as string[];
-        
+
         // Invalidate cache
         await invalidateTaskMutation({
             projectId: subTaskContext.project.id,

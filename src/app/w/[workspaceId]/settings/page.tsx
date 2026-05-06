@@ -22,7 +22,7 @@ async function SettingsContent({ workspaceId }: { workspaceId: string }) {
         id: tag.id,
         name: tag.name,
         requirePurchase: tag.requirePurchase ?? false,
-        _count: tag._count,
+        _count: { tasks: (tag as any)._count?.Task ?? 0 },
     }));
 
     return (
