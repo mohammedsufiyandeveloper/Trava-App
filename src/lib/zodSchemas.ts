@@ -121,11 +121,13 @@ export const updateWorkspaceInfoSchema = z.object({
 export const projectSchema = z.object({
     name: z
         .string()
-        .min(3, { message: "Name must be at least 3 charcters long" })
+        .min(2, { message: "Name must be at least 2 characters long" })
         .max(100, { message: "Name must be at most 100 character long" }),
     description: z
         .string()
-        .min(3, { message: "description must be at least 3 charcters long" }),
+        .min(1, { message: "description must be at least 1 characters long" })
+        .optional()
+        .or(z.literal("")),
     slug: z
         .string()
         .min(3, { message: "Slug must be at least 3 charcters long" })

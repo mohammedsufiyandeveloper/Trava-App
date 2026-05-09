@@ -151,7 +151,7 @@ export async function createCommentAction(
 
         await recordActivity({
             userId: user.id,
-            userName: (user as any).surname || user.name || "Someone",
+            userName: comment.user?.surname || comment.user?.name || (user as any).surname || user.name || "Someone",
             workspaceId: workspaceId,
             action: "COMMENT_CREATED",
             entityType: "TASK",

@@ -136,7 +136,7 @@ export class TasksService {
             const project = await prisma.project.findUnique({ where: { id: projectId }, select: { slug: true } });
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
                 workspaceId,
                 action: "TASK_CREATED",
                 entityType: "TASK",
@@ -274,7 +274,7 @@ export class TasksService {
             const project = await prisma.project.findUnique({ where: { id: projectId }, select: { slug: true } });
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
                 workspaceId,
                 action: "SUBTASK_CREATED",
                 entityType: "SUBTASK",
@@ -564,7 +564,7 @@ export class TasksService {
 
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
                 workspaceId,
                 action: task.parentTaskId ? "SUBTASK_UPDATED" : "TASK_UPDATED",
                 entityType: task.parentTaskId ? "SUBTASK" : "TASK",
@@ -635,7 +635,7 @@ export class TasksService {
         try {
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
                 workspaceId,
                 action: task.parentTaskId ? "SUBTASK_DELETED" : "TASK_DELETED",
                 entityType: task.parentTaskId ? "SUBTASK" : "TASK",
@@ -721,7 +721,7 @@ export class TasksService {
         try {
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
                 workspaceId,
                 action: "TASK_UPDATED",
                 entityType: "TASK",
@@ -799,7 +799,7 @@ export class TasksService {
             if (project) {
                 await recordActivity({
                     userId: permissions.userId,
-                    userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                    userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                     workspaceId: project.workspaceId,
                     action: "TASK_UPDATED",
                     entityType: "TASK",
@@ -849,7 +849,7 @@ export class TasksService {
             if (task) {
                 await recordActivity({
                     userId: permissions.userId,
-                    userName: permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
+                    userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                     workspaceId: task.workspaceId,
                     action: "TASK_UPDATED",
                     entityType: "TASK",

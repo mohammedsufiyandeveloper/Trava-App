@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/require-user";
 import prisma from "@/lib/db";
-import { sendPushNotification } from "@/lib/push-notifications";
+import { sendNotificationToUsers } from "@/lib/notifications";
 import { pusherServer } from "@/lib/pusher";
 
 export const dynamic = "force-dynamic";
@@ -143,8 +143,9 @@ export async function POST(
             }
         };
 
-        // Trigger real-time event via Pusher
+        // Trigger real-time event via Pusher (for the active chat screen)
         if (pusherServer) {
+            console.log(`[PUSHER] Triggering new-message on channel: ${conversationId}`);
             pusherServer.trigger(conversationId, 'new-message', mappedMessage)
                 .catch(err => console.error("[PUSHER_ERROR]", err));
         }
@@ -153,18 +154,22 @@ export async function POST(
             const user = session.user as any;
             const senderName = `${user.name || ""} ${user.surname || ""}`.trim() || "Someone";
             
-            // Fire and forget notification
-            sendPushNotification(
+            // Send unified notification (DB + Push + Pusher)
+            sendNotificationToUsers(
                 recipients,
-                senderName,
-                content,
                 {
+                    workspaceId: (conversation as any).workspaceId || "", 
+                    title: senderName,
+                    body: content,
                     type: "direct_message",
-                    conversationId,
-                    senderId: session.user.id,
-                    senderName
+                    metadata: {
+                        type: "direct_message",
+                        conversationId,
+                        senderId: session.user.id,
+                        senderName
+                    }
                 }
-            ).catch(err => console.error("[PUSH_MESSAGING_ERROR]", err));
+            ).catch(err => console.error("[NOTIF_SYNC_ERROR]", err));
         }
 
         return NextResponse.json({

@@ -43,6 +43,7 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
                     workspaceId: workspaceId,
                     userId: userId,
                 },
+                include: { user: { select: { name: true, surname: true } } }
             }),
             prisma.projectMember.findMany({
                 where: {
@@ -164,6 +165,7 @@ async function _getUserPermissionsInternal(workspaceId: string, projectId: strin
         const [workspaceMember, projectMember] = await Promise.all([
             prisma.workspaceMember.findFirst({
                 where: { workspaceId, userId },
+                include: { user: { select: { name: true, surname: true } } }
             }),
             prisma.projectMember.findFirst({
                 where: {

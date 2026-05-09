@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
 
-        const permissions = await getUserPermissions(project.workspaceId, projectId);
+        const permissions = await getUserPermissions(project.workspaceId, projectId, session.user.id);
 
         const result = await TasksService.createTask({
             name,

@@ -43,6 +43,10 @@ export class AppError extends Error {
         return new AppError(ErrorCode.VALIDATION_ERROR, message, 400);
     }
 
+    static BadRequest(message: string) {
+        return new AppError(ErrorCode.BAD_REQUEST, message, 400);
+    }
+
     static Conflict(message: string) {
         return new AppError(ErrorCode.CONFLICT, message, 409);
     }

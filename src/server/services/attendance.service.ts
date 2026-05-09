@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { recordActivity } from "@/lib/audit";
 import { randomUUID } from "crypto";
-import { AttendanceStatus } from"@prisma/client";
+import { AttendanceStatus, LeaveStatus } from"@prisma/client";
 
 export class AttendanceService {
     /**
@@ -101,7 +101,7 @@ export class AttendanceService {
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, surname: true } });
         await recordActivity({
             userId,
-            userName: user?.surname || user?.name || "Someone",
+            userName: user?.name || user?.surname || "Someone",
             workspaceId,
             action: "CHECKED_IN",
             entityType: "ATTENDANCE",
@@ -166,7 +166,7 @@ export class AttendanceService {
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, surname: true } });
         await recordActivity({
             userId,
-            userName: user?.surname || user?.name || "Someone",
+            userName: user?.name || user?.surname || "Someone",
             workspaceId,
             action: "CHECKED_OUT",
             entityType: "ATTENDANCE",
@@ -242,12 +242,24 @@ export class AttendanceService {
             }
         });
 
-        // 3. Map them together
+        // 3. Get all approved leave requests for this date
+        const leaveRequests = await prisma.leave_request.findMany({
+            where: {
+                workspaceId,
+                status: LeaveStatus.APPROVED,
+                startDate: { lte: dateOnly },
+                endDate: { gte: dateOnly },
+            }
+        });
+
+        // 4. Map them together
         return members.map(member => {
             const attendance = attendanceRecords.find(a => a.workspaceMemberId === member.id);
+            const leave = leaveRequests.find(l => l.workspaceMemberId === member.id);
+            
             return {
                 member,
-                attendance: attendance || null,
+                attendance: attendance || (leave ? { status: AttendanceStatus.ON_LEAVE, date: dateOnly } : null),
             };
         });
     }

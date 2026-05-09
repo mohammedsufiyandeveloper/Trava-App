@@ -16,7 +16,12 @@ export type AuditAction =
   | "SUBTASK_DELETED"
   | "COMMENT_CREATED"
   | "CHECKED_IN"
-  | "CHECKED_OUT";
+  | "CHECKED_OUT"
+  | "LEAVE_REQUEST_SUBMITTED"
+  | "LEAVE_REQUEST_PENDING"
+  | "LEAVE_REQUEST_APPROVED"
+  | "LEAVE_REQUEST_REJECTED"
+  | "WORKSPACE_UPDATED";
 
 interface RecordActivityOptions {
   userId: string;
@@ -196,6 +201,10 @@ export async function recordActivity(options: RecordActivityOptions) {
       if (action === "COMMENT_CREATED") actionLabel = "added a comment";
       if (action === "CHECKED_IN") actionLabel = "checked in for work";
       if (action === "CHECKED_OUT") actionLabel = "checked out for the day";
+      if (action === "LEAVE_REQUEST_SUBMITTED") actionLabel = "submitted a leave request";
+      if (action === "LEAVE_REQUEST_APPROVED") actionLabel = "approved a leave request";
+      if (action === "LEAVE_REQUEST_REJECTED") actionLabel = "rejected a leave request";
+      if (action === "WORKSPACE_UPDATED") actionLabel = "updated workspace settings";
 
       const message = options.customMessage || `${userName} ${actionLabel}`;
       const eventPayload = {

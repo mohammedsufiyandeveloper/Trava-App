@@ -134,7 +134,7 @@ export async function POST(
             return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
         }
 
-        const permissions = await getUserPermissions(parentTask.workspaceId, parentTask.projectId);
+        const permissions = await getUserPermissions(parentTask.workspaceId, parentTask.projectId, session.user.id);
 
         const result = await TasksService.createSubTask({
             name,
