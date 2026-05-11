@@ -27,11 +27,16 @@ export const pusherServer = (() => {
     return null;
   }
 
+  const cleanKey = (env.NEXT_PUBLIC_PUSHER_KEY || "").replace(/['"]/g, "").trim();
+  const cleanCluster = (env.NEXT_PUBLIC_PUSHER_CLUSTER || "").replace(/['"]/g, "").trim();
+  const cleanAppId = (env.PUSHER_APP_ID || "").replace(/['"]/g, "").trim();
+  const cleanSecret = (env.PUSHER_SECRET || "").replace(/['"]/g, "").trim();
+
   return new PusherServer({
-    appId: env.PUSHER_APP_ID!,
-    key: env.NEXT_PUBLIC_PUSHER_KEY!,
-    secret: env.PUSHER_SECRET!,
-    cluster: env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    appId: cleanAppId,
+    key: cleanKey,
+    secret: cleanSecret,
+    cluster: cleanCluster,
     useTLS: true,
   });
 })();
