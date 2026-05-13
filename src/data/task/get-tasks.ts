@@ -1085,7 +1085,32 @@ export const getTasks = cache(async (opts: GetTasksOptions, providedUserId?: str
         // console.log(`🛡️ [GET_TASKS] User: ${providedUserId || 'current'}, WS: ${workspaceId}, Admin: ${isWorkspaceAdmin}, FullAccess: ${fullAccessProjectIds.length}, Restricted: ${restrictedProjectIds.length}`);
     }
 
-    if (!permissions.WorkspaceMemberId || (!isWorkspaceAdmin && authorizedProjectIds.length === 0)) {
+    // Guard: block access if the user is not a member AND not the workspace owner.
+    // A workspace owner may not have a WorkspaceMember record if they created the workspace
+    // without explicitly joining it, so we must allow them through if isWorkspaceAdmin is true.
+    if (!permissions.WorkspaceMemberId && !isWorkspaceAdmin) {
+        return {
+            tasks: [],
+            totalCount: 0,
+            hasMore: false,
+            nextCursor: null,
+            facets: { status: {}, assignee: {}, tags: {}, projects: {} },
+        };
+    }
+    if (!permissions.WorkspaceMemberId && !isWorkspaceAdmin && authorizedProjectIds.length === 0) {
+        return {
+            tasks: [],
+            totalCount: 0,
+            hasMore: false,
+            nextCursor: null,
+            facets: { status: {}, assignee: {}, tags: {}, projects: {} },
+        };
+    }
+
+    // The effectiveUserId is the user making the request. For workspace owners who may
+    // not have a WorkspaceMember record, we fall back to the providedUserId.
+    const effectiveUserId = permissions.WorkspaceMember?.userId || providedUserId;
+    if (!effectiveUserId) {
         return {
             tasks: [],
             totalCount: 0,
@@ -1096,17 +1121,17 @@ export const getTasks = cache(async (opts: GetTasksOptions, providedUserId?: str
     }
 
     const sig = buildQuerySignature(workspaceId, projectId, { fullAccessProjectIds, restrictedProjectIds }, opts);
-    const cacheKey = `tasks-v11-${workspaceId}-${isWorkspaceAdmin ? 'admin' : 'user'}-${permissions.WorkspaceMember.userId}-${sig}`;
+    const cacheKey = `tasks-v11-${workspaceId}-${isWorkspaceAdmin ? 'admin' : 'user'}-${effectiveUserId}-${sig}`;
 
     const tags = projectId
-        ? CacheTags.projectTasks(projectId, permissions.WorkspaceMember.userId)
-        : CacheTags.workspaceTasks(workspaceId, permissions.WorkspaceMember.userId);
+        ? CacheTags.projectTasks(projectId, effectiveUserId)
+        : CacheTags.workspaceTasks(workspaceId, effectiveUserId);
 
     let res;
     if (providedUserId) {
         res = await _getTasksInternal(
             workspaceId,
-            permissions.WorkspaceMember!.userId,
+            effectiveUserId,
             isWorkspaceAdmin,
             fullAccessProjectIds,
             restrictedProjectIds,
@@ -1116,7 +1141,7 @@ export const getTasks = cache(async (opts: GetTasksOptions, providedUserId?: str
         res = await unstable_cache(
             () => _getTasksInternal(
                 workspaceId,
-                permissions.WorkspaceMember!.userId,
+                effectiveUserId,
                 isWorkspaceAdmin,
                 fullAccessProjectIds,
                 restrictedProjectIds,

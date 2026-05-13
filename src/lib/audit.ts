@@ -2,7 +2,7 @@ import prisma from "./db";
 import { pusherServer } from "./pusher";
 import { randomUUID } from "crypto";
 import { sendPushNotification } from "./push-notifications";
-import { sendNotificationToUsers } from "./notifications";
+import { sendNotificationToUsers, getWorkspaceAdmins } from "./notifications";
 
 export type AuditAction =
   | "USER_LOGIN"
@@ -132,14 +132,25 @@ export async function recordActivity(options: RecordActivityOptions) {
       metadata = { payload: newData };
     }
 
-    // New: Resolve targetUserIds if missing for tasks/subtasks
     let finalTargetUserIds = options.targetUserIds;
+
+    // 1. Resolve for Tasks/Subtasks if missing
     if (!finalTargetUserIds && entityId && (entityType === "TASK" || entityType === "SUBTASK")) {
       try {
         const { getTaskInvolvedUserIds } = await import("./involved-users");
         finalTargetUserIds = await getTaskInvolvedUserIds(entityId);
       } catch (e) {
         console.error("[AUDIT] Failed to auto-resolve targetUserIds:", e);
+      }
+    }
+
+    // 2. Fallback: For any workspace activity, notify admins if no targets specified
+    // This ensures all activities visible on the notifications page also trigger push
+    if (!finalTargetUserIds && workspaceId && action !== "USER_LOGIN") {
+      try {
+        finalTargetUserIds = await getWorkspaceAdmins(workspaceId);
+      } catch (e) {
+        console.error("[AUDIT] Failed to resolve workspace admins:", e);
       }
     }
 

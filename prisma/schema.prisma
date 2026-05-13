@@ -86,15 +86,15 @@ model Verification {
 }
 
 model Workspace {
-  id                     String            @id @default(uuid())
+  id                     String                 @id @default(uuid())
   name                   String
-  slug                   String            @unique
+  slug                   String                 @unique
   description            String?
   ownerId                String
-  createdAt              DateTime          @default(now())
-  image_url              String            @default("")
-  updatedAt              DateTime          @updatedAt
-  inviteCode             String            @unique
+  createdAt              DateTime               @default(now())
+  image_url              String                 @default("")
+  updatedAt              DateTime               @updatedAt
+  inviteCode             String                 @unique
   addressLine1           String?
   addressLine2           String?
   city                   String?
@@ -110,18 +110,20 @@ model Workspace {
   pincode                String?
   state                  String?
   website                String?
-  lateThreshold          String            @default("21:30")
-  overtimeThreshold      String            @default("07:00")
-  halfDayThreshold       String            @default("23:00")
-  shiftEndTime           String            @default("07:00")
-  shiftStartTime         String            @default("21:30")
-  sickLeaveLimit         Int               @default(12)
-  casualLeaveAccrualDays Int               @default(20)
+  lateThreshold          String                 @default("21:30")
+  overtimeThreshold      String                 @default("07:00")
+  halfDayThreshold       String                 @default("23:00")
+  shiftEndTime           String                 @default("07:00")
+  shiftStartTime         String                 @default("21:30")
+  sickLeaveLimit         Int                    @default(12)
+  casualLeaveAccrualDays Int                    @default(20)
+  Clints                 Clints[]
   projects               Project[]
   tags                   Tag[]
-  owner                  User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner                  User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members                WorkspaceMember[]
   attendances            Attendance[]
+  attendance_locations   attendance_locations[]
   audit_log              audit_log[]
   board_items            board_items[]
   conversations          Conversation[]
@@ -137,34 +139,36 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id                                                    String                 @id @default(uuid())
-  userId                                                String
-  workspaceId                                           String
-  createdAt                                             DateTime               @default(now())
-  updatedAt                                             DateTime               @updatedAt
-  workspaceRole                                         WorkspaceRole          @default(MEMBER)
-  designation                                           String?
-  reportToId                                            String?
-  accruedDaysCount                                      Int                    @default(0)
-  casualLeaveBalance                                    Float                  @default(0)
-  sickLeaveBalance                                      Float                  @default(12)
-  ProjectMember                                         ProjectMember[]
-  WorkspaceMember                                       WorkspaceMember?       @relation("WorkspaceMemberToWorkspaceMember", fields: [reportToId], references: [id])
-  other_WorkspaceMember                                 WorkspaceMember[]      @relation("WorkspaceMemberToWorkspaceMember")
-  user                                                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace                                             Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  attendances                                           Attendance[]
-  board_items_board_items_assignedByIdToWorkspaceMember board_items[]          @relation("board_items_assignedByIdToWorkspaceMember")
-  board_items_board_items_memberIdToWorkspaceMember     board_items[]          @relation("board_items_memberIdToWorkspaceMember")
-  assignedIndents                                       IndentDetails[]        @relation("IndentAssignee")
-  requestedIndents                                      IndentDetails[]        @relation("IndentRequestor")
-  finalApprovedItems                                    IndentItem[]           @relation("FinalApprover")
-  quantityApprovedItems                                 IndentItem[]           @relation("QuantityApprover")
-  leave_request                                         leave_request[]
-  approvedPurchaseOrders                                PurchaseOrder[]        @relation("POApprover")
-  createdPurchaseOrders                                 PurchaseOrder[]        @relation("POCreator")
-  recordedPayments                                      PurchaseOrderPayment[] @relation("PaymentRecorder")
-  createdUnits                                          Unit[]
+  id                                                         String                 @id @default(uuid())
+  userId                                                     String
+  workspaceId                                                String
+  createdAt                                                  DateTime               @default(now())
+  updatedAt                                                  DateTime               @updatedAt
+  workspaceRole                                              WorkspaceRole          @default(MEMBER)
+  designation                                                String?
+  reportToId                                                 String?
+  accruedDaysCount                                           Int                    @default(0)
+  casualLeaveBalance                                         Float                  @default(0)
+  sickLeaveBalance                                           Float                  @default(12)
+  Project                                                    Project[]
+  ProjectMember                                              ProjectMember[]
+  WorkspaceMember                                            WorkspaceMember?       @relation("WorkspaceMemberToWorkspaceMember", fields: [reportToId], references: [id])
+  other_WorkspaceMember                                      WorkspaceMember[]      @relation("WorkspaceMemberToWorkspaceMember")
+  user                                                       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace                                                  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  attendances                                                Attendance[]
+  board_items_board_items_assignedByIdToWorkspaceMember      board_items[]          @relation("board_items_assignedByIdToWorkspaceMember")
+  board_items_board_items_memberIdToWorkspaceMember          board_items[]          @relation("board_items_memberIdToWorkspaceMember")
+  assignedIndents                                            IndentDetails[]        @relation("IndentAssignee")
+  requestedIndents                                           IndentDetails[]        @relation("IndentRequestor")
+  finalApprovedItems                                         IndentItem[]           @relation("FinalApprover")
+  quantityApprovedItems                                      IndentItem[]           @relation("QuantityApprover")
+  leave_request_leave_request_processedByIdToWorkspaceMember leave_request[]        @relation("leave_request_processedByIdToWorkspaceMember")
+  leave_request                                              leave_request[]
+  approvedPurchaseOrders                                     PurchaseOrder[]        @relation("POApprover")
+  createdPurchaseOrders                                      PurchaseOrder[]        @relation("POCreator")
+  recordedPayments                                           PurchaseOrderPayment[] @relation("PaymentRecorder")
+  createdUnits                                               Unit[]
 
   @@unique([userId, workspaceId])
   @@index([workspaceId, workspaceRole])
@@ -175,22 +179,26 @@ model WorkspaceMember {
 }
 
 model Project {
-  id               String            @id @default(uuid())
-  name             String
-  description      String?
-  workspaceId      String
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  slug             String            @unique
-  color            String
-  createdBy        String?
-  clint            Clints[]
-  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  projectMembers   ProjectMember[]
-  tasks            Task[]
-  indentDetails    IndentDetails[]
-  procurementTasks ProcurementTask[]
-  purchaseOrders   PurchaseOrder[]
+  id                             String            @id @default(uuid())
+  name                           String
+  description                    String?
+  workspaceId                    String
+  createdAt                      DateTime          @default(now())
+  updatedAt                      DateTime          @updatedAt
+  slug                           String            @unique
+  color                          String
+  createdBy                      String?
+  projectManagerId               String?
+  clintId                        String?
+  clint                          Clints[]
+  Clints_Project_clintIdToClints Clints?           @relation("Project_clintIdToClints", fields: [clintId], references: [id])
+  WorkspaceMember                WorkspaceMember?  @relation(fields: [projectManagerId], references: [id])
+  workspace                      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectMembers                 ProjectMember[]
+  tasks                          Task[]
+  indentDetails                  IndentDetails[]
+  procurementTasks               ProcurementTask[]
+  purchaseOrders                 PurchaseOrder[]
 
   @@index([workspaceId, slug])
   @@index([workspaceId, createdAt])
@@ -218,17 +226,22 @@ model ProjectMember {
 }
 
 model Clints {
-  id                    String         @id @default(uuid())
-  name                  String?
-  registeredCompanyName String?
-  gstNumber             String?
-  directorName          String?
-  address               String?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  projectId             String?
-  clintMembers          ClintMembers[]
-  project               Project?       @relation(fields: [projectId], references: [id])
+  id                              String         @id @default(uuid())
+  name                            String?
+  registeredCompanyName           String?
+  gstNumber                       String?
+  directorName                    String?
+  address                         String?
+  createdAt                       DateTime       @default(now())
+  updatedAt                       DateTime       @updatedAt
+  projectId                       String?
+  workspaceId                     String?
+  clintMembers                    ClintMembers[]
+  project                         Project?       @relation(fields: [projectId], references: [id])
+  Workspace                       Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  Project_Project_clintIdToClints Project[]      @relation("Project_clintIdToClints")
+
+  @@index([workspaceId])
 }
 
 model ClintMembers {
@@ -774,18 +787,20 @@ model UserConversations {
 }
 
 model leave_request {
-  id                String          @id
-  workspaceId       String
-  workspaceMemberId String
-  startDate         DateTime        @db.Date
-  endDate           DateTime        @db.Date
-  reason            String
-  status            LeaveStatus     @default(PENDING)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime
-  type              LeaveType       @default(CASUAL)
-  Workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  WorkspaceMember   WorkspaceMember @relation(fields: [workspaceMemberId], references: [id], onDelete: Cascade)
+  id                                                           String           @id
+  workspaceId                                                  String
+  workspaceMemberId                                            String
+  startDate                                                    DateTime         @db.Date
+  endDate                                                      DateTime         @db.Date
+  reason                                                       String
+  status                                                       LeaveStatus      @default(PENDING)
+  createdAt                                                    DateTime         @default(now())
+  updatedAt                                                    DateTime
+  type                                                         LeaveType        @default(CASUAL)
+  processedById                                                String?
+  WorkspaceMember_leave_request_processedByIdToWorkspaceMember WorkspaceMember? @relation("leave_request_processedByIdToWorkspaceMember", fields: [processedById], references: [id])
+  Workspace                                                    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  WorkspaceMember                                              WorkspaceMember  @relation(fields: [workspaceMemberId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([workspaceMemberId])
@@ -801,6 +816,21 @@ model public_holiday {
   Workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, date])
+}
+
+model attendance_locations {
+  id          String    @id
+  workspaceId String
+  name        String
+  address     String?
+  latitude    Float
+  longitude   Float
+  radius      Float     @default(100)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  Workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
 }
 
 enum IndentItemStatus {
