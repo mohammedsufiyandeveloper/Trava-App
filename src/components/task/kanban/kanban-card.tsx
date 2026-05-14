@@ -32,6 +32,7 @@ import {
   pendingPrefetches,
 } from "@/app/w/[workspaceId]/p/[slug]/_components/shared/subtaskSheet/subtask-details-sheet";
 import { UserPermissionsType } from "@/data/user/get-user-permissions";
+import { getStatusColors } from "@/lib/colors/status-colors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,19 +146,9 @@ export const KanbanCard = React.memo(function KanbanCard({
         "h-auto py-0 transition-shadow duration-200 hover:shadow-lg dark:hover:shadow-primary/20",
         (isDragging || isSortableDragging) && "opacity-50 shadow-xl",
         "border-l-4 overflow-hidden",
+        "border-l-4 overflow-hidden",
         (!assigneeUser && subTask.status !== "COMPLETED" && subTask.status !== "CANCELLED") && "bg-red-50 dark:bg-red-950/20 shadow-[0_0_8px_rgba(239,68,68,0.2)] animate-[pulse_2s_infinite] border-red-400 dark:border-red-600",
-        columnColor === "text-slate-700" &&
-          "border-l-slate-500 dark:border-l-slate-400",
-        columnColor === "text-blue-700" &&
-          "border-l-blue-500 dark:border-l-blue-400",
-        columnColor === "text-red-700" &&
-          "border-l-red-500 dark:border-l-red-400",
-        columnColor === "text-amber-700" &&
-          "border-l-amber-500 dark:border-l-amber-400",
-        columnColor === "text-purple-700" &&
-          "border-l-purple-500 dark:border-l-purple-400",
-        columnColor === "text-green-700" &&
-          "border-l-green-500 dark:border-l-green-400",
+        getStatusColors(subTask.status).borderColor.replace("border-", "border-l-"),
       )}
       onMouseEnter={handlePrefetch}
       onClick={(e) => {

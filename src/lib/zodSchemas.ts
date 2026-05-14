@@ -182,7 +182,8 @@ export const projectSchema = z.object({
 });
 
 export const editProjectSchema = z.object({
-    projectId: z.string().uuid({ message: "Invalid project id" }),
+    projectId: z.string().min(1, { message: "Project ID is required" }),
+
     name: z
         .string()
         .min(3, { message: "Name must be at least 3 characters long" })
@@ -190,47 +191,57 @@ export const editProjectSchema = z.object({
     description: z
         .string()
         .min(3, { message: "Description must be at least 3 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     slug: z
         .string()
         .min(3, { message: "Slug must be at least 3 characters long" })
         .max(50, { message: "Slug must be at most 50 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     // Client/Company fields
     companyName: z
         .string()
         .min(3, { message: "Company Name must be at least 3 characters long" })
         .max(100, { message: "Company Name must be at most 100 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     registeredCompanyName: z
         .string()
         .min(3, { message: "Registered Company Name must be at least 3 characters long" })
         .max(100, { message: "Registered Company Name must be at most 100 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     directorName: z
         .string()
         .min(3, { message: "Director Name must be at least 3 characters long" })
         .max(100, { message: "Director Name must be at most 100 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     address: z
         .string()
         .min(3, { message: "Address must be at least 3 characters long" })
         .max(150, { message: "Address must be at most 150 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     gstNumber: z
         .string()
         .max(15, { message: "GST is usually 15 characters — alphanumeric." })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     contactPerson: z
         .string()
         .min(3, { message: "Contact Person must be at least 3 characters long" })
         .max(100, { message: "Contact Person must be at most 100 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
     phoneNumber: z
         .string()
         .min(10, { message: "Phone Number must be at least 10 characters long" })
         .max(15, { message: "Phone Number must be at most 15 characters long" })
-        .optional(),
+        .optional()
+        .or(z.literal("")),
+    color: z.string().optional().or(z.literal("")),
     // Team fields
     projectLead: z.string().optional(),
     projectManagers: z.array(z.string()).optional(),

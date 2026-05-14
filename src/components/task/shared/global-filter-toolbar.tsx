@@ -14,6 +14,7 @@ import { ColumnVisibility } from "./column-visibility";
 import { KanbanColumnVisibility, type KanbanColumnVisibility as KanbanColumnVisibilityType } from "./kanban-column-visibility";
 import { STATUS_OPTIONS } from "@/lib/zodSchemas";
 import { getColorFromString } from "@/lib/colors/project-colors";
+import { getStatusColors } from "@/lib/colors/status-colors";
 
 export interface ParentTaskOption {
     id: string;
@@ -409,7 +410,7 @@ export function GlobalFilterToolbar({
                                                     {STATUS_OPTIONS.map((option) => (
                                                         <SelectItem key={option.value} value={option.value}>
                                                             <div className="flex items-center gap-2">
-                                                                <div className="h-2 w-2 rounded-full bg-green-500" />
+                                                                <div className={cn("h-2 w-2 rounded-full", getStatusColors(option.value).barClass)} />
                                                                 {option.label}
                                                             </div>
                                                         </SelectItem>

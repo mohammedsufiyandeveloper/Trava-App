@@ -210,3 +210,31 @@ export async function DELETE(request: NextRequest) {
         );
     }
 }
+
+export async function PATCH(request: NextRequest) {
+    try {
+        const session = await getSession();
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { editProject } = await import("@/actions/project/update-project");
+        const result = await editProject(body, session.user.id);
+
+        if (result.status === "error") {
+            return NextResponse.json({ error: result.message || "Failed to update project" }, { status: 400 });
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: result.message
+        });
+    } catch (error: any) {
+        console.error("API Error [Projects PATCH]:", error);
+        return NextResponse.json(
+            { success: false, error: error.message || "Internal Server Error" },
+            { status: 500 }
+        );
+    }
+}

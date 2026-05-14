@@ -6,15 +6,16 @@ import { EditProjectSchemaType, editProjectSchema } from "@/lib/zodSchemas";
 import { getUserPermissions } from "@/data/user/get-user-permissions";
 import { isProjectAdmin } from "@/lib/constants/project-access";
 
-export async function editProject(values: EditProjectSchemaType): Promise<ApiResponse> {
+export async function editProject(values: EditProjectSchemaType, providedUserId?: string): Promise<ApiResponse> {
 
     try {
         // Validate input
         const validation = editProjectSchema.safeParse(values);
         if (!validation.success) {
+            const errorMsg = validation.error.issues.map(err => `${err.path.join(".")}: ${err.message}`).join(", ");
             return {
                 status: "error",
-                message: "Please check the form details and try again.",
+                message: `Validation failed: ${errorMsg}`,
             };
         }
 
@@ -34,22 +35,21 @@ export async function editProject(values: EditProjectSchemaType): Promise<ApiRes
         if (!project) {
             return {
                 status: "error",
-                message: "Project not found.",
+                message: `Project not found (ID: ${values.projectId}).`,
             };
         }
 
         // Get user permissions for this project
-        // Get user permissions for this project
-        const permissions = await getUserPermissions(project.workspaceId, values.projectId);
+        const permissions = await getUserPermissions(project.workspaceId, values.projectId, providedUserId);
 
         // Check if user has admin access (workspace admin or project lead)
-        const workspaceRole = permissions.WorkspaceMember?.workspaceRole;
         const projectRole = permissions.projectMember?.projectRole || null;
 
         if (!permissions.isWorkspaceAdmin && !isProjectAdmin(projectRole)) {
+            const roleName = projectRole || "No Role";
             return {
                 status: "error",
-                message: "Only workspace owners/admins and project leads can edit projects.",
+                message: `Access Denied: Only workspace admins or project managers can edit projects. (Your role: ${roleName}, isWorkspaceAdmin: ${permissions.isWorkspaceAdmin})`,
             };
         }
 
@@ -89,6 +89,7 @@ export async function editProject(values: EditProjectSchemaType): Promise<ApiRes
                     name: validation.data.name,
                     description: validation.data.description,
                     slug: validation.data.slug || project.slug,
+                    color: validation.data.color || project.color,
                 },
             });
 
@@ -122,12 +123,41 @@ export async function editProject(values: EditProjectSchemaType): Promise<ApiRes
                         });
                     }
                 }
+            } else if (validation.data.companyName) {
+                // Create client if it doesn't exist but data is provided
+                const newClient = await tx.clints.create({
+                    data: {
+                        name: validation.data.companyName,
+                        registeredCompanyName: validation.data.registeredCompanyName || "",
+                        directorName: validation.data.directorName || "",
+                        address: validation.data.address || "",
+                        gstNumber: validation.data.gstNumber || "",
+                        projectId: values.projectId,
+                        workspaceId: project.workspaceId,
+                    }
+                });
+
+                if (validation.data.contactPerson || validation.data.phoneNumber) {
+                    await tx.clintMembers.create({
+                        data: {
+                            clintId: newClient.id,
+                            name: validation.data.contactPerson || "Contact",
+                            phoneNumber: validation.data.phoneNumber || "",
+                        }
+                    });
+                }
+
+                // Update project's clintId reference
+                await tx.project.update({
+                    where: { id: values.projectId },
+                    data: { clintId: newClient.id }
+                });
             }
 
-            // Update project managers if provided
-            if (validation.data.projectManagers) {
-                const requestedPMUserIds = validation.data.projectManagers;
-                
+            // Update project managers if provided (or single projectLead from mobile)
+            const requestedPMUserIds = validation.data.projectManagers || (validation.data.projectLead ? [validation.data.projectLead] : null);
+            
+            if (requestedPMUserIds) {
                 // Get all current project members with PROJECT_MANAGER role
                 const currentPMs = await tx.projectMember.findMany({
                     where: {
