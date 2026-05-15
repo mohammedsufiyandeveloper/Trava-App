@@ -29,6 +29,7 @@ model User {
   workspaces          WorkspaceMember[]
   UserConversations   UserConversations[]
   accounts            Account[]
+  activity_read       activity_read[]
   audit_log           audit_log[]
   comments            Comment[]
   commentReads        CommentRead[]
@@ -150,6 +151,9 @@ model WorkspaceMember {
   accruedDaysCount                                           Int                    @default(0)
   casualLeaveBalance                                         Float                  @default(0)
   sickLeaveBalance                                           Float                  @default(12)
+  position                                                   Int                    @default(0)
+  dateOfBirth                                                DateTime?
+  employeeId                                                 String?
   Project                                                    Project[]
   ProjectMember                                              ProjectMember[]
   WorkspaceMember                                            WorkspaceMember?       @relation("WorkspaceMemberToWorkspaceMember", fields: [reportToId], references: [id])
@@ -668,6 +672,8 @@ model Attendance {
   isOvertime        Boolean          @default(false)
   lateThreshold     String?
   overtimeThreshold String?
+  checkInNotes      String?
+  checkOutNotes     String?
   workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceMember   WorkspaceMember  @relation(fields: [workspaceMemberId], references: [id], onDelete: Cascade)
 
@@ -714,16 +720,17 @@ model board_items {
 }
 
 model Activity {
-  id          String   @id
-  subTaskId   String
-  authorId    String
-  text        String
-  attachment  Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-  workspaceId String
-  user        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  Task        Task     @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+  id            String          @id
+  subTaskId     String
+  authorId      String
+  text          String
+  attachment    Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  workspaceId   String
+  user          User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  Task          Task            @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+  activity_read activity_read[]
 
   @@index([authorId])
   @@index([subTaskId, createdAt(sort: Desc)])
@@ -831,6 +838,19 @@ model attendance_locations {
   Workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
+}
+
+model activity_read {
+  id         String   @id
+  userId     String
+  activityId String
+  createdAt  DateTime @default(now())
+  Activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+  @@index([activityId])
+  @@index([userId])
 }
 
 enum IndentItemStatus {
