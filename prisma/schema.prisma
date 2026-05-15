@@ -37,8 +37,23 @@ model User {
   directMessages      DirectMessage[]     @relation("SentMessages")
   notifications       Notification[]
   sessions            Session[]
+  myspaceTodos        MySpaceTodo[]
 
   @@map("user")
+}
+
+model MySpaceTodo {
+  id          String    @id @default(uuid())
+  userId      String
+  text        String
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("myspace_todo")
 }
 
 model Session {
