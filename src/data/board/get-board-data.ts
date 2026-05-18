@@ -39,20 +39,7 @@ export const getBoardData = cache(async (workspaceId: string) => {
                     email: true,
                 }
             },
-            board_items_board_items_memberIdToWorkspaceMember: {
-                include: {
-                    WorkspaceMember_board_items_assignedByIdToWorkspaceMember: {
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    surname: true,
-                                }
-                            }
-                        }
-                    }
-                },
+            member_todos: {
                 orderBy: {
                     createdAt: "desc"
                 }
@@ -67,16 +54,31 @@ export const getBoardData = cache(async (workspaceId: string) => {
 
     const members = rawMembers.map((member) => ({
         ...member,
-        boardItems: member.board_items_board_items_memberIdToWorkspaceMember.map(item => ({
-            ...item,
-            assignedBy: item.WorkspaceMember_board_items_assignedByIdToWorkspaceMember
+        boardItems: member.member_todos.map((todo) => ({
+            id: todo.id,
+            workspaceId,
+            memberId: todo.memberId,
+            assignedById: todo.memberId,
+            note: todo.text,
+            status: todo.completed ? ("DONE" as const) : ("NOT_DONE" as const),
+            createdAt: todo.createdAt,
+            updatedAt: todo.updatedAt,
+            assignedBy: {
+                id: member.id,
+                workspaceRole: member.workspaceRole,
+                user: {
+                    id: member.user?.id || "",
+                    name: member.user?.name || "",
+                    surname: member.user?.surname || "",
+                }
+            }
         }))
     }));
 
     return {
         members,
         isOwner: perms.isWorkspaceAdmin,
-        currentMemberId: perms.workspaceMemberId
+        currentMemberId: perms.WorkspaceMemberId
     };
 });
 

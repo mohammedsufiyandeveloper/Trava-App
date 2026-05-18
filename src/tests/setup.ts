@@ -32,6 +32,7 @@ vi.mock("@/lib/db", () => {
             createMany: vi.fn(() => ({ count: 0 })),
         },
         comment: mockModel("comment"),
+        member_todos: mockModel("member_todos"),
         $transaction: vi.fn(async (cb) => {
             if (typeof cb === 'function') {
                 return await cb(prismaMock);

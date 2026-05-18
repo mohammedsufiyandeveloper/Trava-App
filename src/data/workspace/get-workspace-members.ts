@@ -10,6 +10,7 @@ export type WorkspaceMemberRow = {
   workspaceId: string;
   userId: string;
   workspaceRole: string;
+  createdAt?: Date;
   user?: {
     id: string;
     name?: string | null;
@@ -75,6 +76,7 @@ async function _fetchWorkspaceMembersInternal(workspaceId: string, role?: string
       workspaceId: true,
       userId: true,
       workspaceRole: true,
+      createdAt: true,
       user: {
         select: {
           id: true,
@@ -82,6 +84,7 @@ async function _fetchWorkspaceMembersInternal(workspaceId: string, role?: string
           surname: true,
           phoneNumber: true,
           email: true,
+          image: true,
         },
       },
     },
@@ -92,6 +95,7 @@ async function _fetchWorkspaceMembersInternal(workspaceId: string, role?: string
     workspaceId: m.workspaceId,
     userId: m.userId,
     workspaceRole: m.workspaceRole,
+    createdAt: m.createdAt,
     user: m.user ?? undefined,
   }));
 
