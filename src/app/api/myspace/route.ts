@@ -14,10 +14,29 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const todos = await prisma.mySpaceTodo.findMany({
-            where: { userId: session.user.id },
+        const workspaceId = request.nextUrl.searchParams.get("workspaceId");
+        if (!workspaceId) {
+            return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
+        }
+
+        const member = await prisma.workspaceMember.findFirst({
+            where: {
+                userId: session.user.id,
+                workspaceId
+            }
+        });
+
+        if (!member) {
+            return NextResponse.json({ error: "Not a workspace member" }, { status: 403 });
+        }
+
+        const todos = await prisma.member_todos.findMany({
+            where: { memberId: member.id },
             orderBy: { createdAt: "desc" }
         });
+
+        console.log("=== MySpace GET DB Output ===");
+        console.log(todos);
 
         return NextResponse.json({
             success: true,
@@ -39,22 +58,33 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { todos } = await request.json();
+        const { todos, workspaceId } = await request.json();
+        
+        if (!workspaceId) {
+            return NextResponse.json({ error: "Missing workspaceId" }, { status: 400 });
+        }
+        
         if (!Array.isArray(todos)) {
             return NextResponse.json({ error: "Invalid todos format" }, { status: 400 });
         }
 
-        // Perform a bulk sync
-        // For simplicity in a personal space, we can delete removed ones and upsert others
-        // Or just wipe and replace if the list is small (it is personal notes)
-        // Let's do a more careful upsert/delete
+        const member = await prisma.workspaceMember.findFirst({
+            where: {
+                userId: session.user.id,
+                workspaceId
+            }
+        });
+
+        if (!member) {
+            return NextResponse.json({ error: "Not a workspace member" }, { status: 403 });
+        }
 
         const incomingIds = todos.map(t => t.id).filter(id => !id.includes("top-input"));
         
         // 1. Delete todos that were removed
-        await prisma.mySpaceTodo.deleteMany({
+        await prisma.member_todos.deleteMany({
             where: {
-                userId: session.user.id,
+                memberId: member.id,
                 id: { notIn: incomingIds }
             }
         });
@@ -63,28 +93,33 @@ export async function POST(request: NextRequest) {
         for (const todo of todos) {
             if (todo.id.includes("top-input")) continue;
             
-            await prisma.mySpaceTodo.upsert({
+            await prisma.member_todos.upsert({
                 where: { id: todo.id },
                 update: {
                     text: todo.text,
                     completed: todo.completed,
                     completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                    updatedAt: new Date()
                 },
                 create: {
                     id: todo.id,
-                    userId: session.user.id,
+                    memberId: member.id,
                     text: todo.text,
                     completed: todo.completed,
                     createdAt: new Date(todo.createdAt || Date.now()),
                     completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                    updatedAt: new Date()
                 }
             });
         }
 
-        const updatedTodos = await prisma.mySpaceTodo.findMany({
-            where: { userId: session.user.id },
+        const updatedTodos = await prisma.member_todos.findMany({
+            where: { memberId: member.id },
             orderBy: { createdAt: "desc" }
         });
+
+        console.log("=== MySpace POST DB Output ===");
+        console.log(updatedTodos);
 
         return NextResponse.json({
             success: true,
