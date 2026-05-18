@@ -11,6 +11,7 @@ import notifications from "./routes/notifications";
 import activities from "./routes/activities";
 import { leavesRouter } from "./routes/leaves";
 import { workspaceRouter } from "./routes/workspace";
+import myspace from "./routes/myspace";
 import { getProjectReviewers } from "@/actions/project/get-project-reviewers";
 import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
@@ -100,6 +101,8 @@ app.route("/leaves", leavesRouter);
 // Workspace API
 app.route("/workspace", workspaceRouter);
 
+// MySpace (Personal Todos) API
+app.route("/myspace", myspace);
 
 // Project Reviewers (Legacy / Temporary - will be moved to service later)
 app.get("/projects/:projectId/reviewers", async (c) => {
