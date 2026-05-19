@@ -24,7 +24,8 @@ export async function GET(
                     include: { WorkspaceMember: { include: { user: true } } }
                 },
                 Tag: true,
-                project: { select: { id: true, name: true, workspaceId: true } },
+                project: { select: { id: true, name: true, workspaceId: true, color: true } },
+                parentTask: { select: { id: true, name: true } },
                 subTasks: { select: { id: true } },
             }
         });
