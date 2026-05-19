@@ -48,14 +48,10 @@ myspace.post("/", async (c) => {
 
     try {
         const body = await c.req.json();
-        const { workspaceId, todos } = body;
+        const { workspaceId, todos, text, todoId, completed, deleteTodoId } = body;
 
         if (!workspaceId) {
             return c.json({ success: false, error: "Missing workspaceId" }, 400);
-        }
-
-        if (!Array.isArray(todos)) {
-            return c.json({ success: false, error: "Invalid todos format" }, 400);
         }
 
         const member = await prisma.workspaceMember.findFirst({
@@ -66,56 +62,89 @@ myspace.post("/", async (c) => {
             return c.json({ success: false, error: "Not a workspace member" }, 403);
         }
 
-        const incomingIds = todos
-            .map((t: any) => t.id)
-            .filter((id: string) => !id.includes("top-input"));
+        // Action 1: Create a single Todo (DB generates the UUID automatically)
+        if (typeof text === "string" && text.trim() !== "") {
+            await prisma.member_todos.create({
+                data: {
+                    memberId: member.id,
+                    text: text.trim(),
+                    completed: false,
+                    updatedAt: new Date()
+                }
+            });
+        } 
+        // Action 2: Delete a single Todo
+        else if (deleteTodoId) {
+            await prisma.member_todos.deleteMany({
+                where: {
+                    id: deleteTodoId,
+                    memberId: member.id
+                }
+            });
+        }
+        // Action 3: Toggle completed status of a single Todo
+        else if (todoId && typeof completed === "boolean") {
+            await prisma.member_todos.updateMany({
+                where: {
+                    id: todoId,
+                    memberId: member.id
+                },
+                data: {
+                    completed,
+                    completedAt: completed ? new Date() : null,
+                    updatedAt: new Date()
+                }
+            });
+        }
+        // Action 4: Fallback to old full list sync
+        else if (Array.isArray(todos)) {
+            const incomingIds = todos
+                .map((t: any) => t.id)
+                .filter((id: string) => !id.includes("top-input"));
 
-        // 1. Delete todos that are no longer in the list
-        await prisma.member_todos.deleteMany({
-            where: {
-                memberId: member.id,
-                id: { notIn: incomingIds }
-            }
-        });
+            await prisma.member_todos.deleteMany({
+                where: {
+                    memberId: member.id,
+                    id: { notIn: incomingIds }
+                }
+            });
 
-        // 2. Upsert the rest
-        for (const todo of todos) {
-            if (todo.id.includes("top-input")) continue;
+            for (const todo of todos) {
+                if (todo.id.includes("top-input")) continue;
 
-            const isTempId = todo.id.startsWith("temp-");
+                const isTempId = todo.id.startsWith("temp-");
 
-            if (isTempId) {
-                // For new todos (temporary ID starting with 'temp-'), create a new entry. The DB generates the UUID.
-                await prisma.member_todos.create({
-                    data: {
-                        memberId: member.id,
-                        text: todo.text,
-                        completed: todo.completed,
-                        createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
-                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
-                        updatedAt: new Date()
-                    }
-                });
-            } else {
-                // For existing todos, update or create using standard upsert
-                await prisma.member_todos.upsert({
-                    where: { id: todo.id },
-                    update: {
-                        text: todo.text,
-                        completed: todo.completed,
-                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
-                        updatedAt: new Date()
-                    },
-                    create: {
-                        id: todo.id,
-                        memberId: member.id,
-                        text: todo.text,
-                        completed: todo.completed,
-                        createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
-                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
-                        updatedAt: new Date()
-                    }
-                });
+                if (isTempId) {
+                    await prisma.member_todos.create({
+                        data: {
+                            memberId: member.id,
+                            text: todo.text,
+                            completed: todo.completed,
+                            createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
+                            completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                            updatedAt: new Date()
+                        }
+                    });
+                } else {
+                    await prisma.member_todos.upsert({
+                        where: { id: todo.id },
+                        update: {
+                            text: todo.text,
+                            completed: todo.completed,
+                            completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                            updatedAt: new Date()
+                        },
+                        create: {
+                            id: todo.id,
+                            memberId: member.id,
+                            text: todo.text,
+                            completed: todo.completed,
+                            createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
+                            completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                            updatedAt: new Date()
+                        }
+                    });
+                }
             }
         }
 
