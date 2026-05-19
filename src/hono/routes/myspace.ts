@@ -82,24 +82,41 @@ myspace.post("/", async (c) => {
         for (const todo of todos) {
             if (todo.id.includes("top-input")) continue;
 
-            await prisma.member_todos.upsert({
-                where: { id: todo.id },
-                update: {
-                    text: todo.text,
-                    completed: todo.completed,
-                    completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
-                    updatedAt: new Date()
-                },
-                create: {
-                    id: todo.id,
-                    memberId: member.id,
-                    text: todo.text,
-                    completed: todo.completed,
-                    createdAt: new Date(todo.createdAt || Date.now()),
-                    completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
-                    updatedAt: new Date()
-                }
-            });
+            const isTempId = todo.id.startsWith("temp-");
+
+            if (isTempId) {
+                // For new todos (temporary ID starting with 'temp-'), create a new entry. The DB generates the UUID.
+                await prisma.member_todos.create({
+                    data: {
+                        memberId: member.id,
+                        text: todo.text,
+                        completed: todo.completed,
+                        createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
+                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                        updatedAt: new Date()
+                    }
+                });
+            } else {
+                // For existing todos, update or create using standard upsert
+                await prisma.member_todos.upsert({
+                    where: { id: todo.id },
+                    update: {
+                        text: todo.text,
+                        completed: todo.completed,
+                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                        updatedAt: new Date()
+                    },
+                    create: {
+                        id: todo.id,
+                        memberId: member.id,
+                        text: todo.text,
+                        completed: todo.completed,
+                        createdAt: todo.createdAt ? new Date(todo.createdAt) : new Date(),
+                        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
+                        updatedAt: new Date()
+                    }
+                });
+            }
         }
 
         const updatedTodos = await prisma.member_todos.findMany({

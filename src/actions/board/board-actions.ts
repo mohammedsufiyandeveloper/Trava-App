@@ -6,7 +6,6 @@ import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 import { revalidatePath } from "next/cache";
 import { BoardStatus } from"@prisma/client";
 import { ApiResponse } from "@/lib/types";
-import crypto from "crypto";
 
 export async function createBoardItem(workspaceId: string, memberId: string, note: string): Promise<ApiResponse> {
     try {
@@ -19,7 +18,6 @@ export async function createBoardItem(workspaceId: string, memberId: string, not
 
         const newItem = await prisma.member_todos.create({
             data: {
-                id: crypto.randomUUID(),
                 memberId,
                 text: note,
                 completed: false,

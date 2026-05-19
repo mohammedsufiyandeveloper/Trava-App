@@ -866,7 +866,7 @@ model activity_read {
 }
 
 model member_todos {
-  id              String          @id
+  id              String          @id @default(uuid())
   memberId        String
   text            String
   completed       Boolean         @default(false)
