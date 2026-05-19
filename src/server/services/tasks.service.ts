@@ -108,6 +108,21 @@ export class TasksService {
         const { generateUniqueSlug } = await import("@/lib/slug-generator");
         const slug = await generateUniqueSlug(name, "task");
 
+        // Calculate next position for parent task in the same project to place it properly at the end
+        const lastTask = await prisma.task.findFirst({
+            where: {
+                projectId,
+                isParent: true,
+            },
+            orderBy: {
+                position: 'desc',
+            },
+            select: {
+                position: true,
+            },
+        });
+        const nextPosition = lastTask && lastTask.position !== null ? lastTask.position + 1 : 0;
+
         const newTask = await prisma.task.create({
             data: {
                 name,
@@ -124,6 +139,7 @@ export class TasksService {
                 dueDate: dueDate ? parseIST(dueDate) : null,
                 days,
                 isParent: true,
+                position: nextPosition,
             },
             include: {
                 ProjectMember_Task_assigneeIdToProjectMember: { include: { WorkspaceMember: { include: { user: { select: { id: true, surname: true } } } } } },
@@ -232,6 +248,20 @@ export class TasksService {
                 select: { subtaskCount: true }
             });
 
+            // Find maximum position of any existing subtasks under the same parent to place the new one properly at the end
+            const lastSubTask = await tx.task.findFirst({
+                where: {
+                    parentTaskId,
+                },
+                orderBy: {
+                    position: 'desc',
+                },
+                select: {
+                    position: true,
+                },
+            });
+            const nextSubtaskPosition = lastSubTask && lastSubTask.position !== null ? lastSubTask.position + 1 : (parent?.subtaskCount || 0);
+
             const task = await tx.task.create({
                 data: {
                     name,
@@ -249,7 +279,7 @@ export class TasksService {
                     dueDate: parseIST(dueDate),
                     days,
                     isParent: false,
-                    position: parent?.subtaskCount || 0,
+                    position: nextSubtaskPosition,
                 },
                 include: {
                     ProjectMember_Task_assigneeIdToProjectMember: { include: { WorkspaceMember: { include: { user: { select: { id: true, surname: true } } } } } },
