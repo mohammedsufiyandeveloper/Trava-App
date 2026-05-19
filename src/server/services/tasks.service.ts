@@ -23,7 +23,7 @@ interface CreateTaskParams {
     startDate?: string | null;
     dueDate?: string | null;
     days?: number | null;
-    status?: TaskStatus;
+    status?: TaskStatus | null;
 }
 
 interface CreateSubTaskParams {
@@ -61,7 +61,7 @@ export class TasksService {
         startDate,
         dueDate,
         days,
-        status = "TO_DO"
+        status = null
     }: CreateTaskParams) {
         const canSucceed = permissions.isWorkspaceAdmin || permissions.isWorkspaceManager || permissions.canCreateSubTask;
         if (!canSucceed) {
