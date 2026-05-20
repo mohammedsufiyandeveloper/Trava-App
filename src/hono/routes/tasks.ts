@@ -96,4 +96,50 @@ tasks.patch("/:taskId/assignee", async (c) => {
     return c.json({ success: true });
 });
 
+/**
+ * GET /api/tasks/:taskId/activities
+ * Fetches all activity logs for a specific task or subtask.
+ */
+tasks.get("/:taskId/activities", async (c) => {
+    const taskId = c.req.param("taskId");
+
+    try {
+        const activities = await prisma.activity.findMany({
+            where: {
+                subTaskId: taskId,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        surname: true,
+                        image: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        // Normalize author fields for client/UI compatibility
+        const mapped = activities.map(act => ({
+            id: act.id,
+            text: act.text,
+            attachment: act.attachment,
+            createdAt: act.createdAt,
+            author: act.user,
+        }));
+
+        return c.json({
+            success: true,
+            activities: mapped,
+        });
+    } catch (error: any) {
+        console.error(`[GET Task Activities Error]:`, error);
+        return c.json({ success: false, error: "Failed to fetch activities" }, 500);
+    }
+});
+
 export default tasks;

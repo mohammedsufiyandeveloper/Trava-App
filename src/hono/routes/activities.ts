@@ -59,8 +59,8 @@ activities.get("/", async (c) => {
             
             if (projectTaskIds.length > 0) {
                 where.entityId = { in: projectTaskIds };
-            } else if (!isAdmin) {
-                // If no tasks in project and not admin, return empty
+            } else {
+                // If no tasks in project, return empty
                 return c.json({ success: true, activities: [] });
             }
         }
