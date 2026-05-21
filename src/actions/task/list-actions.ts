@@ -1,7 +1,7 @@
 "use server";
 
 import { getTasks, GetTasksOptions } from "@/data/task/get-tasks";
-import { revalidateTag } from "next/cache";
+const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
 import { CacheTags } from "@/data/cache-tags";
 
 export async function loadTasksAction(opts: GetTasksOptions) {

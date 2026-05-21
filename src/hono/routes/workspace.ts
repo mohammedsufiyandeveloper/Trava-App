@@ -1,8 +1,25 @@
 import { Hono } from "hono";
 import { WorkspaceService } from "@/server/services/workspace.service";
+import { getWorkspaces } from "@/data/workspace/get-workspaces";
+import { getWorkspaceMembers } from "@/data/workspace/get-workspace-members";
 import { HonoVariables } from "../types";
 
 export const workspaceRouter = new Hono<{ Variables: HonoVariables }>()
+
+.get("/", async (c) => {
+    const user = c.get("user");
+    try {
+        const result = await getWorkspaces(user.id);
+        return c.json({
+            success: true,
+            workspaces: result.workspaces,
+            totalCount: result.totalCount
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Workspaces]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+})
 
 .get("/settings", async (c) => {
     const user = c.get("user");
@@ -32,5 +49,21 @@ export const workspaceRouter = new Hono<{ Variables: HonoVariables }>()
         return c.json({ success: true, data: result });
     } catch (error: any) {
         return c.json({ success: false, error: error.message }, 400);
+    }
+})
+
+.get("/:workspaceId/members", async (c) => {
+    const workspaceId = c.req.param("workspaceId");
+    const role = c.req.query("role") || undefined;
+
+    try {
+        const result = await getWorkspaceMembers(workspaceId, role);
+        return c.json({
+            success: true,
+            members: result.workspaceMembers
+        });
+    } catch (error: any) {
+        console.error(`Hono API Error [WorkspaceMembers]:`, error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
     }
 });

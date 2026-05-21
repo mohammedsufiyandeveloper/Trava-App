@@ -1,7 +1,6 @@
 // @deprecated — Use `getWorkspacePermissions` from "@/data/user/get-user-permissions" instead.
 // This file is kept only for backward compatibility and will be removed in a future cleanup.
-import "server-only";
-import { cache } from "react";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
 import { requireUser } from "@/lib/auth/require-user";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 

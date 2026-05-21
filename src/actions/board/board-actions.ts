@@ -3,7 +3,7 @@
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
-import { revalidatePath } from "next/cache";
+const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
 import { BoardStatus } from"@prisma/client";
 import { ApiResponse } from "@/lib/types";
 

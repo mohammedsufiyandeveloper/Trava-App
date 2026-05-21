@@ -1,5 +1,3 @@
-import "server-only";
-
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { env } from "./env";
@@ -68,10 +66,6 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    github: {
-      clientId: env.AUTH_GITHUB_CLIENT_ID!,
-      clientSecret: env.AUTH_GITHUB_SECRET!,
-    },
     google: {
       clientId: env.GOOGLE_CLIENT_ID!,
       clientSecret: env.GOOGLE_CLIENT_SECRET!,

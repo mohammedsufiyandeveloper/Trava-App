@@ -1,7 +1,7 @@
 "use server";
 
-import { cache } from "react";
-import { unstable_cache } from "next/cache";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
+const unstable_cache = (..._args: any[]) => {}; // next/cache no-op
 import { requireUser } from "@/lib/auth/require-user";
 import prisma from "@/lib/db";
 

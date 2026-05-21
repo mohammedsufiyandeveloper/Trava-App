@@ -6,7 +6,7 @@ import { inviteUserSchema, InviteUserSchemaType } from "@/lib/zodSchemas";
 import { broadcastTeamUpdate } from "@/lib/realtime";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 import { ApiResponse } from "@/lib/types";
-import { revalidatePath } from "next/cache";
+const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
 
 /**
  * Shared logic to invite a user to a workspace.

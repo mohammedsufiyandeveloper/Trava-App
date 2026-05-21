@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/lib/auth/require-user";
 import prisma from "@/lib/db";
-import { revalidateTag } from "next/cache";
+const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
 
 import { dailyReportSchema, DailyReportFormType } from "@/lib/zodSchemas";
 import { getDailyReportFormData as getFormData } from "@/data/daily-report/get-daily-report-form-data";

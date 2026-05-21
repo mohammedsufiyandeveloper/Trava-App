@@ -1,4 +1,3 @@
-import "server-only";
 import prisma from "@/lib/db";
 import { AppError } from "@/lib/errors/app-error";
 import { recordActivity } from "@/lib/audit";

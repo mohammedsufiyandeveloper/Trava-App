@@ -1,4 +1,3 @@
-import "server-only";
 import prisma from "@/lib/db";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 

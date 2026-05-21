@@ -5,7 +5,7 @@ import { ApiResponse } from "@/lib/types";
 import { workSpaceSchema, WorkSpaceSchemaType } from "@/lib/zodSchemas";
 import { requireUser } from "@/lib/auth/require-user";
 import { generateInviteCode } from "@/utils/get-invite-code";
-import { revalidateTag } from "next/cache";
+const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
 import { CacheTags } from "@/data/cache-tags";
 import { invalidateWorkspacesCache } from "@/data/workspace/get-workspaces";
 

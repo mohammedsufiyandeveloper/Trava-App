@@ -1,6 +1,6 @@
 "use server";
 import db from "@/lib/db";
-import { revalidatePath } from "next/cache";
+const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
 import { getUserPermissions } from "@/data/user/get-user-permissions";
 import { createIndentRequestSchema, type CreateIndentRequestInput } from "@/lib/zodSchemas";
 import { recordActivity } from "@/lib/audit";

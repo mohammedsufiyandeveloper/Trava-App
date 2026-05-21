@@ -1,5 +1,7 @@
 
-import { revalidateTag } from "next/cache";
+const revalidateTag = (tag: string, type?: string) => {
+    // No-op in standalone Hono API server
+};
 import { CacheTags } from "@/data/cache-tags";
 
 // ============================================

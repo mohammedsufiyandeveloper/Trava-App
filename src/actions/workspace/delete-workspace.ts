@@ -3,7 +3,7 @@
 import prisma from "@/lib/db";
 import { ApiResponse } from "@/lib/types";
 import { requireUser } from "@/lib/auth/require-user";
-import { revalidateTag } from "next/cache";
+const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
 import { CacheTags } from "@/data/cache-tags";
 
 /**

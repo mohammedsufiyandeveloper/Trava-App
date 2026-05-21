@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { broadcastTeamUpdate } from "@/lib/realtime";
 import { ApiResponse } from "@/lib/types";
-import { revalidatePath } from "next/cache";
+const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
 
 /**
  * Shared logic to delete a workspace member.

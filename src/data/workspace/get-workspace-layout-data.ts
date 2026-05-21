@@ -1,4 +1,4 @@
-import { cache } from "react";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
 import { getWorkspaces } from "./get-workspaces";
 import { getWorkspaceMetadata } from "./get-workspace-metadata";
 import { getDailyReportStatus } from "@/data/daily-report/get-daily-report-status";

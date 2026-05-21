@@ -1,4 +1,3 @@
-import "server-only";
 
 import { ProjectRole, WorkspaceRole } from"@prisma/client";
 import { isWorkspaceAdmin } from "./workspace-access";

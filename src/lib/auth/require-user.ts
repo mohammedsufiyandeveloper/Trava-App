@@ -1,29 +1,19 @@
-import "server-only";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { cache } from "react";
+import { AsyncLocalStorage } from "async_hooks";
 
-export const getSession = cache(async () => {
-    try {
-        return await auth.api.getSession({
-            headers: await headers(),
-        });
-    } catch (error) {
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-            throw error;
-        }
+export const honoUserStorage = new AsyncLocalStorage<{ user: any; session: any }>();
 
-        return null;
+export const getSession = async () => {
+    const store = honoUserStorage.getStore();
+    if (store) {
+        return { user: store.user, session: store.session };
     }
-});
+    return null;
+};
 
 export const requireUser = async () => {
-    const session = await getSession();
-
-    if (!session) {
-        return redirect('/sign-in');
+    const store = honoUserStorage.getStore();
+    if (store?.user) {
+        return store.user;
     }
-
-    return session.user;
+    throw new Error("Unauthorized: No user session found in request context.");
 };

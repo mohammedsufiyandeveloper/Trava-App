@@ -3,7 +3,7 @@
 import prisma from "@/lib/db";
 import { materialSchema, MaterialSchemaType } from "@/lib/zodSchemas";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
-import { revalidatePath } from "next/cache";
+const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
 
 /**
  * Create a new material

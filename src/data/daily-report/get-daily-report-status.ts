@@ -2,8 +2,8 @@
 
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
-import { cache } from "react";
-import { unstable_cache } from "next/cache";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
+const unstable_cache = (..._args: any[]) => {}; // next/cache no-op
 
 /**
  * Lightweight check for the daily report status.

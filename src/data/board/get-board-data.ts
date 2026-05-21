@@ -1,4 +1,4 @@
-import { cache } from "react";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";

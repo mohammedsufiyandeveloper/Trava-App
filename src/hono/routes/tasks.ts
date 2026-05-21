@@ -7,19 +7,504 @@ import prisma from "@/lib/db";
 import { recordActivity } from "@/lib/audit";
 import { getTaskInvolvedUserIds } from "@/lib/involved-users";
 import crypto from "crypto";
+import { getTasks, GetTasksOptions } from "@/data/task/get-tasks";
+import { editTask } from "@/actions/task/update-task";
+import { getSubTasksByParentIds } from "@/data/task/get-subtasks-batch";
+import { invalidateTaskMutation } from "@/lib/cache/invalidation";
 
 const tasks = new Hono<{ Variables: HonoVariables }>();
 
-/**
- * PATCH /api/v1/tasks/:taskId/assignee
- * 
- * Surgically updates ONLY the assignee of a subtask.
- * Using a REST API route instead of a Server Action prevents Next.js
- * from triggering an RSC re-render, keeping the response payload tiny.
- * 
- * Body: { assigneeUserId: string | null }
- * Returns: { success: true } (~50 bytes)
- */
+// GET /api/tasks
+tasks.get("/", async (c) => {
+    const user = c.get("user");
+    const workspaceId = c.req.query("workspaceId");
+    if (!workspaceId) {
+        return c.json({ error: "Missing workspaceId" }, 400);
+    }
+
+    const projectId = c.req.query("projectId") || undefined;
+    const status = c.req.queries("status") || [];
+    const assigneeId = c.req.queries("assigneeId") || [];
+    const tagId = c.req.queries("tagId") || [];
+    const search = c.req.query("search") || undefined;
+    const dueAfter = c.req.query("dueAfter") || undefined;
+    const dueBefore = c.req.query("dueBefore") || undefined;
+    const sortsParam = c.req.queries("sorts") || [];
+
+    const hierarchyMode = (c.req.query("hierarchyMode") as "parents" | "children" | "all") || "parents";
+    const excludeParents = c.req.query("excludeParents") === "true";
+    const onlySubtasks = c.req.query("onlySubtasks") === "true";
+    const includeSubTasksParam = c.req.query("includeSubTasks") === "true";
+    const limit = c.req.query("limit") ? parseInt(c.req.query("limit")!, 10) : 500;
+
+    const sorts = sortsParam.map(s => {
+        const [field, direction] = s.split(":");
+        return { field, direction: (direction || "desc") as "asc" | "desc" };
+    });
+
+    const opts: GetTasksOptions = {
+        workspaceId,
+        projectId,
+        status: status.length > 0 ? status : undefined,
+        assigneeId: assigneeId.length > 0 ? assigneeId : undefined,
+        tagId: tagId.length > 0 ? tagId : undefined,
+        search,
+        dueAfter,
+        dueBefore,
+        sorts: sorts.length > 0 ? sorts : undefined,
+        limit,
+        includeSubTasks: includeSubTasksParam || hierarchyMode === "all",
+        hierarchyMode,
+        excludeParents,
+        onlySubtasks,
+    };
+
+    try {
+        const result = await getTasks(opts, user.id);
+        return c.json({
+            success: true,
+            tasks: result.tasks,
+            totalCount: result.totalCount,
+            hasMore: result.hasMore,
+            nextCursor: result.nextCursor
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Tasks GET]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// POST /api/tasks
+tasks.post("/", async (c) => {
+    const user = c.get("user");
+    try {
+        const body = await c.req.json();
+        const {
+            name,
+            projectId,
+            description,
+            assigneeUserId,
+            reviewerId,
+            tagId,
+            status,
+            startDate,
+            dueDate,
+            days
+        } = body;
+
+        if (!name || !projectId) {
+            return c.json({ error: "Missing name or projectId" }, 400);
+        }
+
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: { workspaceId: true }
+        });
+
+        if (!project) {
+            return c.json({ error: "Project not found" }, 404);
+        }
+
+        const permissions = await getUserPermissions(project.workspaceId, projectId, user.id);
+
+        const result = await TasksService.createTask({
+            name,
+            projectId,
+            workspaceId: project.workspaceId,
+            userId: user.id,
+            permissions,
+            description,
+            assigneeUserId,
+            reviewerId,
+            tagId,
+            status,
+            startDate,
+            dueDate,
+            days
+        });
+
+        return c.json({
+            success: true,
+            task: result
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Tasks POST]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// PATCH /api/tasks
+tasks.patch("/", async (c) => {
+    const user = c.get("user");
+    const taskId = c.req.query("taskId");
+
+    if (!taskId) {
+        return c.json({ error: "Missing taskId" }, 400);
+    }
+
+    try {
+        const body = await c.req.json();
+
+        const existingTask = await prisma.task.findUnique({
+            where: { id: taskId },
+            select: { name: true, taskSlug: true, projectId: true, reviewerId: true }
+        });
+
+        if (!existingTask) {
+            return c.json({ error: "Task not found" }, 404);
+        }
+
+        const updateData = {
+            name: body.name || existingTask.name,
+            taskSlug: body.taskSlug || existingTask.taskSlug,
+            projectId: existingTask.projectId,
+            reviewerId: body.reviewerId !== undefined ? body.reviewerId : existingTask.reviewerId,
+        };
+
+        const result = await editTask(updateData, taskId);
+
+        if (result.status === "error") {
+            return c.json({ error: result.message }, 400);
+        }
+
+        if (body.status) {
+            await prisma.task.update({
+                where: { id: taskId },
+                data: { status: body.status }
+            });
+        }
+
+        return c.json({
+            success: true,
+            message: result.message
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Tasks PATCH]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// DELETE /api/tasks
+tasks.delete("/", async (c) => {
+    const taskId = c.req.query("taskId");
+    if (!taskId) {
+        return c.json({ error: "Missing taskId" }, 400);
+    }
+
+    try {
+        const existing = await prisma.task.findUnique({
+            where: { id: taskId },
+            select: { id: true }
+        });
+
+        if (!existing) {
+            return c.json({ error: "Task not found" }, 404);
+        }
+
+        await prisma.task.delete({ where: { id: taskId } });
+
+        return c.json({ success: true, message: "Task deleted successfully" });
+    } catch (error: any) {
+        console.error("Hono API Error [Tasks DELETE]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// GET /api/tasks/:taskId
+tasks.get("/:taskId", async (c) => {
+    const taskId = c.req.param("taskId");
+    try {
+        const task = await prisma.task.findUnique({
+            where: { id: taskId },
+            include: {
+                ProjectMember_Task_assigneeIdToProjectMember: {
+                    include: { WorkspaceMember: { include: { user: true } } }
+                },
+                Tag: true,
+                project: { select: { id: true, name: true, workspaceId: true, color: true } },
+                parentTask: { select: { id: true, name: true } },
+                subTasks: { select: { id: true } },
+            }
+        });
+
+        if (!task) {
+            return c.json({ error: "Task not found" }, 404);
+        }
+
+        const assigneeUser = (task as any).ProjectMember_Task_assigneeIdToProjectMember?.WorkspaceMember?.user;
+        const mapped = {
+            ...task,
+            assignee: assigneeUser
+                ? { id: assigneeUser.id, name: `${assigneeUser.name || ""}`.trim(), image: assigneeUser.image }
+                : null,
+            subtaskCount: task.subTasks.length,
+            subTasks: undefined,
+            ProjectMember_Task_assigneeIdToProjectMember: undefined,
+        };
+
+        return c.json({ success: true, task: mapped });
+    } catch (error: any) {
+        console.error("Hono API Error [Task GET by ID]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// GET /api/tasks/:taskId/subtasks
+tasks.get("/:taskId/subtasks", async (c) => {
+    const taskId = c.req.param("taskId");
+    const workspaceId = c.req.query("workspaceId");
+
+    if (!workspaceId) {
+        return c.json({ error: "Missing workspaceId" }, 400);
+    }
+
+    const user = c.get("user");
+    const projectId = c.req.query("projectId") || undefined;
+    const viewMode = c.req.query("viewMode") || "list";
+    const pageSize = parseInt(c.req.query("pageSize") || "30", 10);
+
+    const filters: any = {};
+    const statusStr = c.req.query("status");
+    if (statusStr) {
+        try {
+            filters.status = JSON.parse(statusStr);
+        } catch {
+            filters.status = statusStr.split(',');
+        }
+    }
+
+    const assigneeStr = c.req.query("assigneeId");
+    if (assigneeStr) {
+        try {
+            filters.assigneeId = JSON.parse(assigneeStr);
+        } catch {
+            filters.assigneeId = assigneeStr.split(',');
+        }
+    }
+
+    const tagStr = c.req.query("tagId");
+    if (tagStr) {
+        try {
+            filters.tagId = JSON.parse(tagStr);
+        } catch {
+            filters.tagId = tagStr.split(',');
+        }
+    }
+
+    const search = c.req.query("search");
+    if (search) filters.search = search;
+
+    const dueAfter = c.req.query("dueAfter");
+    if (dueAfter && dueAfter !== "undefined" && dueAfter !== "null") filters.dueAfter = new Date(dueAfter);
+
+    const dueBefore = c.req.query("dueBefore");
+    if (dueBefore && dueBefore !== "undefined" && dueBefore !== "null") filters.dueBefore = new Date(dueBefore);
+
+    try {
+        const results = await getSubTasksByParentIds(
+            [taskId],
+            workspaceId,
+            projectId,
+            filters,
+            pageSize,
+            viewMode,
+            user.id,
+            true
+        );
+
+        const responsePayload = (results && results.length > 0) ? {
+            success: true,
+            subTasks: results[0].subTasks,
+            totalCount: results[0].totalCount,
+            hasMore: results[0].hasMore,
+            nextCursor: results[0].nextCursor
+        } : {
+            success: true,
+            subTasks: [],
+            totalCount: 0,
+            hasMore: false,
+            nextCursor: null
+        };
+
+        return c.json(responsePayload);
+    } catch (error: any) {
+        console.error("Hono API Error [Subtasks GET]:", error);
+        return c.json({ success: false, error: "Internal Error" }, 500);
+    }
+});
+
+// POST /api/tasks/:taskId/subtasks
+tasks.post("/:taskId/subtasks", async (c) => {
+    const parentTaskId = c.req.param("taskId");
+    const user = c.get("user");
+
+    try {
+        const body = await c.req.json();
+        const { name } = body;
+
+        if (!name) {
+            return c.json({ error: "Missing name" }, 400);
+        }
+
+        const parentTask = await prisma.task.findUnique({
+            where: { id: parentTaskId },
+            select: { projectId: true, workspaceId: true, Tag: { select: { id: true } } }
+        });
+
+        if (!parentTask) {
+            return c.json({ error: "Parent task not found" }, 404);
+        }
+
+        const permissions = await getUserPermissions(parentTask.workspaceId, parentTask.projectId, user.id);
+
+        const result = await TasksService.createSubTask({
+            name,
+            description: body.description,
+            projectId: parentTask.projectId,
+            workspaceId: parentTask.workspaceId,
+            parentTaskId: parentTaskId,
+            userId: user.id,
+            permissions,
+            assigneeUserId: body.assigneeUserId || user.id,
+            reviewerId: body.reviewerId || body.reviewerUserId || null,
+            tagId: body.tagId || parentTask.Tag?.[0]?.id || null,
+            startDate: body.startDate,
+            dueDate: body.dueDate,
+            days: body.days || 1,
+            status: body.status || "TO_DO"
+        });
+
+        try {
+            await invalidateTaskMutation({
+                projectId: parentTask.projectId,
+                workspaceId: parentTask.workspaceId,
+                userId: user.id,
+                taskId: result.id,
+                parentTaskId: parentTaskId,
+            });
+        } catch (cacheError) {
+            console.error("Cache Invalidation Error [Subtasks POST]:", cacheError);
+        }
+
+        return c.json({
+            success: true,
+            task: result
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Subtasks POST]:", error);
+        return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+    }
+});
+
+// GET /api/tasks/:taskId/comments
+tasks.get("/:taskId/comments", async (c) => {
+    const taskId = c.req.param("taskId");
+    try {
+        const comments = await prisma.comment.findMany({
+            where: { taskId, isDeleted: false },
+            include: {
+                user: {
+                    select: { id: true, name: true, surname: true, image: true }
+                },
+            },
+            orderBy: { createdAt: "asc" },
+        });
+
+        const mapped = comments.map(co => ({
+            id: co.id,
+            content: co.content,
+            createdAt: co.createdAt,
+            userId: co.userId,
+            user: co.user
+                ? {
+                    id: co.user.id,
+                    name: `${co.user.name || ""} ${co.user.surname || ""}`.trim(),
+                    surname: co.user.surname,
+                    image: (co.user as any).image ?? null,
+                }
+                : null,
+        }));
+
+        return c.json({ success: true, comments: mapped });
+    } catch (error: any) {
+        console.error("Hono API Error [Comments GET]:", error);
+        return c.json({ success: false, error: error.message }, 500);
+    }
+});
+
+// POST /api/tasks/:taskId/comments
+tasks.post("/:taskId/comments", async (c) => {
+    const taskId = c.req.param("taskId");
+    const user = c.get("user");
+
+    try {
+        const body = await c.req.json();
+        const content = body?.content?.trim();
+        if (!content) {
+            return c.json({ error: "Content is required" }, 400);
+        }
+
+        const task = await prisma.task.findUnique({
+            where: { id: taskId },
+            select: { id: true, workspaceId: true }
+        });
+        if (!task) {
+            return c.json({ error: "Task not found" }, 404);
+        }
+
+        const comment = await prisma.comment.create({
+            data: {
+                content,
+                taskId,
+                userId: user.id,
+            },
+            include: {
+                user: {
+                    select: { id: true, name: true, surname: true }
+                }
+            }
+        });
+
+        try {
+            const targetUserIds = await getTaskInvolvedUserIds(taskId);
+            await recordActivity({
+                userId: user.id,
+                userName: comment.user?.surname || comment.user?.name || "Someone",
+                workspaceId: task.workspaceId,
+                action: "COMMENT_CREATED",
+                entityType: "TASK",
+                entityId: taskId,
+                newData: { content: comment.content },
+                broadcastEvent: "team_update",
+                targetUserIds,
+            });
+        } catch (e) {
+            console.error("[AUDIT_ERROR] Comment activity failed:", e);
+        }
+
+        return c.json({
+            success: true,
+            comment: {
+                id: comment.id,
+                content: comment.content,
+                createdAt: comment.createdAt,
+                userId: comment.userId,
+                user: comment.user
+                    ? {
+                        id: comment.user.id,
+                        name: `${comment.user.name || ""} ${comment.user.surname || ""}`.trim(),
+                        surname: comment.user.surname,
+                    }
+                    : null,
+            }
+        });
+    } catch (error: any) {
+        console.error("Hono API Error [Comments POST]:", error);
+        return c.json({ success: false, error: error.message }, 500);
+    }
+});
+
+// PATCH /api/tasks/:taskId/assignee
 tasks.patch("/:taskId/assignee", async (c) => {
     const user = c.get("user");
     const taskId = c.req.param("taskId");
@@ -27,18 +512,14 @@ tasks.patch("/:taskId/assignee", async (c) => {
     const body = await c.req.json();
     const { assigneeUserId, explanation } = body as { assigneeUserId: string | null; explanation?: string };
 
-    // 1. Fetch context + permissions in parallel
-    const [subTaskContext, _] = await Promise.all([
-        prisma.task.findUnique({
-            where: { id: taskId },
-            select: {
-                id: true,
-                parentTaskId: true,
-                project: { select: { id: true, workspaceId: true } },
-            }
-        }),
-        Promise.resolve() // placeholder for future parallel work
-    ]);
+    const subTaskContext = await prisma.task.findUnique({
+        where: { id: taskId },
+        select: {
+            id: true,
+            parentTaskId: true,
+            project: { select: { id: true, workspaceId: true } },
+        }
+    });
 
     if (!subTaskContext) {
         throw AppError.NotFound("Subtask not found");
@@ -50,7 +531,6 @@ tasks.patch("/:taskId/assignee", async (c) => {
         user.id
     );
 
-    // 2. Update only the assigneeId via the service (handles permission checks)
     await TasksService.updateTask({
         taskId,
         workspaceId: subTaskContext.project.workspaceId,
@@ -96,10 +576,7 @@ tasks.patch("/:taskId/assignee", async (c) => {
     return c.json({ success: true });
 });
 
-/**
- * GET /api/tasks/:taskId/activities
- * Fetches all activity logs for a specific task or subtask.
- */
+// GET /api/tasks/:taskId/activities
 tasks.get("/:taskId/activities", async (c) => {
     const taskId = c.req.param("taskId");
 
@@ -123,7 +600,6 @@ tasks.get("/:taskId/activities", async (c) => {
             },
         });
 
-        // Normalize author fields for client/UI compatibility
         const mapped = activities.map(act => ({
             id: act.id,
             text: act.text,

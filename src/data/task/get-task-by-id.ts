@@ -1,8 +1,8 @@
 "use server";
 
-import { cache } from "react";
-import { unstable_cache } from "next/cache";
-import { notFound } from "next/navigation";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
+const unstable_cache = (..._args: any[]) => {}; // next/cache no-op
+const notFound = (..._args: any[]) => { throw new Error('notFound not available in API server'); }; // next/navigation no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { getUserPermissions } from "@/data/user/get-user-permissions";

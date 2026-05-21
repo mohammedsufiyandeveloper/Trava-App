@@ -1,5 +1,5 @@
 import prisma from "@/lib/db";
-import { cache } from "react";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
 
 /**
  * Get all active units from the database

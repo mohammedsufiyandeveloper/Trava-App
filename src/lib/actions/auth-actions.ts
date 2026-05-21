@@ -1,7 +1,5 @@
 "use server";
-import 'server-only'
 import { auth } from "../auth";
-import { headers } from "next/headers";
 
 export const signUp = async (email: string, password: string, name: string) => {
     // Implement your sign-up logic here, e.g., save to database

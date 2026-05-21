@@ -11,10 +11,13 @@ import notifications from "./routes/notifications";
 import activities from "./routes/activities";
 import { leavesRouter } from "./routes/leaves";
 import { workspaceRouter } from "./routes/workspace";
+import { projectsRouter } from "./routes/projects";
+import { tagsRouter } from "./routes/tags";
+import { conversationsRouter } from "./routes/conversations";
 import myspace from "./routes/myspace";
-import { getProjectReviewers } from "@/actions/project/get-project-reviewers";
 import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
+import { auth } from "@/lib/auth";
 
 /**
  * Main Hono Application
@@ -69,6 +72,9 @@ app.get("/health", (c) => {
 // Cron Job Routes (Secret-based Auth)
 app.route("/cron", cron);
 
+// Better Auth route handler (mounted as public route, handles /api/auth/*)
+app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
+
 /**
  * Protected Routes (Auth Middleware Applied)
  */
@@ -98,26 +104,21 @@ app.route("/activities", activities);
 // Leaves API
 app.route("/leaves", leavesRouter);
 
-// Workspace API
+// Workspace API (Plural & Singular)
 app.route("/workspace", workspaceRouter);
+app.route("/workspaces", workspaceRouter);
+
+// Projects API
+app.route("/projects", projectsRouter);
+
+// Tags API
+app.route("/tags", tagsRouter);
+
+// Conversations API
+app.route("/conversations", conversationsRouter);
 
 // MySpace API
 app.route("/myspace", myspace);
-
-
-
-// Project Reviewers (Legacy / Temporary - will be moved to service later)
-app.get("/projects/:projectId/reviewers", async (c) => {
-    const projectId = c.req.param("projectId");
-    if (!projectId) return c.json({ error: "Project ID is required" }, 400);
-
-    try {
-        const reviewers = await getProjectReviewers(projectId);
-        return c.json({ success: true, data: reviewers });
-    } catch (error) {
-        return c.json({ success: false, error: "Failed to fetch project reviewers" }, 500);
-    }
-});
 
 export default app;
 export type AppType = typeof app;

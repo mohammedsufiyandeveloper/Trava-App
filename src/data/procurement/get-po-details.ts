@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { cache } from "react";
+const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
 import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 
 /**
