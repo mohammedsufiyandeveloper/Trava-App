@@ -131,6 +131,7 @@ myspace.post("/", async (c) => {
                         update: {
                             text: todo.text,
                             completed: todo.completed,
+                            createdAt: todo.createdAt ? new Date(todo.createdAt) : undefined,
                             completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
                             updatedAt: new Date()
                         },
