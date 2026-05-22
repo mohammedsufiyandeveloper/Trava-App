@@ -558,7 +558,7 @@ tasks.patch("/:taskId/assignee", async (c) => {
         const targetUserIds = await getTaskInvolvedUserIds(taskId);
         await recordActivity({
             userId: user.id,
-            userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || (user as any).name || (user as any).surname || "Someone",
+            userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || (user as any).surname || (user as any).name || "Someone",
             workspaceId: subTaskContext.project.workspaceId,
             action: "COMMENT_CREATED",
             entityType: "SUBTASK",

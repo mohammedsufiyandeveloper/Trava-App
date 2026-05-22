@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { broadcastTeamUpdate } from "@/lib/realtime";
 import { ApiResponse } from "@/lib/types";
-const revalidatePath = (..._args: any[]) => {}; // next/cache no-op
+const revalidatePath = (..._args: any[]) => { }; // next/cache no-op
 
 /**
  * Shared logic to delete a workspace member.
@@ -23,7 +23,7 @@ export async function deleteMemberAction(
                 members: {
                     include: {
                         user: {
-                            select: { name: true }
+                            select: { name: true, surname: true } as any
                         }
                     }
                 }
@@ -58,7 +58,7 @@ export async function deleteMemberAction(
         }
 
         const userIdToDelete = memberToDelete.userId;
-        const userName = memberToDelete.user?.name || "User";
+        const userName = (memberToDelete.user as any)?.surname || memberToDelete.user?.name || "User";
 
         const ownedWorkspaces = await prisma.workspace.count({
             where: {
@@ -87,8 +87,8 @@ export async function deleteMemberAction(
         try {
             // Using removeUser from the admin plugin is the correct way for forced deletion
             if ((auth.api as any).removeUser) {
-                await (auth.api as any).removeUser({ 
-                    body: { userId: userIdToDelete } 
+                await (auth.api as any).removeUser({
+                    body: { userId: userIdToDelete }
                 });
             }
         } catch (authDeleteErr) {
@@ -105,7 +105,7 @@ export async function deleteMemberAction(
         const { recordActivity } = await import("@/lib/audit");
         await recordActivity({
             userId: currentUserId, // Person who clicked delete
-            userName: currentMember?.user?.name || "Someone",
+            userName: (currentMember?.user as any)?.surname || currentMember?.user?.name || "Someone",
             workspaceId,
             action: "MEMBER_REMOVED",
             entityType: "MEMBER",

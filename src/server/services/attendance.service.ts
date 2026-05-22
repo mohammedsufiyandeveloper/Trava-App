@@ -100,7 +100,7 @@ export class AttendanceService {
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, surname: true } });
         await recordActivity({
             userId,
-            userName: user?.name || user?.surname || "Someone",
+            userName: (user as any)?.surname || user?.name || "Someone",
             workspaceId,
             action: "CHECKED_IN",
             entityType: "ATTENDANCE",
@@ -165,7 +165,7 @@ export class AttendanceService {
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, surname: true } });
         await recordActivity({
             userId,
-            userName: user?.name || user?.surname || "Someone",
+            userName: (user as any)?.surname || user?.name || "Someone",
             workspaceId,
             action: "CHECKED_OUT",
             entityType: "ATTENDANCE",

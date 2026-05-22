@@ -151,7 +151,7 @@ export class TasksService {
             const project = await prisma.project.findUnique({ where: { id: projectId }, select: { slug: true } });
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
+                userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                 workspaceId,
                 action: "TASK_CREATED",
                 entityType: "TASK",
@@ -231,7 +231,7 @@ export class TasksService {
 
         const parentTask = await prisma.task.findUnique({
             where: { id: parentTaskId },
-            select: { taskSlug: true }
+            select: { name: true, taskSlug: true }
         });
 
         if (!parentTask) {
@@ -300,15 +300,20 @@ export class TasksService {
 
         // Record Activity
         try {
-            const project = await prisma.project.findUnique({ where: { id: projectId }, select: { slug: true } });
+            const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true, slug: true } });
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
+                userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                 workspaceId,
                 action: "SUBTASK_CREATED",
                 entityType: "SUBTASK",
                 entityId: newSubTask.id,
-                newData: { ...newSubTask, projectSlug: project?.slug },
+                newData: {
+                    ...newSubTask,
+                    projectSlug: project?.slug,
+                    projectName: project?.name,
+                    parentTaskName: parentTask?.name
+                },
                 broadcastEvent: "team_update",
                 targetUserIds: await getTaskInvolvedUserIds(newSubTask.id),
             });
@@ -593,7 +598,7 @@ export class TasksService {
 
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
+                userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                 workspaceId,
                 action: task.parentTaskId ? "SUBTASK_UPDATED" : "TASK_UPDATED",
                 entityType: task.parentTaskId ? "SUBTASK" : "TASK",
@@ -628,7 +633,23 @@ export class TasksService {
     }) {
         const task = await prisma.task.findUnique({
             where: { id: taskId },
-            select: { id: true, name: true, status: true, createdById: true, parentTaskId: true }
+            select: {
+                id: true,
+                name: true,
+                status: true,
+                createdById: true,
+                parentTaskId: true,
+                parentTask: {
+                    select: {
+                        name: true
+                    }
+                },
+                project: {
+                    select: {
+                        name: true
+                    }
+                }
+            }
         });
 
         if (!task) throw AppError.NotFound("Task not found");
@@ -664,12 +685,19 @@ export class TasksService {
         try {
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
+                userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                 workspaceId,
                 action: task.parentTaskId ? "SUBTASK_DELETED" : "TASK_DELETED",
                 entityType: task.parentTaskId ? "SUBTASK" : "TASK",
                 entityId: taskId,
-                oldData: { name: task.name, status: task.status, projectId },
+                oldData: {
+                    name: task.name,
+                    status: task.status,
+                    projectId,
+                    projectName: task.project?.name,
+                    parentTaskId: task.parentTaskId || undefined,
+                    parentTaskName: task.parentTask?.name || undefined
+                },
                 broadcastEvent: "team_update",
                 targetUserIds,
             });
@@ -750,7 +778,7 @@ export class TasksService {
         try {
             await recordActivity({
                 userId,
-                userName: permissions.workspaceMember?.user?.name || permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.name || permissions.workspaceMember?.surname || "Someone",
+                userName: permissions.workspaceMember?.user?.surname || permissions.workspaceMember?.user?.name || permissions.workspaceMember?.surname || permissions.workspaceMember?.name || "Someone",
                 workspaceId,
                 action: "TASK_UPDATED",
                 entityType: "TASK",

@@ -150,7 +150,7 @@ export class LeaveService {
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, surname: true } });
         await recordActivity({
             userId,
-            userName: user?.name || user?.surname || "Someone",
+            userName: (user as any)?.surname || user?.name || "Someone",
             workspaceId,
             action: "LEAVE_REQUEST_SUBMITTED",
             entityType: "LEAVE_REQUEST",
@@ -224,7 +224,7 @@ export class LeaveService {
         const adminUser = await prisma.user.findUnique({ where: { id: adminUserId }, select: { name: true, surname: true } });
         await recordActivity({
             userId: adminUserId,
-            userName: adminUser?.name || adminUser?.surname || "Admin",
+            userName: (adminUser as any)?.surname || adminUser?.name || "Admin",
             workspaceId,
             action: `LEAVE_REQUEST_${status}` as AuditAction,
             entityType: "LEAVE_REQUEST",

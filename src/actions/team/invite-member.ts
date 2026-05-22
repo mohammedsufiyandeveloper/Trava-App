@@ -101,12 +101,21 @@ export async function inviteMemberAction(
         // 4. Record Activity & Broadcast
         const { recordActivity } = await import("@/lib/audit");
         const currentUser = await auth.api.getSession({
+            // @ts-ignore
             headers: await import("next/headers").then(h => h.headers())
         });
+        const actorId = currentUser?.user?.id || authUserId;
+
+        // Fetch surname from DB directly — Better Auth session does not include custom fields
+        const actorDbUser = await prisma.user.findUnique({
+            where: { id: actorId },
+            select: { surname: true, name: true } as any,
+        });
+        const actorName = (actorDbUser as any)?.surname || (actorDbUser as any)?.name || currentUser?.user?.name || "Someone";
 
         await recordActivity({
-            userId: currentUser?.user?.id || authUserId, // ID of the person who invited
-            userName: (currentUser?.user as any)?.surname || currentUser?.user?.name || "Someone",
+            userId: actorId,
+            userName: actorName,
             workspaceId,
             action: "MEMBER_INVITED",
             entityType: "MEMBER",
