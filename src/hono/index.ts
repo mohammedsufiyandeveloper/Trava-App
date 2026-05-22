@@ -18,6 +18,8 @@ import myspace from "./routes/myspace";
 import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
 import { auth } from "@/lib/auth";
+import prisma from "@/lib/db";
+
 
 /**
  * Main Hono Application
@@ -72,8 +74,50 @@ app.get("/health", (c) => {
 // Cron Job Routes (Secret-based Auth)
 app.route("/cron", cron);
 
+
+// ─── Helper: inject surname into a user object ────────────────────────────────
+async function injectSurname(userData: any): Promise<any> {
+    if (!userData?.user?.id) return userData;
+    try {
+        const dbUser = await prisma.user.findUnique({
+            where: { id: userData.user.id },
+            select: { surname: true } as any,
+        });
+        const surname = (dbUser as any)?.surname;
+        if (surname) {
+            userData.user.surname = surname;
+            userData.user.name = surname;
+        }
+    } catch (e) {
+        console.error("[AUTH INTERCEPT] DB lookup for surname failed:", e);
+    }
+    return userData;
+}
+
 // Better Auth route handler (mounted as public route, handles /api/auth/*)
-app.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw));
+app.on(["POST", "GET"], "/auth/*", async (c) => {
+    const res = await auth.handler(c.req.raw);
+
+    const isGetSession = c.req.url.includes("/get-session");
+    const isSignIn = c.req.url.includes("/sign-in");
+
+    if ((isGetSession || isSignIn) && res.status === 200) {
+        try {
+            const data = await res.clone().json();
+            if (data?.user) {
+                await injectSurname(data);
+                const headers: Record<string, string> = {};
+                res.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                return c.json(data, 200, headers);
+            }
+        } catch (e) {
+            console.error("[AUTH INTERCEPT] Failed to intercept auth response:", e);
+        }
+    }
+    return res;
+});
 
 /**
  * Protected Routes (Auth Middleware Applied)
