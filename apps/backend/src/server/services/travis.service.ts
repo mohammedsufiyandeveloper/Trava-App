@@ -1,20 +1,17 @@
 /**
  * Travis AI Service
- * Powered by Anthropic Claude. Replaces the Gemini-based AIService.
- * All tools are strictly read-only and scoped to the caller's workspace.
+ * Powered by Google Gemini. All tools are strictly read-only and scoped to the caller's workspace.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI, FunctionCallingMode, SchemaType, type FunctionDeclaration } from "@google/generative-ai";
 import { z } from "zod";
 import prisma from "@/lib/db";
 
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
-const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY ?? "");
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-5";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 // ---------------------------------------------------------------------------
 // System prompt
@@ -42,15 +39,15 @@ Always be concise and well-formatted. Use bullet points and bold text where it h
 Today's date is ${new Date().toISOString().split("T")[0]}.`;
 
 // ---------------------------------------------------------------------------
-// Tool definitions (Anthropic tool_use format)
+// Tool definitions (Gemini FunctionDeclaration format)
 // ---------------------------------------------------------------------------
-const TOOLS: Anthropic.Tool[] = [
+const TOOLS: FunctionDeclaration[] = [
     {
         name: "get_workspace_summary",
         description:
             "Get a high-level summary of the workspace: number of projects, task statistics by status, and member count.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {},
             required: [],
         },
@@ -59,8 +56,8 @@ const TOOLS: Anthropic.Tool[] = [
         name: "get_projects",
         description:
             "List all projects the calling user has access to in the workspace, including member count.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {},
             required: [],
         },
@@ -69,11 +66,11 @@ const TOOLS: Anthropic.Tool[] = [
         name: "get_project_detail",
         description:
             "Get details for a single project including its task summary (counts by status).",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 projectId: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description: "The project ID to look up",
                 },
             },
@@ -84,24 +81,24 @@ const TOOLS: Anthropic.Tool[] = [
         name: "get_tasks",
         description:
             "Get tasks in a specific project, optionally filtered by status or assignee workspace member ID.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 projectId: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description: "Project ID to list tasks for",
                 },
                 status: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description:
                         "Filter by status: TO_DO | IN_PROGRESS | REVIEW | HOLD | COMPLETED | CANCELLED",
                 },
                 assigneeWorkspaceMemberId: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description: "Filter by workspace member ID of the assignee",
                 },
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max tasks to return (default 20, max 50)",
                 },
             },
@@ -112,11 +109,11 @@ const TOOLS: Anthropic.Tool[] = [
         name: "get_my_tasks",
         description:
             "Get tasks assigned to the currently authenticated user (not completed or cancelled).",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 status: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description:
                         "Optional status filter: TO_DO | IN_PROGRESS | REVIEW | HOLD",
                 },
@@ -128,11 +125,11 @@ const TOOLS: Anthropic.Tool[] = [
         name: "get_overdue_tasks",
         description:
             "Get all overdue tasks (dueDate in the past, not completed/cancelled) across the workspace.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max tasks to return (default 20, max 50)",
                 },
             },
@@ -142,15 +139,15 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_upcoming_tasks",
         description: "Get tasks due in the next N days across the workspace.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 days: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Number of days ahead to look (default 7, max 30)",
                 },
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max tasks to return (default 20, max 50)",
                 },
             },
@@ -160,11 +157,11 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_workspace_members",
         description: "List workspace members with their roles and basic profile info.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 role: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description:
                         "Optional role filter: OWNER | ADMIN | MANAGER | MEMBER | VIEWER | PROCUREMENT",
                 },
@@ -175,8 +172,8 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_attendance",
         description: "Get today's attendance records for the workspace (who is present, absent, on leave, etc.).",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {},
             required: [],
         },
@@ -184,15 +181,15 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_leave_requests",
         description: "Get leave requests for the workspace, optionally filtered by status.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 status: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description: "Filter by status: PENDING | APPROVED | REJECTED",
                 },
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max records to return (default 20)",
                 },
             },
@@ -202,11 +199,11 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_daily_reports",
         description: "Get recent daily reports submitted by team members.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max records to return (default 20)",
                 },
             },
@@ -216,16 +213,16 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_indents",
         description: "Get indent/procurement records for the workspace, optionally filtered by status.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 status: {
-                    type: "string",
+                    type: SchemaType.STRING,
                     description:
                         "Filter by status: DRAFT | SUBMITTED | ASSIGNED | APPROVED | CANCELLED",
                 },
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max records to return (default 20)",
                 },
             },
@@ -235,11 +232,11 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_materials",
         description: "Get material catalog entries for the workspace.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {
                 limit: {
-                    type: "number",
+                    type: SchemaType.NUMBER,
                     description: "Max records to return (default 30)",
                 },
             },
@@ -249,8 +246,8 @@ const TOOLS: Anthropic.Tool[] = [
     {
         name: "get_vendors",
         description: "Get vendor records for the workspace.",
-        input_schema: {
-            type: "object" as const,
+        parameters: {
+            type: SchemaType.OBJECT,
             properties: {},
             required: [],
         },
@@ -854,95 +851,91 @@ export class TravisService {
             return "I'm sorry, but you don't appear to be a member of this workspace.";
         }
 
-        // Build message history for the API call
-        const messages: Anthropic.MessageParam[] = [
-            ...history.map((h) => ({
-                role: h.role,
-                content: h.content,
-            })),
-            { role: "user" as const, content: message },
-        ];
-
-        let rounds = 0;
-
         const runWithTimeout = <T>(promise: Promise<T>): Promise<T> =>
             Promise.race([
                 promise,
                 new Promise<T>((_, reject) =>
-                    setTimeout(
-                        () => reject(new Error("TIMEOUT")),
-                        TravisService.TIMEOUT_MS
-                    )
+                    setTimeout(() => reject(new Error("TIMEOUT")), TravisService.TIMEOUT_MS)
                 ),
             ]);
+
+        // Build Gemini model with tools and system instruction
+        const model = genAI.getGenerativeModel({
+            model: MODEL,
+            systemInstruction: SYSTEM_PROMPT,
+            tools: [{ functionDeclarations: TOOLS }],
+            toolConfig: { functionCallingConfig: { mode: FunctionCallingMode.AUTO } },
+        });
+
+        // Build chat history in Gemini format (exclude current message)
+        const geminiHistory = history.map((h) => ({
+            role: h.role === "assistant" ? "model" : "user",
+            parts: [{ text: h.content }],
+        }));
+
+        const chat = model.startChat({ history: geminiHistory });
+
+        let rounds = 0;
+        let currentMessage: string = message;
 
         while (rounds < TravisService.MAX_TOOL_ROUNDS) {
             rounds++;
 
-            const response = await runWithTimeout(
-                client.messages.create({
-                    model: MODEL,
-                    max_tokens: 1024,
-                    system: SYSTEM_PROMPT,
-                    tools: TOOLS,
-                    messages,
+            const result = await runWithTimeout(chat.sendMessage(currentMessage));
+            const response = result.response;
+
+            // Check for function calls
+            const functionCalls = response.functionCalls();
+
+            if (!functionCalls || functionCalls.length === 0) {
+                // No tool calls — this is the final text answer
+                return response.text() || "No response generated.";
+            }
+
+            // Execute all tool calls and collect results
+            const functionResponses = await Promise.all(
+                functionCalls.map(async (call) => {
+                    const toolResult = await executeTool(
+                        call.name,
+                        call.args,
+                        workspaceId,
+                        userId
+                    );
+                    return {
+                        functionResponse: {
+                            name: call.name,
+                            response: { result: toolResult },
+                        },
+                    };
                 })
             );
 
-            // If Claude decided to stop and give a final answer
-            if (response.stop_reason === "end_turn") {
-                const textBlock = response.content.find((b) => b.type === "text");
-                return textBlock ? (textBlock as Anthropic.TextBlock).text : "No response generated.";
+            // Send tool results back to Gemini as the next message
+            currentMessage = JSON.stringify(functionResponses);
+            const toolResultResult = await runWithTimeout(
+                chat.sendMessage([
+                    ...functionResponses.map((fr) => ({
+                        functionResponse: fr.functionResponse,
+                    })),
+                ])
+            );
+
+            const toolResponse = toolResultResult.response;
+            const afterToolCalls = toolResponse.functionCalls();
+
+            // If Gemini gave a final text response after seeing tool results
+            if (!afterToolCalls || afterToolCalls.length === 0) {
+                return toolResponse.text() || "No response generated.";
             }
 
-            // If Claude wants to use tools
-            if (response.stop_reason === "tool_use") {
-                // Add Claude's response (which contains tool_use blocks) to history
-                messages.push({ role: "assistant", content: response.content });
-
-                // Execute all tool calls in parallel
-                const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-                    response.content
-                        .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
-                        .map(async (toolUse) => {
-                            const result = await executeTool(
-                                toolUse.name,
-                                toolUse.input,
-                                workspaceId,
-                                userId
-                            );
-                            return {
-                                type: "tool_result" as const,
-                                tool_use_id: toolUse.id,
-                                content: JSON.stringify(result),
-                            };
-                        })
-                );
-
-                // Add tool results to the conversation
-                messages.push({ role: "user", content: toolResults });
-                continue;
-            }
-
-            // Unexpected stop reason — extract whatever text is available
-            const textBlock = response.content.find((b) => b.type === "text");
-            return textBlock
-                ? (textBlock as Anthropic.TextBlock).text
-                : "I was unable to generate a response.";
+            // More tool calls — loop continues (next iteration will send these)
+            currentMessage = JSON.stringify(
+                afterToolCalls.map((call) => ({
+                    functionResponse: { name: call.name, response: {} },
+                }))
+            );
         }
 
-        // Exceeded max rounds — ask Claude to synthesize what it has
-        const finalResp = await runWithTimeout(
-            client.messages.create({
-                model: MODEL,
-                max_tokens: 512,
-                system: SYSTEM_PROMPT,
-                messages,
-            })
-        );
-        const textBlock = finalResp.content.find((b) => b.type === "text");
-        return textBlock
-            ? (textBlock as Anthropic.TextBlock).text
-            : "I reached the maximum number of reasoning steps. Please try a more specific question.";
+        return "I reached the maximum number of reasoning steps. Please try a more specific question.";
     }
 }
