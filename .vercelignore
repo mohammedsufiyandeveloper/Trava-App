@@ -1,0 +1,9 @@
+node_modules
+.git
+.env*
+.vercel
+.vscode
+coverage
+apps/mobile
+apps/backend/dist
+apps/backend/src/generated/prisma
