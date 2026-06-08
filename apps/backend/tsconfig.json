@@ -18,6 +18,15 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "tuskerapp", "dist", "src/lib/store", "src/lib/actions", "src/lib/utils/extract-filter-options.ts"]
+  "include": ["src/**/*.ts", "vitest.config.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "api",
+    "dev",
+    "src/generated",
+    "src/lib/store",
+    "src/lib/actions",
+    "src/lib/utils/extract-filter-options.ts"
+  ]
 }

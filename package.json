@@ -16,5 +16,14 @@
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm --filter @trava/backend test",
     "verify": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "better-sqlite3",
+      "esbuild",
+      "prisma"
+    ]
   }
 }
