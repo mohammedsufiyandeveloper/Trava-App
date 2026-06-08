@@ -1,27 +1,21 @@
-# CODEOWNERS — release-core-v1 Branch Protection
-#
-# These rules require explicit approval before procurement/inventory/orders
-# code can be merged into the release branch.
-#
-# Assign your team lead's GitHub username below.
-# Replace @your-username with the actual approver.
+# CODEOWNERS — default review ownership for the Trava-App monorepo.
+# https://docs.github.com/en/repositories/managing-your-repositories-permissions-and-collaborations/about-code-owners
 
-# ============================================
-# PROCUREMENT MODULE (Phase 2 — disabled)
-# ============================================
-src/app/w/*/procurement/           @your-username
-src/app/w/*/inventory/             @your-username
-src/app/w/*/orders/                @your-username
-src/app/api/procurement/           @your-username
-src/actions/procurement/           @your-username
-src/actions/inventory/             @your-username
-src/data/procurement/              @your-username
-src/data/inventory/                @your-username
-src/lib/procurement/               @your-username
+# Everything is owned by the repository maintainer by default.
+*                               @mohammedsufiyandeveloper
 
-# ============================================
-# CRITICAL RELEASE FILES
-# ============================================
-# Sidebar & feature flags should always be reviewed
-src/app/w/_components/sidebar/workspace-sidebar.tsx  @your-username
-src/lib/constants/feature-flags.ts                    @your-username
+# Backend
+/apps/backend/                  @mohammedsufiyandeveloper
+
+# Mobile
+/apps/mobile/                   @mohammedsufiyandeveloper
+
+# CI / repo configuration (extra scrutiny)
+/.github/                       @mohammedsufiyandeveloper
+
+# Legacy procurement/inventory code pending rewrite (see docs/TECH_DEBT.md)
+/apps/backend/src/actions/procurement/   @mohammedsufiyandeveloper
+/apps/backend/src/actions/inventory/     @mohammedsufiyandeveloper
+/apps/backend/src/data/procurement/      @mohammedsufiyandeveloper
+/apps/backend/src/data/inventory/        @mohammedsufiyandeveloper
+/apps/backend/src/lib/procurement/       @mohammedsufiyandeveloper
