@@ -1,51 +1,20 @@
 {
-  "name": "tusker-management",
-  "version": "0.1.0",
+  "name": "trava-app",
+  "version": "1.0.0",
   "private": true,
+  "description": "Trava-App monorepo: Hono/Prisma backend and Expo React Native mobile app.",
+  "engines": {
+    "node": ">=20 <25",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "prisma generate",
-    "start": "tsx src/server.ts",
-    "postinstall": "prisma generate",
-    "db:seed": "tsx prisma/seed-units.ts",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@hono/node-server": "^2.0.3",
-    "@aws-sdk/client-s3": "^3.908.0",
-    "@aws-sdk/s3-request-presigner": "^3.908.0",
-    "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "6.19.0",
-    "better-auth": "^1.3.27",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "dotenv": "^17.2.3",
-    "expo-server-sdk": "^6.1.0",
-    "hono": "^4.12.12",
-    "nodemailer": "^7.0.7",
-    "prettier": "^3.6.2",
-    "pusher": "^5.3.3",
-    "pusher-js": "^8.5.0",
-    "slugify": "^1.6.6",
-    "tailwind-merge": "^3.3.1",
-    "xlsx-js-style": "^1.2.0",
-    "zod": "^4.1.12"
-  },
-  "devDependencies": {
-    "@better-auth/cli": "^1.3.34",
-    "@types/node": "^20.19.25",
-    "@types/nodemailer": "^7.0.3",
-    "@types/pg": "^8.20.0",
-    "cross-env": "^10.1.0",
-    "eslint": "^9.38.0",
-    "pg": "^8.20.0",
-    "prisma": "6.19.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5",
-    "vitest": "^4.0.15"
-  },
-  "packageManager": "pnpm@10.18.1+sha512.77a884a165cbba2d8d1c19e3b4880eee6d2fcabd0d879121e282196b80042351d5eb3ca0935fa599da1dc51265cc68816ad2bddd2a2de5ea9fdf92adbec7cd34"
+    "dev:backend": "pnpm --filter @trava/backend dev",
+    "dev:mobile": "pnpm --filter @trava/mobile start",
+    "build": "pnpm --filter @trava/backend build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm --filter @trava/backend test",
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
+  }
 }

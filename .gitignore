@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# migration backups (recovery bundles/patches — never commit)
+/_backup/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

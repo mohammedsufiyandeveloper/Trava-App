@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "765730768338",
+    "project_id": "tuskertasks",
+    "storage_bucket": "tuskertasks.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:765730768338:android:0acad20b5841f232a2b40b",
+        "android_client_info": {
+          "package_name": "com.thewhitetusker.trava"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5g-oQJjjpNtlYy8xgn94nG5PRfQt0gYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
