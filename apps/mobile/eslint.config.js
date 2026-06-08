@@ -5,6 +5,12 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    ignores: ['dist/*', 'dev/*', 'ios/*', 'android/*'],
+  },
+  {
+    rules: {
+      // Literal quotes/apostrophes in React Native <Text> are fine.
+      'react/no-unescaped-entities': 'off',
+    },
   },
 ]);

@@ -22,7 +22,7 @@ export interface FullProjectData {
         id: string;
         userId: string;
         userName: string;
-        projectRole: "LEAD" | "MEMBER" | "VIEWER" | "PROJECT_MANAGER";
+        projectRole: "LEAD" | "MEMBER" | "VIEWER" | "PROJECT_MANAGER" | "PROJECT_COORDINATOR";
         hasAccess: boolean;
     }>;
     // Client data

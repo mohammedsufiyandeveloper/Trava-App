@@ -45,7 +45,7 @@ export async function generateUniqueSlug(
     let dbSlugs: string[] = [];
 
     switch (tableName) {
-        case 'task':
+        case 'task': {
             const tasks = await prisma.task.findMany({
                 where: {
                     taskSlug: {
@@ -56,8 +56,9 @@ export async function generateUniqueSlug(
             });
             dbSlugs = tasks.map((t: { taskSlug: string }) => t.taskSlug);
             break;
+        }
 
-        case 'project':
+        case 'project': {
             const projects = await prisma.project.findMany({
                 where: {
                     slug: {
@@ -68,8 +69,9 @@ export async function generateUniqueSlug(
             });
             dbSlugs = projects.map((p: { slug: string }) => p.slug);
             break;
+        }
 
-        case 'workspace':
+        case 'workspace': {
             const workspaces = await prisma.workspace.findMany({
                 where: {
                     slug: {
@@ -80,6 +82,7 @@ export async function generateUniqueSlug(
             });
             dbSlugs = workspaces.map((w: { slug: string }) => w.slug);
             break;
+        }
     }
 
     // Combine database slugs with provided existing slugs
@@ -156,27 +159,30 @@ export async function generateUniqueSlugs(
     };
 
     switch (tableName) {
-        case 'task':
+        case 'task': {
             const tasks = await prisma.task.findMany({
                 where: whereClause as any,
                 select: { taskSlug: true }
             });
             dbSlugs = tasks.map(t => t.taskSlug);
             break;
-        case 'project':
+        }
+        case 'project': {
             const projects = await prisma.project.findMany({
                 where: whereClause as any,
                 select: { slug: true }
             });
             dbSlugs = projects.map(p => p.slug);
             break;
-        case 'workspace':
+        }
+        case 'workspace': {
             const workspaces = await prisma.workspace.findMany({
                 where: whereClause as any,
                 select: { slug: true }
             });
             dbSlugs = workspaces.map(w => w.slug);
             break;
+        }
     }
 
     // 3. Resolve conflicts in-memory
@@ -220,25 +226,28 @@ export async function slugExists(
     tableName: 'task' | 'project' | 'workspace'
 ): Promise<boolean> {
     switch (tableName) {
-        case 'task':
+        case 'task': {
             const task = await prisma.task.findFirst({
                 where: { taskSlug: slug },
                 select: { id: true }
             });
             return !!task;
+        }
 
-        case 'project':
+        case 'project': {
             const project = await prisma.project.findFirst({
                 where: { slug },
                 select: { id: true }
             });
             return !!project;
+        }
 
-        case 'workspace':
+        case 'workspace': {
             const workspace = await prisma.workspace.findFirst({
                 where: { slug },
                 select: { id: true }
             });
             return !!workspace;
+        }
     }
 }

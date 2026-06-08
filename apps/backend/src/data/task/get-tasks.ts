@@ -710,7 +710,7 @@ async function _fetchWorkspaceFilter(
         view_mode: opts.view_mode,
     };
 
-    let where = buildWorkspaceFilterWhere(filterOpts, userId);
+    const where = buildWorkspaceFilterWhere(filterOpts, userId);
 
     if (isSorting && opts.cursor) {
         const seek = buildSeekCondition(opts.sorts!, opts.cursor);
@@ -862,7 +862,7 @@ async function _getTasksInternal(
                     const hasFullAccess = isAdmin || (projectId ? fullAccessProjectIds.includes(projectId) : false);
 
                     // Resolve the ProjectMember ID to ensure direct assigneeId filtering works (User ID vs PM ID parity)
-                    let subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
+                    const subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
                     if (!hasFullAccess && userId && projectId) {
                         const pm = await prisma.projectMember.findFirst({
                             where: { projectId, WorkspaceMember: { userId } },
@@ -970,7 +970,7 @@ async function _getTasksInternal(
                     const hasFullAccess = isAdmin || (opts.projectId ? fullAccessProjectIds.includes(opts.projectId) : false);
 
                     // Resolve ProjectMember ID for robust filtering
-                    let subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
+                    const subtaskAssigneeIds: string[] = toArray(opts.assigneeId) || [];
                     if (!hasFullAccess && userId && opts.projectId) {
                         const pm = await prisma.projectMember.findFirst({
                             where: { projectId: opts.projectId, WorkspaceMember: { userId } },
@@ -1080,10 +1080,6 @@ export const getTasks = cache(async (opts: GetTasksOptions, providedUserId?: str
         fullAccessProjectIds,
         restrictedProjectIds
     } = await resolveTaskPermissions(workspaceId, projectId, providedUserId);
-
-    if (process.env.NODE_ENV === "production" || true) {
-        // console.log(`🛡️ [GET_TASKS] User: ${providedUserId || 'current'}, WS: ${workspaceId}, Admin: ${isWorkspaceAdmin}, FullAccess: ${fullAccessProjectIds.length}, Restricted: ${restrictedProjectIds.length}`);
-    }
 
     // Guard: block access if the user is not a member AND not the workspace owner.
     // A workspace owner may not have a WorkspaceMember record if they created the workspace

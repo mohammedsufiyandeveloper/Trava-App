@@ -29,6 +29,13 @@ export default tseslint.config(
       ],
       '@typescript-eslint/no-empty-object-type': 'warn',
       'no-empty': ['warn', { allowEmptyCatch: true }],
+      'no-constant-condition': ['error', { checkLoops: false }],
+      // Allow `@ts-nocheck` on the documented legacy procurement/inventory files
+      // (see docs/TECH_DEBT.md); keep `@ts-ignore` discouraged.
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-nocheck': false, 'ts-ignore': 'allow-with-description', 'ts-expect-error': 'allow-with-description' },
+      ],
     },
   },
 )

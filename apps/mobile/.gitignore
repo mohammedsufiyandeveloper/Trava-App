@@ -36,6 +36,12 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# local-only developer scratch scripts (not part of the app)
+dev/
+
+# lint output
+lint_results.json
+
 app-example
 
 # generated native folders

@@ -75,7 +75,7 @@ export class AIService {
         let result = await chatSession.sendMessage(message + "\n\n(Context: " + systemPrompt + ")");
         
         let response = result.response;
-        let functionCalls = response.functionCalls();
+        const functionCalls = response.functionCalls();
 
         // Handle function calls
         if (functionCalls) {

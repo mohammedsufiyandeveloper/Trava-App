@@ -102,23 +102,16 @@ export async function inviteMemberAction(
         const { recordActivity } = await import("@/lib/audit");
 
         // Get the actor who is performing the invite.
-        // Priority: AsyncLocalStorage (Hono middleware) → next/headers session → fallback
+        // Priority: AsyncLocalStorage (Hono middleware) → authUserId fallback
         let actorId: string = authUserId; // safe fallback (wrong but won't crash)
         try {
             const { requireUser } = await import("@/lib/auth/require-user");
             const actor = await requireUser();
             if (actor?.id) actorId = actor.id;
         } catch {
-            // Not in Hono context (e.g. Next.js server action) — try next/headers
-            try {
-                const currentUser = await auth.api.getSession({
-                    // @ts-ignore
-                    headers: await import("next/headers").then(h => h.headers())
-                });
-                if (currentUser?.user?.id) actorId = currentUser.user.id;
-            } catch {
-                // Both sources failed — actorId stays as authUserId fallback
-            }
+            // Not in a Hono request context — keep the authUserId fallback.
+            // (Previously attempted a next/headers session lookup; that path was
+            // dead after the Next.js backend was removed, so it has been dropped.)
         }
 
         // Fetch surname from DB directly — Better Auth session does not include custom fields

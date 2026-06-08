@@ -347,7 +347,11 @@ export async function bulkUploadTasksAndSubtasks(data: {
                         });
 
                         if (shouldAddToProcurement) {
-                            await tx.procurementTask.create({
+                            // TODO(tech-debt): `procurementTask` is a legacy Prisma model
+                            // removed in the schema-integrity refactor. This branch is
+                            // non-functional until rewritten against the indent system.
+                            // See docs/TECH_DEBT.md.
+                            await (tx as any).procurementTask.create({
                                 data: {
                                     taskId: createdSubtask.id,
                                     projectId: data.projectId,

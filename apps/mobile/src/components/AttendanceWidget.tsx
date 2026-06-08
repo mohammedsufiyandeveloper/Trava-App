@@ -356,6 +356,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
   );
 });
 
+AttendanceWidget.displayName = "AttendanceWidget";
+
 export default AttendanceWidget;
 
 const styles = StyleSheet.create({
