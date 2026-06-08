@@ -15,6 +15,9 @@ src/generated/prisma/
 *.tsbuildinfo
 coverage/
 
+# local-only developer scratch scripts (one-off DB inspection, not for CI)
+dev/
+
 # vercel local
 .vercel
 

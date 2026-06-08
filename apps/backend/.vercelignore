@@ -1,8 +1,10 @@
+# Paths are relative to the Vercel project root (set to apps/backend).
 node_modules
-tuskerapp
 .git
-.idea
-.vscode
 .env
-.env.local
-.gemini
+.env.*
+.vercel
+.vscode
+coverage
+dev
+src/generated/prisma
