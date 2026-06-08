@@ -4,6 +4,7 @@
 .DS_Store
 *.pem
 *.swp
+.idea/
 
 # dependencies (any workspace)
 node_modules/
