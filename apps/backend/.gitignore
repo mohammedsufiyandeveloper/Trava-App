@@ -1,0 +1,21 @@
+# Backend-specific ignores (in addition to the root .gitignore)
+
+# dependencies
+node_modules/
+
+# env
+.env
+.env.*
+!.env.example
+
+# generated Prisma client
+src/generated/prisma/
+
+# build info / coverage
+*.tsbuildinfo
+coverage/
+
+# vercel local
+.vercel
+
+# NOTE: `api/` and `dist/` are intentionally tracked (deploy bundles).
