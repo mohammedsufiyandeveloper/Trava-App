@@ -1,4 +1,8 @@
-# Welcome to your Expo app 👋
+# Trava-App — Mobile (Expo)
+
+> Part of the [Trava-App monorepo](../../README.md). Install deps from the repo
+> root with `pnpm install`, then run `pnpm dev:mobile` (or
+> `pnpm --filter @trava/mobile start`). Copy `.env.example` to `.env` first.
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
