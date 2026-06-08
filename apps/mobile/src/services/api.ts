@@ -12,7 +12,7 @@ import {
 } from "../types";
 
 // ─── Config ────────────────────────────────────────────────────────────────
-export const API_BASE = "https://backend-kohl-tau-56.vercel.app";
+export const API_BASE = "https://tusker-api.vamsimannam111.workers.dev";
 // export const API_BASE = "http://192.168.88.12:3000"; // Point to local dev server by default for testing
 const SESSION_KEY = "better_auth_session";
 const TOKEN_KEY = "better_auth_token";
