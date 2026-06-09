@@ -43,23 +43,13 @@ interface Section { key: string; title: string; color: string; data: Task[] }
 
 function groupTasks(tasks: Task[]): Section[] {
     if (tasks.length === 0) return [];
-
-    // Sort tasks: Overdue first, then by due date, then no date
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const t = now.getTime();
-
-    const sorted = [...tasks].sort((a, b) => {
-        if (!a.dueDate && !b.dueDate) return 0;
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    });
-
+    // Keep backend sort order (createdAt desc) — do NOT re-sort client-side
+    // to avoid re-layouts on every page append.
     return [{
         key: "all",
         title: "SUBTASKS",
         color: "#8b5cf6",
-        data: sorted
+        data: tasks
     }];
 }
 
@@ -192,6 +182,7 @@ export default function MyBoardScreen() {
     const dataScrollRef = useRef<ScrollView>(null);
     const headerSkeletonScrollRef = useRef<ScrollView>(null);
     const dataSkeletonScrollRef = useRef<ScrollView>(null);
+    const isFetchingMoreRef = useRef(false);
 
     const filters = globalFilters;
     const activeFilterCount = Object.values(filters).filter(v => Array.isArray(v) ? v.length > 0 : !!v).length;
@@ -256,7 +247,7 @@ export default function MyBoardScreen() {
                     } else {
                         result = await getTasks(activeWorkspace.id, buildFilters(assigneeFilter));
                     }
-                } else if (isWorkspaceAdmin) {
+                } else if (isWorkspaceAdmin || isPM) {
                     if (isFirstPage) {
                         [result, count] = await Promise.all([
                             getTasks(activeWorkspace.id, buildFilters()),
@@ -264,59 +255,6 @@ export default function MyBoardScreen() {
                         ]);
                     } else {
                         result = await getTasks(activeWorkspace.id, buildFilters());
-                    }
-                } else if (isPM) {
-                    // PM mode: merge managed + assigned (paginate each, dedupe)
-                    const selectedProjectIds = filters.projectId && filters.projectId.length > 0 ? filters.projectId : null;
-                    const pmManagedProjectIds = selectedProjectIds
-                        ? managedProjectIds.filter(id => selectedProjectIds.includes(id))
-                        : managedProjectIds;
-
-                    const managedFilter = { projectId: pmManagedProjectIds };
-                    const assigneeFilter = {
-                        assigneeId: currentUser.id ? [currentUser.id] : undefined,
-                        projectId: selectedProjectIds || undefined
-                    };
-
-                    if (isFirstPage) {
-                        const [managedResult, assignedResult, managedCount, assignedCount] = await Promise.all([
-                            pmManagedProjectIds.length > 0
-                                ? getTasks(activeWorkspace.id, buildFilters(managedFilter))
-                                : Promise.resolve({ tasks: [], hasMore: false, nextCursor: null }),
-                            getTasks(activeWorkspace.id, buildFilters(assigneeFilter)),
-                            pmManagedProjectIds.length > 0
-                                ? getTasksCount(activeWorkspace.id, buildCountFilters(managedFilter))
-                                : Promise.resolve(0),
-                            getTasksCount(activeWorkspace.id, buildCountFilters(assigneeFilter)),
-                        ]);
-                        const seen = new Set<string>();
-                        const merged: Task[] = [];
-                        for (const t of [...(managedResult?.tasks || []), ...assignedResult.tasks]) {
-                            if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
-                        }
-                        result = {
-                            tasks: merged.slice(0, PAGE_SIZE),
-                            hasMore: (managedResult?.hasMore || false) || assignedResult.hasMore,
-                            nextCursor: (managedResult?.nextCursor || null) || assignedResult.nextCursor,
-                        };
-                        count = managedCount;
-                    } else {
-                        const [managedResult, assignedResult] = await Promise.all([
-                            pmManagedProjectIds.length > 0
-                                ? getTasks(activeWorkspace.id, buildFilters(managedFilter))
-                                : Promise.resolve({ tasks: [], hasMore: false, nextCursor: null }),
-                            getTasks(activeWorkspace.id, buildFilters(assigneeFilter)),
-                        ]);
-                        const seen = new Set<string>();
-                        const merged: Task[] = [];
-                        for (const t of [...(managedResult?.tasks || []), ...assignedResult.tasks]) {
-                            if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
-                        }
-                        result = {
-                            tasks: merged.slice(0, PAGE_SIZE),
-                            hasMore: (managedResult?.hasMore || false) || assignedResult.hasMore,
-                            nextCursor: (managedResult?.nextCursor || null) || assignedResult.nextCursor,
-                        };
                     }
                 } else {
                     const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
@@ -351,12 +289,14 @@ export default function MyBoardScreen() {
     }, [activeWorkspace?.id, isWorkspaceAdmin, managedProjectIds, filters, ownerViewMode, currentUser]);
 
     const loadMore = useCallback(async () => {
-        if (!hasMore || loadingMore || !nextCursor) return;
+        if (!hasMore || loadingMore || !nextCursor || isFetchingMoreRef.current) return;
+        isFetchingMoreRef.current = true;
         setLoadingMore(true);
         try {
             await fetchData(false, nextCursor);
         } finally {
             setLoadingMore(false);
+            isFetchingMoreRef.current = false;
         }
     }, [hasMore, loadingMore, nextCursor, fetchData]);
 
@@ -627,148 +567,35 @@ export default function MyBoardScreen() {
         return groupTasks(subTasksOnly);
     }, [tasks]);
 
-    const toggle = (k: string) => {
+    const toggle = useCallback((k: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCollapsed(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-    };
+    }, []);
+
+    const handleNavigateToTask = useCallback((taskId: string, taskName: string) => {
+        nav.navigate("TaskDetail", { taskId, taskName });
+    }, [nav]);
+
+    const handleOpenAddTask = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setCreateSubTaskVisible(true);
+    }, []);
 
     const projName = "All Projects";
     const projColor = colors.primary;
 
-    // ── Cell ──────────────────────────────────────────────────────────────────
-    const Cell = ({ task, col }: { task: Task; col: typeof COLS[0] }) => {
-        const sc = getStatusHex(task.status);
-        const bg = getStatusBgColor(task.status);
-        const urg = getUrg(task.dueDate);
-        switch (col.key) {
-            case "status": return (
-                <View style={[s.badge, { backgroundColor: bg }]}>
-                    <Text style={[s.badgeTxt, { color: sc }]} numberOfLines={1}>{task.status.replace("_", " ")}</Text>
-                </View>
-            );
-            case "start": return <Text style={[s.dateTxt, { color: colors.text }]}>{fmtDate(task.startDate)}</Text>;
-            case "due": return <Text style={[s.dateTxt, { color: colors.text, fontWeight: "700" }]}>{fmtDate(task.dueDate)}</Text>;
-            case "assignee": return task.assignee ? (
-                <View style={s.mem}><View style={[s.av, { backgroundColor: colors.surfaceHighlight }]}><Text style={[s.avTxt, { color: colors.text }]}>{(task.assignee.surname?.[0] || task.assignee.name[0]).toUpperCase()}</Text></View><Text style={[s.memTxt, { color: colors.text }]} numberOfLines={1}>{task.assignee.surname ? task.assignee.surname.split(" ")[0] : task.assignee.name}</Text></View>
-            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
-            case "reviewer": return task.reviewer ? (
-                <View style={s.mem}><View style={[s.av, { backgroundColor: colors.surfaceHighlight }]}><Text style={[s.avTxt, { color: colors.text }]}>{(task.reviewer.surname?.[0] || task.reviewer.name[0]).toUpperCase()}</Text></View><Text style={[s.memTxt, { color: colors.text }]} numberOfLines={1}>{task.reviewer.surname ? task.reviewer.surname.split(" ")[0] : task.reviewer.name}</Text></View>
-            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
-            case "urgency": return urg ? (
-                <View style={[s.urgB, { backgroundColor: urg.color + "18" }]}><View style={[s.urgDot, { backgroundColor: urg.color }]} /><Text style={[s.urgTxt, { color: urg.color }]}>{urg.text}</Text></View>
-            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
-            case "tag": {
-                // Check multiple potential tag sources, prioritized by normalized data
-                const tagObj = task.tag || (Array.isArray(task.tags) && task.tags[0]) || (task as any).Tag || (task as any).taskTag || (Array.isArray((task as any).tags) ? (task as any).tags[0] : null);
-                const tagId = task.tagId || (tagObj && typeof tagObj === 'object' ? tagObj.id : null);
+    // Cell and NameCol are defined as stable module-level memoized components
+    // below (outside this component body) to avoid remounting on every render.
 
-                const tagName = (typeof tagObj === 'string' ? tagObj : null) ||
-                    (tagObj && typeof tagObj === 'object' ? tagObj.name : null) ||
-                    (tagId ? tags.find(t => String(t.id) === String(tagId))?.name : null) ||
-                    (task as any).tagName;
-
-                return tagName ? (
-                    <View style={[s.tagB, { backgroundColor: colors.surfaceHighlight }]}>
-                        <Text style={[s.tagTxt, { color: colors.textDim }]} numberOfLines={1} adjustsFontSizeToFit>{tagName}</Text>
-                    </View>
-                ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
-            }
-            default: return null;
+    // Extracted scroll-bottom checker so it can be called from multiple scroll events.
+    // Uses refs/state directly so it's always up-to-date even without re-renders.
+    const checkAndLoadMore = useCallback((e: any) => {
+        const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+        const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+        if (distanceFromBottom < 200 && hasMore && !loadingMore && nextCursor && !isFetchingMoreRef.current) {
+            loadMore();
         }
-    };
-
-    // ── Name column cell (frozen, rendered absolutely) ────────────────────────
-    const NameCol = () => (
-        <View pointerEvents="box-none">
-            {sections.map(section => (
-                <View key={section.key} pointerEvents="box-none">
-                    {/* Section header (frozen side) */}
-                    <View style={{ flexDirection: 'row', width: '100%', alignItems: 'center' }} pointerEvents="box-none">
-                        <TouchableOpacity
-                            style={[s.secFrozen, { width: NAME_W, height: SEC_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
-                            onPress={() => toggle(section.key)} activeOpacity={0.7}
-                        >
-                            <Text style={[s.secTitle, { color: colors.text }]}>{section.title}</Text>
-                            <View style={s.secBadge}>
-                                <Text style={[s.secBadgeTxt, { color: colors.textDim }]}>
-                                    {section.key === sections[0]?.key && totalCount !== null
-                                        ? totalCount
-                                        : section.data.length}
-                                </Text>
-                            </View>
-                            <Ionicons name={collapsed.has(section.key) ? "chevron-forward" : "chevron-down"} size={12} color={colors.textDim} style={{ marginLeft: "auto" }} />
-                        </TouchableOpacity>
-
-                        {/* Add icon on the far right of the screen */}
-                        <View style={{ flex: 1, height: SEC_H, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: SPACING.md }} pointerEvents="box-none">
-                            <TouchableOpacity
-                                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCreateSubTaskVisible(true); }}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="add" size={20} color={colors.primary} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    {/* Name cells */}
-                    {!collapsed.has(section.key) && section.data.map(task => {
-                        const sc = getStatusHex(task.status);
-                        return (
-                            <TouchableOpacity
-                                key={task.id}
-                                style={[s.nameCell, { width: NAME_W, height: ROW_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
-                                activeOpacity={0.65}
-                                onPress={() => nav.navigate("TaskDetail", { taskId: task.id, taskName: task.name })}
-                            >
-                                <View style={{ flex: 1 }}>
-                                    {(task.project?.name || task.parentTask?.name) ? (
-                                        <Text
-                                            style={{ fontSize: 10, fontWeight: "500", color: colors.textDim }}
-                                            numberOfLines={1}
-                                            ellipsizeMode="tail"
-                                        >
-                                            {task.project?.name ? (
-                                                <Text>
-                                                    <Text style={{ color: task.project.color || colors.textDim, fontSize: 9 }}>●</Text>
-                                                    {` ${task.project.name}`}
-                                                </Text>
-                                            ) : null}
-                                            {task.parentTask?.name ? (
-                                                <Text>
-                                                    {task.project?.name ? " / " : ""}
-                                                    {task.parentTask.name}
-                                                </Text>
-                                            ) : null}
-                                        </Text>
-                                    ) : null}
-                                    <Text
-                                        style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginTop: (task.project?.name || task.parentTask?.name) ? 2 : 0 }}
-                                        numberOfLines={1}
-                                        ellipsizeMode="tail"
-                                    >
-                                        {task.name}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-            ))}
-            {/* Infinite Scroll loading indicator */}
-            {hasMore && loadingMore && (
-                <View
-                    style={{
-                        paddingVertical: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: NAME_W,
-                    }}
-                >
-                    <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-            )}
-            <View style={{ height: 20 }} pointerEvents="none" />
-        </View>
-    );
+    }, [hasMore, loadingMore, nextCursor, loadMore]);
 
     const renderListSkeleton = () => {
         const rows = [1, 2, 3, 4, 5, 6];
@@ -1073,13 +900,9 @@ export default function MyBoardScreen() {
                         showsVerticalScrollIndicator={false}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchData(true); }} tintColor={colors.primary} />}
                         scrollEventThrottle={16}
-                        onScroll={(e) => {
-                            const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-                            const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 150;
-                            if (isCloseToBottom && hasMore && !loadingMore && nextCursor) {
-                                loadMore();
-                            }
-                        }}
+                        onScroll={checkAndLoadMore}
+                        onMomentumScrollEnd={checkAndLoadMore}
+                        onScrollEndDrag={checkAndLoadMore}
                     >
                         <ScrollView
                             ref={dataScrollRef}
@@ -1103,13 +926,16 @@ export default function MyBoardScreen() {
                                                 <View style={{ width: NAME_W }} />
                                                 {COLS.map(col => (
                                                     <View key={col.key} style={[s.dataCell, { width: col.w, borderRightColor: colors.border }]}>
-                                                        <Cell task={task} col={col} />
+                                                        <BoardCell task={task} col={col} colors={colors} tags={tags} />
                                                     </View>
                                                 ))}
                                             </View>
                                         ))}
                                     </View>
                                 ))}
+                                {hasMore && (
+                                    <View style={{ height: 50 }} />
+                                )}
                                 <View style={{ height: 20 }} />
                             </View>
                         </ScrollView>
@@ -1117,7 +943,17 @@ export default function MyBoardScreen() {
                         {/* Frozen Name Column (scrolls vertically with this ScrollView) */}
                         <View style={[s.frozenCol, { width: "100%", top: 0 }]} pointerEvents="box-none">
                             <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: NAME_W, backgroundColor: colors.background }} pointerEvents="none" />
-                            <NameCol />
+                            <BoardNameCol
+                                sections={sections}
+                                collapsed={collapsed}
+                                totalCount={totalCount}
+                                hasMore={hasMore}
+                                loadingMore={loadingMore}
+                                colors={colors}
+                                onToggle={toggle}
+                                onNavigate={handleNavigateToTask}
+                                onAddTask={handleOpenAddTask}
+                            />
                             <View style={[s.edgeShadow, { left: NAME_W, right: "auto" }]} pointerEvents="none" />
                         </View>
                     </ScrollView>
@@ -1661,4 +1497,206 @@ const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: "600",
     },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STABLE MODULE-LEVEL COMPONENTS
+// These MUST be defined outside any other component function so React treats
+// them as the same component type across renders (prevents unmount/remount on
+// every state update which caused the scroll-jump/glitch bug).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface BoardCellProps {
+    task: Task;
+    col: typeof COLS[0];
+    colors: any;
+    tags: any[];
+}
+
+const BoardCell = React.memo(function BoardCell({ task, col, colors, tags }: BoardCellProps) {
+    const sc = getStatusHex(task.status);
+    const bg = getStatusBgColor(task.status);
+    const urg = getUrg(task.dueDate);
+
+    switch (col.key) {
+        case "status":
+            return (
+                <View style={[s.badge, { backgroundColor: bg }]}>
+                    <Text style={[s.badgeTxt, { color: sc }]} numberOfLines={1}>
+                        {task.status.replace("_", " ")}
+                    </Text>
+                </View>
+            );
+        case "start":
+            return <Text style={[s.dateTxt, { color: colors.text }]}>{fmtDate(task.startDate)}</Text>;
+        case "due":
+            return <Text style={[s.dateTxt, { color: colors.text, fontWeight: "700" }]}>{fmtDate(task.dueDate)}</Text>;
+        case "assignee":
+            return task.assignee ? (
+                <View style={s.mem}>
+                    <View style={[s.av, { backgroundColor: colors.surfaceHighlight }]}>
+                        <Text style={[s.avTxt, { color: colors.text }]}>
+                            {(task.assignee.surname?.[0] || task.assignee.name[0]).toUpperCase()}
+                        </Text>
+                    </View>
+                    <Text style={[s.memTxt, { color: colors.text }]} numberOfLines={1}>
+                        {task.assignee.surname ? task.assignee.surname.split(" ")[0] : task.assignee.name}
+                    </Text>
+                </View>
+            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
+        case "reviewer":
+            return task.reviewer ? (
+                <View style={s.mem}>
+                    <View style={[s.av, { backgroundColor: colors.surfaceHighlight }]}>
+                        <Text style={[s.avTxt, { color: colors.text }]}>
+                            {(task.reviewer.surname?.[0] || task.reviewer.name[0]).toUpperCase()}
+                        </Text>
+                    </View>
+                    <Text style={[s.memTxt, { color: colors.text }]} numberOfLines={1}>
+                        {task.reviewer.surname ? task.reviewer.surname.split(" ")[0] : task.reviewer.name}
+                    </Text>
+                </View>
+            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
+        case "urgency":
+            return urg ? (
+                <View style={[s.urgB, { backgroundColor: urg.color + "18" }]}>
+                    <View style={[s.urgDot, { backgroundColor: urg.color }]} />
+                    <Text style={[s.urgTxt, { color: urg.color }]}>{urg.text}</Text>
+                </View>
+            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
+        case "tag": {
+            const tagObj = task.tag || (Array.isArray(task.tags) && task.tags[0]) || (task as any).Tag || (task as any).taskTag || (Array.isArray((task as any).tags) ? (task as any).tags[0] : null);
+            const tagId = task.tagId || (tagObj && typeof tagObj === "object" ? tagObj.id : null);
+            const tagName =
+                (typeof tagObj === "string" ? tagObj : null) ||
+                (tagObj && typeof tagObj === "object" ? tagObj.name : null) ||
+                (tagId ? tags.find((t: any) => String(t.id) === String(tagId))?.name : null) ||
+                (task as any).tagName;
+            return tagName ? (
+                <View style={[s.tagB, { backgroundColor: colors.surfaceHighlight }]}>
+                    <Text style={[s.tagTxt, { color: colors.textDim }]} numberOfLines={1} adjustsFontSizeToFit>
+                        {tagName}
+                    </Text>
+                </View>
+            ) : <Text style={[s.dash, { color: colors.textDim }]}>—</Text>;
+        }
+        default:
+            return null;
+    }
+});
+
+interface BoardNameColProps {
+    sections: Section[];
+    collapsed: Set<string>;
+    totalCount: number | null;
+    hasMore: boolean;
+    loadingMore: boolean;
+    colors: any;
+    onToggle: (key: string) => void;
+    onNavigate: (taskId: string, taskName: string) => void;
+    onAddTask: () => void;
+}
+
+const BoardNameCol = React.memo(function BoardNameCol({
+    sections,
+    collapsed,
+    totalCount,
+    hasMore,
+    loadingMore,
+    colors,
+    onToggle,
+    onNavigate,
+    onAddTask,
+}: BoardNameColProps) {
+    return (
+        <View pointerEvents="box-none">
+            {sections.map(section => (
+                <View key={section.key} pointerEvents="box-none">
+                    {/* Section header */}
+                    <View style={{ flexDirection: "row", width: "100%", alignItems: "center" }} pointerEvents="box-none">
+                        <TouchableOpacity
+                            style={[s.secFrozen, { width: NAME_W, height: SEC_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
+                            onPress={() => onToggle(section.key)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[s.secTitle, { color: colors.text }]}>{section.title}</Text>
+                            <View style={s.secBadge}>
+                                <Text style={[s.secBadgeTxt, { color: colors.textDim }]}>
+                                    {section.key === sections[0]?.key && totalCount !== null
+                                        ? totalCount
+                                        : section.data.length}
+                                </Text>
+                            </View>
+                            <Ionicons
+                                name={collapsed.has(section.key) ? "chevron-forward" : "chevron-down"}
+                                size={12}
+                                color={colors.textDim}
+                                style={{ marginLeft: "auto" }}
+                            />
+                        </TouchableOpacity>
+
+                        {/* Add task button */}
+                        <View style={{ flex: 1, height: SEC_H, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingRight: SPACING.md }} pointerEvents="box-none">
+                            <TouchableOpacity onPress={onAddTask} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <Ionicons name="add" size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Name cells */}
+                    {!collapsed.has(section.key) && section.data.map(task => (
+                        <TouchableOpacity
+                            key={task.id}
+                            style={[s.nameCell, { width: NAME_W, height: ROW_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
+                            activeOpacity={0.65}
+                            onPress={() => onNavigate(task.id, task.name)}
+                        >
+                            <View style={{ flex: 1 }}>
+                                {(task.project?.name || task.parentTask?.name) ? (
+                                    <Text
+                                        style={{ fontSize: 10, fontWeight: "500", color: colors.textDim }}
+                                        numberOfLines={1}
+                                        ellipsizeMode="tail"
+                                    >
+                                        {task.project?.name ? (
+                                            <Text>
+                                                <Text style={{ color: task.project.color || colors.textDim, fontSize: 9 }}>●</Text>
+                                                {` ${task.project.name}`}
+                                            </Text>
+                                        ) : null}
+                                        {task.parentTask?.name ? (
+                                            <Text>
+                                                {task.project?.name ? " / " : ""}
+                                                {task.parentTask.name}
+                                            </Text>
+                                        ) : null}
+                                    </Text>
+                                ) : null}
+                                <Text
+                                    style={{
+                                        fontSize: 13,
+                                        fontWeight: "700",
+                                        color: colors.text,
+                                        marginTop: (task.project?.name || task.parentTask?.name) ? 2 : 0,
+                                    }}
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                >
+                                    {task.name}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            ))}
+
+            {/* Loading indicator at bottom */}
+            {hasMore && (
+                <View style={{ height: 50, alignItems: "center", justifyContent: "center", width: NAME_W, backgroundColor: colors.background }}>
+                    {loadingMore ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+                </View>
+            )}
+            <View style={{ height: 20 }} pointerEvents="none" />
+        </View>
+    );
 });

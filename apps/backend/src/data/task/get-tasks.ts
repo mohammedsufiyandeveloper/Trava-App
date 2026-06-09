@@ -1036,9 +1036,9 @@ async function _getTasksInternal(
             fullAccessProjectIds, restrictedProjectIds,
             {
                 ...opts,
-                onlyParents: !hasExplicitFilters && (opts.onlyParents || (hierarchyMode === "parents")),
+                onlyParents: opts.onlyParents || (!hasExplicitFilters && (hierarchyMode === "parents")),
                 excludeParents: opts.excludeParents,
-                onlySubtasks: !hasExplicitFilters && (isSorting || opts.onlySubtasks || (hierarchyMode === "children"))
+                onlySubtasks: opts.onlySubtasks || (!hasExplicitFilters && (isSorting || (hierarchyMode === "children")))
             }
         );
 
