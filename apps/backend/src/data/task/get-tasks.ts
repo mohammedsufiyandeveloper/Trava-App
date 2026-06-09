@@ -15,6 +15,7 @@ export type TaskViewType = "list" | "kanban" | "gantt" | "calendar";
 export interface GetTasksOptions {
     workspaceId: string;
     projectId?: string;
+    projectIds?: string[];
     hierarchyMode?: "parents" | "children" | "all";
     groupBy?: "status";
 
@@ -216,6 +217,7 @@ function buildQuerySignature(
     if (opts.groupBy) f.gb = opts.groupBy;
     if (opts.filterParentTaskId) f.pt = opts.filterParentTaskId;
     if (opts.expandedProjectIds) f.ep = sortArr(opts.expandedProjectIds);
+    if (opts.projectIds) f.pids = sortArr(opts.projectIds);
     if (opts.view_mode) f.vm = opts.view_mode;
     const signature = {
         ws: workspaceId,
@@ -455,7 +457,11 @@ async function _fetchFilteredHierarchy(
             isAdmin,
             fullAccessProjectIds,
             restrictedProjectIds,
-            projectIds: (!opts.projectId && opts.expandedProjectIds?.length) ? opts.expandedProjectIds : undefined,
+            projectIds: opts.projectIds?.length
+                ? opts.projectIds
+                : (!opts.projectId && opts.expandedProjectIds?.length)
+                    ? opts.expandedProjectIds
+                    : undefined,
             includeSubTasks: opts.includeSubTasks,
             onlyParents: opts.hierarchyMode === "parents",
             onlySubtasks: opts.hierarchyMode === "children",
@@ -493,7 +499,11 @@ async function _fetchFilteredHierarchy(
             isAdmin,
             fullAccessProjectIds,
             restrictedProjectIds,
-            projectIds: (!opts.projectId && opts.expandedProjectIds?.length) ? opts.expandedProjectIds : undefined,
+            projectIds: opts.projectIds?.length
+                ? opts.projectIds
+                : (!opts.projectId && opts.expandedProjectIds?.length)
+                    ? opts.expandedProjectIds
+                    : undefined,
             includeSubTasks: false, // Don't recurse infinitely
             onlyParents: false,    // WE WANT SUBTASKS
             onlySubtasks: false,
@@ -518,7 +528,11 @@ async function _fetchFilteredHierarchy(
                 isAdmin,
                 fullAccessProjectIds,
                 restrictedProjectIds,
-                projectIds: (!opts.projectId && opts.expandedProjectIds?.length) ? opts.expandedProjectIds : undefined,
+                projectIds: opts.projectIds?.length
+                    ? opts.projectIds
+                    : (!opts.projectId && opts.expandedProjectIds?.length)
+                        ? opts.expandedProjectIds
+                        : undefined,
                 includeSubTasks: opts.includeSubTasks,
                 onlyParents: opts.hierarchyMode === "parents",
                 onlySubtasks: opts.hierarchyMode === "children",
@@ -703,7 +717,11 @@ async function _fetchWorkspaceFilter(
         isAdmin,
         fullAccessProjectIds,
         restrictedProjectIds,
-        projectIds: (!opts.projectId && opts.expandedProjectIds?.length) ? opts.expandedProjectIds : undefined,
+        projectIds: opts.projectIds?.length
+            ? opts.projectIds
+            : (!opts.projectId && opts.expandedProjectIds?.length)
+                ? opts.expandedProjectIds
+                : undefined,
         onlyParents: isSorting ? false : opts.onlyParents,
         excludeParents: opts.excludeParents,
         onlySubtasks: isSorting ? true : opts.onlySubtasks,
@@ -819,6 +837,7 @@ async function _getTasksInternal(
                 opts.onlySubtasks ||
                 opts.onlyParents ||
                 opts.excludeParents ||
+                (opts.projectIds && opts.projectIds.length > 0) ||
                 (opts.sorts && opts.sorts.length > 0)
             );
 
@@ -829,7 +848,7 @@ async function _getTasksInternal(
             projects: {} as Record<string, number>
         };
 
-        if (!projectId && !hasExplicitFilters && !opts.expandedProjectIds?.length && hierarchyMode !== "parents") {
+        if (!projectId && !hasExplicitFilters && !opts.projectIds?.length && !opts.expandedProjectIds?.length && hierarchyMode !== "parents") {
             strategy = "SAFETY_GUARD";
             return {
                 tasks: [],
@@ -917,6 +936,7 @@ async function _getTasksInternal(
             const baseWhere = buildWorkspaceFilterWhere({
                 workspaceId,
                 projectId: opts.projectId,
+                projectIds: opts.projectIds,
                 assigneeId: toArray(opts.assigneeId),
                 tagId: toArray(opts.tagId),
                 search: opts.search,

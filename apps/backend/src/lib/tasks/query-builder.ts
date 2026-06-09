@@ -8,16 +8,13 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
     const isSearch = view_mode === "search";
     const isSubtask = view_mode === "subtask";
 
-    // 1. Core fields required everywhere
+    // Core list fields. Full descriptions and audit relations belong to the
+    // task-detail endpoint, not every card in a paginated collection.
     const select: Prisma.TaskSelect = {
         id: true,
         name: true,
-        taskSlug: true,
         status: true,
         dueDate: true,
-        subtaskCount: true,
-        completedSubtaskCount: true,
-        description: true,
         startDate: true,
         days: true,
 
@@ -37,69 +34,70 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
         assigneeId: true,
     };
 
-    // Include detailed createdBy only if NOT in Gantt view to save on payload/joins
-    if (!isGantt) {
-        select.createdBy = {
-            select: {
-                id: true,
-                WorkspaceMember: { select: { userId: true, user: { select: { id: true, surname: true } } } }
-            }
-        };
+    if (isList || isSearch || isSubtask || isCalendar) {
+        select.taskSlug = true;
+        select.subtaskCount = true;
+        select.completedSubtaskCount = true;
     }
 
-    // 2. Metadata: Tags & Comment Counts
-    // Uniformly added to most views for UI consistency
-    if (isKanban || isList || isSearch || isGantt || isCalendar || isSubtask) {
+    // Kanban renders comment counts. List/subtask views use subtask counts.
+    if (isKanban) {
         select._count = {
             select: {
                 Activity: true,
-                subTasks: true
             }
         };
+    } else if (isList || isSearch || isCalendar || isSubtask) {
+        select._count = {
+            select: {
+                subTasks: true,
+            },
+        };
+    }
+
+    if (isKanban || isList || isSearch || isCalendar || isSubtask) {
         select.Tag = { select: { id: true, name: true } };
     }
 
-    // 3. Project & Parent Context
-    // Essential for workspace views and search results
+    // Project and parent identity are required by collection views.
     if (isKanban || isSearch || isList || isGantt || isSubtask || isCalendar) {
         select.project = {
             select: {
                 id: true,
                 name: true,
                 color: true,
-                // Only managers/leads are needed per task (the mobile client maps
-                // these into project.projectManagers and DISCARDS every other
-                // member). Filtering here — and dropping email/image-less user
-                // fields the client never reads — removes the largest source of
-                // repeated per-task payload. Full membership lives on the
-                // dedicated project-detail endpoint, not on every task.
-                projectMembers: {
-                    where: { projectRole: { in: ["PROJECT_MANAGER", "LEAD"] } },
-                    select: {
-                        projectRole: true,
-                        WorkspaceMember: {
+                ...(isKanban || isList || isSearch || isSubtask
+                    ? {
+                        // Only managers/leads are needed by task cards. Full
+                        // project membership is fetched from project detail.
+                        projectMembers: {
+                            where: { projectRole: { in: ["PROJECT_MANAGER", "LEAD"] } },
                             select: {
-                                user: {
+                                projectRole: true,
+                                WorkspaceMember: {
                                     select: {
-                                        id: true,
-                                        name: true,
-                                        surname: true,
-                                        image: true,
+                                        user: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                surname: true,
+                                                image: true,
+                                            },
+                                        },
                                     }
-                                }
-                            }
-                        }
+                                },
+                            },
+                        },
                     }
-                }
-            }
+                    : {}),
+            },
         };
         select.parentTask = {
             select: { id: true, name: true }
         };
     }
 
-    // 4. Extended Info: Description & Reviewer
-    // Omit Reviewer for Gantt view to save on joins and payload size
+    // Reviewer is displayed in tabular list-like views, not Kanban/Gantt.
     if (isList || isSearch || isSubtask || isCalendar) {
         select.reviewer = {
             select: {
@@ -109,7 +107,7 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
         };
     }
 
-    // 5. specialized view fields
+    // Specialized view fields.
     if (isList || isGantt || isCalendar || isSubtask) {
         select.position = true;
     }

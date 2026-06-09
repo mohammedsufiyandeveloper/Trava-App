@@ -120,6 +120,7 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
                 projectId: projectId,
                 hierarchyMode: "parents",
                 includeSubTasks: true,
+                view_mode: "list",
                 // Clamped to the API hard max (200). Projects exceeding this need
                 // pagination on this screen (tracked as residual risk in the audit doc).
                 limit: 200,

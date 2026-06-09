@@ -1,6 +1,6 @@
 # Trava API Performance Audit
 
-Status: **Phase 1 (inventory) complete · high-confidence fixes implemented · runtime/DB phases blocked on credentials**
+Status: **Phase 2 complete · DTO, pagination, and Kanban request consolidation implemented · runtime/DB phases blocked on credentials**
 Scope: every API used by the Trava mobile app (`apps/backend` + `apps/mobile/src/services/api.ts`).
 Method: static source analysis with file:line evidence. No production DB or secrets were accessed.
 
@@ -23,7 +23,8 @@ Mounted under `basePath("/api")` in `src/hono/index.ts`. Auth: `authMiddleware` 
 | GET | /projects?projectId | routes/projects.ts:21 | `prisma.project.findUnique` | `getProject` (273) | full include, member arrays |
 | POST/PATCH/DELETE | /projects | projects.ts:112/167/189 | project actions | create/update/delete | — |
 | GET/POST/PATCH/DELETE | /projects/:id/members | projects.ts:214+ | member actions | members CRUD | — |
-| GET | /tasks | routes/tasks.ts:19 | `getTasks` | `getTasks` (388) | **default limit 500 (clamped)** |
+| GET | /tasks | routes/tasks.ts | `getTasks` | `getTasks` | view-aware limits and projections |
+| GET | /tasks/kanban | routes/tasks.ts | `getKanbanBoard` | `getKanbanBoard` | one initial board request |
 | GET | /tasks/count | routes/tasks.ts:88 | count query | `getTasksCount` (476) | separate count request |
 | GET | /tasks/:id | tasks.ts:358 | task fetch | `getTaskById` (541) | — |
 | GET | /tasks/:id/subtasks | tasks.ts:397 | subtasks | `getSubTasks` (519) | — |
@@ -67,9 +68,9 @@ Mobile client makes **78** `apiFetch(...)` calls (`api.ts`). Dead/duplicate rout
 
 ---
 
-## 3. Implemented in this pass (safe, contract-verified)
+## 3. Implemented and contract-verified
 
-All changes typecheck clean and keep the backend test suite at **60/60**.
+Backend and mobile typecheck clean. The backend suite now contains **71 tests**.
 
 ### Fix F1 — honor `lite=true` (payload reduction, no UX regression)
 - `routes/projects.ts`: read `?lite=true` and pass to `getUserProjects(workspaceId, lite)`.
@@ -77,8 +78,41 @@ All changes typecheck clean and keep the backend test suite at **60/60**.
 - **Safety proof:** the only lite-list consumers are `WorkspaceContext` (reads none of the dropped fields) and `ProjectsScreen` (renders `item.description`, now preserved). `ProjectKanban` and `EditProjectModal` read `projectMembers`/managers from the **separate full** `getProject(projectId)` endpoint (ProjectKanban.tsx:143, api.ts:273) — unchanged.
 - **Expected effect:** large drop in `/projects?lite=true` payload (eliminates N member-objects + emails per project). Exact KB delta to be measured (see §5).
 
-### Fix F2 — clamp `/tasks` page size
-- `routes/tasks.ts`: NaN-guard + clamp to `[1, 500]`. Default **kept at 500** intentionally (Gantt/list currently rely on a single large page; lowering the default is a coordinated mobile-pagination change tracked for a later step). This strictly prevents abusive/accidental huge fetches without altering any valid existing call.
+### Fix F2 — view-aware pagination
+- Default limits: list/default/search/subtask `25`, Kanban `10`, calendar `50`, Gantt `150`.
+- Hard maximum: `200`; invalid, zero, negative, and NaN values fall back to the view default.
+- Mobile workflows that intentionally load larger collections now send explicit limits.
+- Repeated `projectId` query parameters are preserved instead of silently using only the first project.
+
+### Fix F4 — consolidated workspace Kanban
+- Added `GET /api/tasks/kanban`.
+- Initial load and pull-to-refresh now use one authenticated HTTP request instead of approximately 12 requests for admins and up to 18 for project managers.
+- The backend resolves permissions once, executes one grouped count, and performs one bounded first-page query per status.
+- Per-column load-more remains one targeted cursor request through `GET /api/tasks`.
+
+### View-specific task DTOs
+- `view_mode` is validated and propagated by `GET /api/tasks`.
+- List/Kanban/Gantt rows no longer include task descriptions or creator relations.
+- Gantt rows omit tags, aggregate counts, reviewers, and repeated project-manager data.
+- List/Kanban task project metadata includes only project managers/leads, without email addresses, instead of every project member.
+
+### Deterministic payload fixture
+
+Run:
+
+```bash
+node apps/backend/scripts/measure-task-payload.mjs
+```
+
+Representative Kanban payload with a 20-member project:
+
+| Tasks | Previous bytes | Optimized bytes | Reduction |
+|---:|---:|---:|---:|
+| 1 | 4,286 | 703 | 83.6% |
+| 15 | 64,291 | 10,541 | 83.6% |
+| 100 | 428,771 | 70,381 | 83.6% |
+
+These are fixture serialization measurements, not production latency claims.
 
 ---
 
@@ -86,12 +120,10 @@ All changes typecheck clean and keep the backend test suite at **60/60**.
 
 Following the requested delivery order; each needs its own verification.
 
-1. **Consolidate Kanban → `GET /tasks/kanban?workspaceId=`** returning first-page tasks for all statuses + grouped counts in **1 request** (replaces F4's ~12). Backend: single grouped query (`groupBy status` for counts + windowed first-N per status). Mobile: replace `fetchKanbanColumn` loop.
-2. **Task-detail consolidation → `GET /tasks/:id/detail`** returning task + subtasks + first page of comments/activities; paginate the rest (fixes F5/F6).
-3. **Real caching (F3)** — replace no-op wrappers with a shared store (Upstash/Redis) for `workspaces`, `project-lite`, `tags`, `members/reference-data`, `permissions`, with documented TTL + tag invalidation. Do **not** rely on process-local maps in serverless.
-4. **Auth (F7)** — add authorization tests first, then for bearer requests prefer the indexed `findUnique({where:{token}})` and avoid the redundant `getSession` round-trip. Memoize the single validation per request.
-5. **DTO projections** for task-list / kanban / gantt / detail (stop returning project-member arrays inside every task).
-6. **DB indexes** — verify prod indexes vs `prisma/schema.prisma`; add only `EXPLAIN`-backed indexes for `workspaceId`, `projectId`, `parentTaskId`, `assigneeId`, `status`, `dueDate`, `createdAt`, cursor ordering.
+1. **Task-detail consolidation → `GET /tasks/:id/detail`** returning task + subtasks + first page of comments/activities; paginate the rest (fixes F5).
+2. **Real caching (F3)** — replace no-op wrappers with a shared store for `workspaces`, `project-lite`, `tags`, reference data, and permissions, with documented invalidation.
+3. **Auth (F7)** — add authorization tests first, then avoid redundant bearer-session lookups.
+4. **DB indexes** — verify production indexes and add only `EXPLAIN`-backed migrations.
 
 ---
 
@@ -110,7 +142,7 @@ Run these once a safe staging DB + deployed instance are available; record resul
 cached/reference reads p95 < 200 ms · normal DB reads p95 < 400 ms · complex task queries p95 < 600 ms · workspace usable < 1 s · **Kanban 1–2 requests (not 12–18)** · task-detail 1–2 requests · typical list payloads < 100–150 KB · no unpaginated growing collections · error rate < 0.5%.
 
 ## 7. Rollback
-All changes in this pass are isolated to 3 backend files and are additive/guarded:
-- Revert F1: restore `getUserProjects(workspaceId)` and remove `description`/`workspaceId` from the lite select.
-- Revert F2: restore `const limit = c.req.query("limit") ? parseInt(...) : 500;`.
-No migrations, no schema, no data changes. `git checkout -- apps/backend/src/hono/routes/projects.ts apps/backend/src/hono/routes/tasks.ts apps/backend/src/data/project/get-projects.ts`.
+No migrations or data changes were introduced. Roll back Phase 2 by reverting
+the task route/data/projection changes together with the mobile API and
+`MyBoardScreen` integration; the previous deployment bundle remains available
+through normal Vercel rollback.

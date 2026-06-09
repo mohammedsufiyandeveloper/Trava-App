@@ -12,6 +12,7 @@ import { editTask } from "@/actions/task/update-task";
 import { getSubTasksByParentIds } from "@/data/task/get-subtasks-batch";
 import { invalidateTaskMutation } from "@/lib/cache/invalidation";
 import { buildWorkspaceFilterWhere } from "@/lib/tasks/query-builder";
+import { getKanbanBoard } from "@/data/task/get-kanban";
 
 const tasks = new Hono<{ Variables: HonoVariables }>();
 
@@ -23,13 +24,17 @@ tasks.get("/", async (c) => {
         return c.json({ error: "Missing workspaceId" }, 400);
     }
 
-    const projectId = c.req.query("projectId") || undefined;
+    const requestedProjectIds = c.req.queries("projectId") || [];
+    const projectId = requestedProjectIds.length === 1
+        ? requestedProjectIds[0]
+        : undefined;
     const status = c.req.queries("status") || [];
     const assigneeId = c.req.queries("assigneeId") || [];
     const tagId = c.req.queries("tagId") || [];
     const search = c.req.query("search") || undefined;
     const dueAfter = c.req.query("dueAfter") || undefined;
     const dueBefore = c.req.query("dueBefore") || undefined;
+    const filterParentTaskId = c.req.query("parentId") || undefined;
     const sortsParam = c.req.queries("sorts") || [];
 
     const hierarchyMode = (c.req.query("hierarchyMode") as "parents" | "children" | "all") || "parents";
@@ -84,12 +89,14 @@ tasks.get("/", async (c) => {
     const opts: GetTasksOptions = {
         workspaceId,
         projectId,
+        projectIds: requestedProjectIds.length > 1 ? requestedProjectIds : undefined,
         status: status.length > 0 ? status : undefined,
         assigneeId: assigneeId.length > 0 ? assigneeId : undefined,
         tagId: tagId.length > 0 ? tagId : undefined,
         search,
         dueAfter,
         dueBefore,
+        filterParentTaskId,
         sorts: sorts.length > 0 ? sorts : undefined,
         limit,
         view_mode,
@@ -115,6 +122,59 @@ tasks.get("/", async (c) => {
     }
 });
 
+// GET /api/tasks/kanban
+// One HTTP bootstrap for every board column. The implementation performs one
+// grouped count plus one bounded query per status, all under the same resolved
+// permission scope.
+tasks.get("/kanban", async (c) => {
+    const user = c.get("user");
+    const workspaceId = c.req.query("workspaceId");
+    if (!workspaceId) {
+        return c.json({ success: false, error: "Missing workspaceId" }, 400);
+    }
+
+    const projectIds = c.req.queries("projectId") || [];
+    const assigneeIds = c.req.queries("assigneeId") || [];
+    const tagIds = c.req.queries("tagId") || [];
+    const search = c.req.query("search") || undefined;
+    const rawPageSize = c.req.query("pageSize");
+    const parsedPageSize = rawPageSize ? parseInt(rawPageSize, 10) : 10;
+    const pageSize = Number.isFinite(parsedPageSize) && parsedPageSize > 0
+        ? Math.min(parsedPageSize, 25)
+        : 10;
+
+    const toDate = (value?: string) => {
+        if (!value) return undefined;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? undefined : date;
+    };
+    const dueBefore = toDate(c.req.query("dueBefore"));
+    if (dueBefore) {
+        dueBefore.setUTCDate(dueBefore.getUTCDate() + 1);
+    }
+
+    try {
+        const result = await getKanbanBoard({
+            workspaceId,
+            projectIds: projectIds.length > 0 ? projectIds : undefined,
+            assigneeIds: assigneeIds.length > 0 ? assigneeIds : undefined,
+            tagIds: tagIds.length > 0 ? tagIds : undefined,
+            search,
+            dueAfter: toDate(c.req.query("dueAfter")),
+            dueBefore,
+            pageSize,
+        }, user.id);
+
+        return c.json({ success: true, columns: result.columns });
+    } catch (error: any) {
+        console.error("Hono API Error [Tasks Kanban GET]:", error);
+        return c.json({
+            success: false,
+            error: error.message || "Internal Server Error",
+        }, 500);
+    }
+});
+
 // GET /api/tasks/count
 tasks.get("/count", async (c) => {
     const user = c.get("user");
@@ -123,7 +183,10 @@ tasks.get("/count", async (c) => {
         return c.json({ error: "Missing workspaceId" }, 400);
     }
 
-    const projectId = c.req.query("projectId") || undefined;
+    const requestedProjectIds = c.req.queries("projectId") || [];
+    const projectId = requestedProjectIds.length === 1
+        ? requestedProjectIds[0]
+        : undefined;
     const status = c.req.queries("status") || [];
     const assigneeId = c.req.queries("assigneeId") || [];
     const tagId = c.req.queries("tagId") || [];
@@ -156,6 +219,7 @@ tasks.get("/count", async (c) => {
         const where = buildWorkspaceFilterWhere({
             workspaceId,
             projectId,
+            projectIds: requestedProjectIds.length > 1 ? requestedProjectIds : undefined,
             assigneeId: assigneeId.length > 0 ? assigneeId : undefined,
             status: status.length > 0 ? status : undefined,
             tagId: tagId.length > 0 ? tagId : undefined,

@@ -15,7 +15,7 @@ import ReviewCommentModal from "../components/ReviewCommentModal";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
-import { getTasks, getTasksCount, getCachedSession, updateTask } from "../services/api";
+import { getTasks, getTasksCount, getKanbanBoard, getCachedSession, updateTask } from "../services/api";
 import { Task, User } from "../types";
 import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
 import { useResponsive } from "../hooks/useResponsive";
@@ -223,6 +223,7 @@ export default function MyBoardScreen() {
                 const buildFilters = (extra: object = {}) => ({
                     ...filters,
                     onlySubtasks: true,
+                    view_mode: filters.search ? "search" : "list",
                     limit: PAGE_SIZE,
                     cursor: cursor ?? undefined,
                     ...extra,
@@ -301,104 +302,93 @@ export default function MyBoardScreen() {
     }, [hasMore, loadingMore, nextCursor, fetchData]);
 
     // ── Per-column Kanban fetch ──────────────────────────────────────────────
-    const fetchKanbanColumn = useCallback(async (status: KanbanStatus, reset = false) => {
+    const fetchKanbanColumn = useCallback(async (status: KanbanStatus) => {
         if (!activeWorkspace || !currentUser) return;
 
         setKanbanCols(prev => ({
             ...prev,
-            [status]: { ...prev[status], loadingMore: !reset, initialized: !reset ? prev[status].initialized : false }
+            [status]: { ...prev[status], loadingMore: true }
         }));
 
-        const cursor = reset ? undefined : (kanbanCols[status].nextCursor ?? undefined);
+        const cursor = kanbanCols[status].nextCursor ?? undefined;
         const KANBAN_PAGE = 10;
-
-        const isPM = managedProjectIds.length > 0;
         const isMyTasksMode = ownerViewMode === "Personal";
 
         const baseFilters: Parameters<typeof getTasks>[1] = {
             ...filters,
             onlySubtasks: true,
             status: [status],
+            view_mode: "kanban",
             limit: KANBAN_PAGE,
             cursor: cursor ?? undefined,
+            assigneeId: isMyTasksMode && currentUser.id
+                ? [currentUser.id]
+                : filters.assigneeId,
         };
 
         try {
-            let result: { tasks: Task[]; hasMore: boolean; nextCursor: { id: string; createdAt: string } | null };
-            let columnTotal = 0;
-
-            if (isMyTasksMode) {
-                const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
-                const countFilters = { ...filters, onlySubtasks: true, status: [status], ...assigneeFilter };
-                [result, columnTotal] = await Promise.all([
-                    getTasks(activeWorkspace.id, { ...baseFilters, ...assigneeFilter }),
-                    reset ? getTasksCount(activeWorkspace.id, countFilters) : Promise.resolve(kanbanCols[status].totalCount ?? 0),
-                ]);
-            } else if (isWorkspaceAdmin) {
-                const countFilters = { ...filters, onlySubtasks: true, status: [status] };
-                [result, columnTotal] = await Promise.all([
-                    getTasks(activeWorkspace.id, baseFilters),
-                    reset ? getTasksCount(activeWorkspace.id, countFilters) : Promise.resolve(kanbanCols[status].totalCount ?? 0),
-                ]);
-            } else if (isPM) {
-                const selectedProjectIds = filters.projectId && filters.projectId.length > 0 ? filters.projectId : null;
-                const pmManagedProjectIds = selectedProjectIds
-                    ? managedProjectIds.filter(id => selectedProjectIds.includes(id))
-                    : managedProjectIds;
-
-                const managedFilter = { projectId: pmManagedProjectIds };
-                const assigneeFilter = {
-                    assigneeId: currentUser.id ? [currentUser.id] : undefined,
-                    projectId: selectedProjectIds || undefined
-                };
-
-                const [managed, assigned, managedCount] = await Promise.all([
-                    pmManagedProjectIds.length > 0
-                        ? getTasks(activeWorkspace.id, { ...baseFilters, ...managedFilter })
-                        : Promise.resolve({ tasks: [], hasMore: false, nextCursor: null }),
-                    getTasks(activeWorkspace.id, { ...baseFilters, ...assigneeFilter }),
-                    (reset && pmManagedProjectIds.length > 0)
-                        ? getTasksCount(activeWorkspace.id, { ...filters, onlySubtasks: true, status: [status], ...managedFilter })
-                        : Promise.resolve(kanbanCols[status].totalCount ?? 0),
-                ]);
-                const seen = new Set<string>();
-                const merged: Task[] = [];
-                for (const t of [...(managed?.tasks || []), ...assigned.tasks]) {
-                    if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
-                }
-                result = { tasks: merged, hasMore: (managed?.hasMore || false) || assigned.hasMore, nextCursor: (managed?.nextCursor || null) || assigned.nextCursor };
-                columnTotal = managedCount;
-            } else {
-                const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
-                const countFilters = { ...filters, onlySubtasks: true, status: [status], ...assigneeFilter };
-                [result, columnTotal] = await Promise.all([
-                    getTasks(activeWorkspace.id, { ...baseFilters, ...assigneeFilter }),
-                    reset ? getTasksCount(activeWorkspace.id, countFilters) : Promise.resolve(kanbanCols[status].totalCount ?? 0),
-                ]);
-            }
+            const result = await getTasks(activeWorkspace.id, baseFilters);
 
             setKanbanCols(prev => ({
                 ...prev,
                 [status]: {
-                    tasks: reset ? result.tasks.filter(t => !t.isParent) : [...prev[status].tasks, ...result.tasks.filter(t => !t.isParent && !prev[status].tasks.find(p => p.id === t.id))],
+                    tasks: [
+                        ...prev[status].tasks,
+                        ...result.tasks.filter(
+                            t => !t.isParent && !prev[status].tasks.find(p => p.id === t.id)
+                        ),
+                    ],
                     hasMore: result.hasMore,
                     nextCursor: result.nextCursor,
                     loadingMore: false,
                     initialized: true,
-                    totalCount: reset ? columnTotal : prev[status].totalCount,
+                    totalCount: prev[status].totalCount,
                 }
             }));
         } catch (e) {
             console.error(`[Kanban] Failed to fetch column ${status}:`, e);
             setKanbanCols(prev => ({ ...prev, [status]: { ...prev[status], loadingMore: false, initialized: true } }));
         }
-    }, [activeWorkspace, currentUser, isWorkspaceAdmin, managedProjectIds, ownerViewMode, filters, kanbanCols]);
+    }, [activeWorkspace, currentUser, ownerViewMode, filters, kanbanCols]);
 
     const refreshKanbanCols = useCallback(async () => {
+        if (!activeWorkspace || !currentUser) return;
         setKanbanRefreshing(true);
-        await Promise.all(KANBAN_STATUSES.map(s => fetchKanbanColumn(s, true)));
-        setKanbanRefreshing(false);
-    }, [fetchKanbanColumn]);
+        try {
+            const isMyTasksMode = ownerViewMode === "Personal";
+            const columns = await getKanbanBoard(activeWorkspace.id, {
+                projectId: filters.projectId?.length ? filters.projectId : undefined,
+                assigneeId: isMyTasksMode && currentUser.id
+                    ? [currentUser.id]
+                    : filters.assigneeId,
+                tagId: filters.tagId,
+                search: filters.search || undefined,
+                dueAfter: filters.dueAfter || undefined,
+                dueBefore: filters.dueBefore || undefined,
+                pageSize: 10,
+            });
+
+            setKanbanCols((previous) => {
+                const next = { ...previous };
+                KANBAN_STATUSES.forEach((status) => {
+                    const column = columns[status];
+                    next[status] = {
+                        tasks: column?.tasks ?? [],
+                        totalCount: column?.totalCount ?? 0,
+                        hasMore: column?.hasMore ?? false,
+                        nextCursor: column?.nextCursor ?? null,
+                        loadingMore: false,
+                        initialized: true,
+                    };
+                });
+                return next;
+            });
+        } catch (error) {
+            console.error("[Kanban] Failed to refresh board:", error);
+        } finally {
+            setKanbanRefreshing(false);
+        }
+    }, [activeWorkspace, currentUser, ownerViewMode, filters]);
 
     const handleLongPress = (task: Task) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -472,13 +462,13 @@ export default function MyBoardScreen() {
         }
 
         try {
-            const isPM = managedProjectIds.length > 0;
             const isMyTasksMode = ownerViewMode === "Personal";
             const GANTT_LIMIT = 150; // generous limit for Gantt chart to show all workspace tasks
 
             const buildGanttFilters = (extra: object = {}) => ({
                 ...filters,
                 hierarchyMode: "parents" as const,
+                view_mode: "gantt",
                 limit: GANTT_LIMIT,
                 ...extra,
             });
@@ -488,43 +478,10 @@ export default function MyBoardScreen() {
             if (isMyTasksMode) {
                 const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
                 result = await getTasks(activeWorkspace.id, buildGanttFilters(assigneeFilter));
-            } else if (isWorkspaceAdmin) {
-                result = await getTasks(activeWorkspace.id, buildGanttFilters());
-            } else if (isPM) {
-                // PM mode: merge managed + assigned
-                const selectedProjectIds = filters.projectId && filters.projectId.length > 0 ? filters.projectId : null;
-                const pmManagedProjectIds = selectedProjectIds
-                    ? managedProjectIds.filter(id => selectedProjectIds.includes(id))
-                    : managedProjectIds;
-
-                const managedFilter = { projectId: pmManagedProjectIds };
-                const assigneeFilter = {
-                    assigneeId: currentUser.id ? [currentUser.id] : undefined,
-                    projectId: selectedProjectIds || undefined
-                };
-
-                const [managedResult, assignedResult] = await Promise.all([
-                    pmManagedProjectIds.length > 0
-                        ? getTasks(activeWorkspace.id, buildGanttFilters(managedFilter))
-                        : Promise.resolve({ tasks: [], hasMore: false, nextCursor: null }),
-                    getTasks(activeWorkspace.id, buildGanttFilters(assigneeFilter)),
-                ]);
-                const seen = new Set<string>();
-                const merged: Task[] = [];
-                for (const t of [...(managedResult?.tasks || []), ...assignedResult.tasks]) {
-                    if (!seen.has(t.id)) {
-                        seen.add(t.id);
-                        merged.push(t);
-                    }
-                }
-                result = {
-                    tasks: merged.slice(0, GANTT_LIMIT),
-                    hasMore: (managedResult?.hasMore || false) || assignedResult.hasMore,
-                    nextCursor: (managedResult?.nextCursor || null) || assignedResult.nextCursor,
-                };
             } else {
-                const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
-                result = await getTasks(activeWorkspace.id, buildGanttFilters(assigneeFilter));
+                // Server-side permission scoping already combines full-access
+                // projects with assigned-only projects for managers/members.
+                result = await getTasks(activeWorkspace.id, buildGanttFilters());
             }
 
             setGanttTasks(result.tasks);
@@ -534,7 +491,7 @@ export default function MyBoardScreen() {
             setGanttLoading(false);
             setGanttRefreshing(false);
         }
-    }, [activeWorkspace?.id, isWorkspaceAdmin, managedProjectIds, filters, ownerViewMode, currentUser]);
+    }, [activeWorkspace?.id, filters, ownerViewMode, currentUser]);
 
     // Unified layout synchronization effect
     useEffect(() => {

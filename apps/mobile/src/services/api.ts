@@ -453,6 +453,52 @@ export async function getTasks(
     }
 }
 
+export type KanbanColumnResponse = {
+    tasks: Task[];
+    totalCount: number;
+    hasMore: boolean;
+    nextCursor: { id: string; createdAt: string } | null;
+};
+
+export async function getKanbanBoard(
+    workspaceId: string,
+    filters: {
+        projectId?: string[];
+        assigneeId?: string[];
+        tagId?: string[];
+        search?: string;
+        dueAfter?: string;
+        dueBefore?: string;
+        pageSize?: number;
+    } = {}
+): Promise<Record<string, KanbanColumnResponse>> {
+    const params = new URLSearchParams({ workspaceId });
+    params.set("pageSize", String(filters.pageSize ?? 10));
+    if (filters.search) params.set("search", filters.search);
+    if (filters.dueAfter) params.set("dueAfter", filters.dueAfter);
+    if (filters.dueBefore) params.set("dueBefore", filters.dueBefore);
+    filters.projectId?.forEach((id) => params.append("projectId", id));
+    filters.assigneeId?.forEach((id) => params.append("assigneeId", id));
+    filters.tagId?.forEach((id) => params.append("tagId", id));
+
+    const res = await apiFetch(`/api/tasks/kanban?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch Kanban board (${res.status})`);
+    }
+
+    const data = await res.json();
+    const columns = data?.columns ?? {};
+    return Object.fromEntries(
+        Object.entries(columns).map(([status, column]: [string, any]) => [
+            status,
+            {
+                ...column,
+                tasks: (column.tasks ?? []).map(mapTask),
+            },
+        ])
+    );
+}
+
 /**
  * Fetch the total count of tasks matching the given filters.
  * This is a lightweight COUNT query — no task data is fetched.
@@ -1519,7 +1565,6 @@ export async function rejectIndentLineItem(workspaceId: string, itemId: string, 
     }
     return data;
 }
-
 
 
 

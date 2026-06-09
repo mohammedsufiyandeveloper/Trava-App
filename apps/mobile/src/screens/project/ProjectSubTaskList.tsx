@@ -53,6 +53,7 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                 const result = await getTasks(activeWorkspace.id, {
                     projectId: projectId,
                     hierarchyMode: "children",
+                    view_mode: "subtask",
                     limit: 200,
                 });
                 data = result.tasks;
@@ -77,7 +78,12 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
         const fetchParents = async () => {
             if (!activeWorkspace?.id || !projectId) return;
             try {
-                const result = await getTasks(activeWorkspace.id, { projectId, hierarchyMode: "all", limit: 200 });
+                const result = await getTasks(activeWorkspace.id, {
+                    projectId,
+                    hierarchyMode: "all",
+                    view_mode: "list",
+                    limit: 200,
+                });
                 const onlyParents = result.tasks.filter(t => !t.parentTaskId).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
                 setParentTasks(onlyParents);
             } catch (e) {
