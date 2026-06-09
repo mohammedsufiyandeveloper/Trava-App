@@ -36,7 +36,37 @@ tasks.get("/", async (c) => {
     const excludeParents = c.req.query("excludeParents") === "true";
     const onlySubtasks = c.req.query("onlySubtasks") === "true";
     const includeSubTasksParam = c.req.query("includeSubTasks") === "true";
-    const limit = c.req.query("limit") ? parseInt(c.req.query("limit")!, 10) : 500;
+
+    // ── view_mode: drives the per-task projection (getTaskSelect). The mobile
+    // client sends it; previously it was dropped here so view-specific
+    // projections never activated. Validate against supported values and fall
+    // back to "list".
+    const SUPPORTED_VIEW_MODES = ["default", "list", "kanban", "gantt", "calendar", "search", "subtask"] as const;
+    type ViewMode = typeof SUPPORTED_VIEW_MODES[number];
+    const rawViewMode = c.req.query("view_mode");
+    const view_mode: ViewMode = (SUPPORTED_VIEW_MODES as readonly string[]).includes(rawViewMode ?? "")
+        ? (rawViewMode as ViewMode)
+        : "list";
+
+    // ── Pagination: per-view default page sizes with a single hard maximum.
+    // Integer-validated; NaN/zero/negative fall back to the view default;
+    // anything above MAX_LIMIT is clamped. Replaces the previous unbounded 500.
+    const VIEW_DEFAULT_LIMIT: Record<ViewMode, number> = {
+        default: 25,
+        list: 25,
+        kanban: 10,
+        gantt: 150,
+        calendar: 50,
+        search: 25,
+        subtask: 25,
+    };
+    const MAX_LIMIT = 200;
+    const viewDefault = VIEW_DEFAULT_LIMIT[view_mode];
+    const rawLimit = c.req.query("limit");
+    const parsedLimit = rawLimit !== undefined ? parseInt(rawLimit, 10) : viewDefault;
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_LIMIT)
+        : viewDefault;
 
     const cursorId = c.req.query("cursorId") || undefined;
     const cursorCreatedAt = c.req.query("cursorCreatedAt") || undefined;
@@ -62,6 +92,7 @@ tasks.get("/", async (c) => {
         dueBefore,
         sorts: sorts.length > 0 ? sorts : undefined,
         limit,
+        view_mode,
         includeSubTasks: includeSubTasksParam || hierarchyMode === "all",
         hierarchyMode,
         excludeParents,

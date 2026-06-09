@@ -120,7 +120,9 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
                 projectId: projectId,
                 hierarchyMode: "parents",
                 includeSubTasks: true,
-                limit: 1000,
+                // Clamped to the API hard max (200). Projects exceeding this need
+                // pagination on this screen (tracked as residual risk in the audit doc).
+                limit: 200,
                 // The backend already filters tasks for members based on the session userId,
                 // so we don't need to pass assigneeId explicitly here unless we want to filter by SOMEONE ELSE.
                 assigneeId: undefined,

@@ -48,10 +48,16 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
     const isManager = workspaceMember.workspaceRole === "MANAGER";
 
     const projectSelect: any = lite ? {
+        // Lite projection for list/picker views: everything the Projects list and
+        // workspace project pickers render, WITHOUT the heavy projectMembers array
+        // (per-member user objects incl. emails) or _count. `description` is kept
+        // because the Projects list renders it.
         id: true,
+        workspaceId: true,
         name: true,
         slug: true,
         color: true,
+        description: true,
     } : {
         id: true,
         name: true,

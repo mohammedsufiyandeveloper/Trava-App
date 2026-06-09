@@ -114,6 +114,10 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                 onlySubtasks: true,
                 parentId: parentId,
                 view_mode: "kanban",
+                // This client-side-grouped board fetches the project's cards in one
+                // call; request the hard max. Projects with >200 cards need the
+                // consolidated /tasks/kanban endpoint (tracked in the audit doc).
+                limit: 200,
             });
             setLocalTasks(result.tasks);
         } catch (error) {

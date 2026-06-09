@@ -97,7 +97,12 @@ export const projectsRouter = new Hono<{ Variables: HonoVariables }>()
                 return c.json({ error: "Missing workspaceId" }, 400);
             }
 
-            const projects = await getUserProjects(workspaceId);
+            // Honor ?lite=true (mobile sends it for list/picker views). The lite
+            // projection drops the heavy projectMembers array + per-member emails,
+            // cutting list payload size substantially without affecting the
+            // full-detail endpoint used by project detail/edit screens.
+            const lite = c.req.query("lite") === "true";
+            const projects = await getUserProjects(workspaceId, lite);
             return c.json({
                 success: true,
                 projects: projects

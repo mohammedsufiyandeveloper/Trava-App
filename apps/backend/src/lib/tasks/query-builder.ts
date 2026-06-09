@@ -67,7 +67,14 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
                 id: true,
                 name: true,
                 color: true,
+                // Only managers/leads are needed per task (the mobile client maps
+                // these into project.projectManagers and DISCARDS every other
+                // member). Filtering here — and dropping email/image-less user
+                // fields the client never reads — removes the largest source of
+                // repeated per-task payload. Full membership lives on the
+                // dedicated project-detail endpoint, not on every task.
                 projectMembers: {
+                    where: { projectRole: { in: ["PROJECT_MANAGER", "LEAD"] } },
                     select: {
                         projectRole: true,
                         WorkspaceMember: {
@@ -78,7 +85,6 @@ export function getTaskSelect(view_mode: string = "list"): Prisma.TaskSelect {
                                         name: true,
                                         surname: true,
                                         image: true,
-                                        email: true
                                     }
                                 }
                             }

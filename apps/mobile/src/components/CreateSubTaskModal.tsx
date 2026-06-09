@@ -188,7 +188,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
             setLoadingTasks(true);
             try {
                 // Fetch ONLY parent tasks (not subtasks) to be parents
-                const result = await getTasks(activeWorkspace.id, { projectId: selectedProjectId, hierarchyMode: "parents" });
+                const result = await getTasks(activeWorkspace.id, { projectId: selectedProjectId, hierarchyMode: "parents", limit: 200 });
                 setFetchedTasks(result.tasks);
             } catch (err) {
                 console.error("Failed fetching project tasks", err);

@@ -84,7 +84,7 @@ export default function TaskFilterSheet({
                 // Fetch project-specific members and tasks to find used tags
                 const [projectMembers, projectTasksResult, allTags] = await Promise.all([
                     getProjectMembers(projectId),
-                    getTasks(activeWorkspace.id, { projectId, hierarchyMode: "all" }),
+                    getTasks(activeWorkspace.id, { projectId, hierarchyMode: "all", limit: 200 }),
                     getTags(activeWorkspace.id)
                 ]);
                 const projectTasks = projectTasksResult.tasks;

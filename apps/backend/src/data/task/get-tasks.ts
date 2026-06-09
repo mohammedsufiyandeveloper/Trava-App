@@ -43,7 +43,7 @@ export interface GetTasksOptions {
     includeSubTasks?: boolean;
     includeFacets?: boolean;
 
-    view_mode?: "default" | "search" | "list" | "kanban" | "gantt" | "calendar";
+    view_mode?: "default" | "search" | "list" | "kanban" | "gantt" | "calendar" | "subtask";
     sorts?: Array<{ field: string; direction: "asc" | "desc" }>;
 }
 
