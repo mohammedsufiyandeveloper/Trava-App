@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SPACING, BORDER_RADIUS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getActivities, getCachedSession, getTaskById } from "../../services/api";
 import { format } from "date-fns";
@@ -50,6 +51,7 @@ export default function ProjectActivityScreen({ route, navigation }: Props) {
     }, [activeWorkspace, projectId, isAdminOrOwner]);
 
     const handleRefresh = async () => {
+        haptics.light();
         setRefreshing(true);
         await fetchActivities();
         setRefreshing(false);

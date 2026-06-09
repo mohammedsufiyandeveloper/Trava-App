@@ -440,7 +440,7 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                                 </View>
                             )
                         }
-                        onRefresh={fetchSubTasks}
+                        onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchSubTasks(); }}
                         refreshing={loading}
                     />
                 )}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Ionicons } from "@expo/vector-icons";
 import { SPACING, BORDER_RADIUS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getActivities, getCachedSession, getTaskById } from "../../services/api";
 import { Task } from "../../types";
@@ -42,6 +43,7 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
     const isFullView = isAdminOrOwner || isManagerOfProject;
 
     const handleRefresh = async () => {
+        haptics.light();
         setRefreshing(true);
         try {
             await Promise.all([

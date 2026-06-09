@@ -7,6 +7,7 @@ import {
     StatusBar,
     ScrollView,
     ActivityIndicator,
+    Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useFocusEffect } from "@react-navigation/native";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
+import { getHapticsEnabled, setHapticsEnabled, haptics } from "../services/haptics";
 import { useNotifications } from "../context/NotificationContext";
 import { getCachedSession, signOut, getSession, getProfile } from "../services/api";
 import { MainTabParamList, User } from "../types";
@@ -55,11 +57,49 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress, color, isLast
     );
 };
 
+const ToggleItem: React.FC<{
+    icon: { name: keyof typeof Ionicons.glyphMap; color?: string; bg?: string };
+    label: string;
+    value: boolean;
+    onValueChange: (v: boolean) => void;
+    isLast?: boolean;
+}> = ({ icon, label, value, onValueChange, isLast = false }) => {
+    const { colors } = useTheme();
+    return (
+        <View
+            style={[styles.menuItem, { borderBottomColor: colors.border }, isLast && { borderBottomWidth: 0 }]}
+            accessibilityRole="switch"
+            accessibilityLabel={label}
+            accessibilityState={{ checked: value }}
+        >
+            <View style={styles.menuLeft}>
+                <View style={[styles.iconBox, { backgroundColor: icon.bg || colors.surface }]}>
+                    <Ionicons name={icon.name} size={18} color={icon.color || colors.text} />
+                </View>
+                <Text style={[styles.menuLabel, { color: colors.text }]}>{label}</Text>
+            </View>
+            <Switch
+                value={value}
+                onValueChange={onValueChange}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                thumbColor="#ffffff"
+            />
+        </View>
+    );
+};
+
 export default function ProfileScreen({ navigation }: Props) {
     const [user, setUser] = useState<User | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [hapticsOn, setHapticsOn] = useState(getHapticsEnabled());
     const { colors, isDark, toggleTheme } = useTheme();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+
+    const onToggleHaptics = (next: boolean) => {
+        setHapticsOn(next);
+        setHapticsEnabled(next);
+        if (next) haptics.selection(); // confirm the new state with a tap
+    };
 
     const fetchUser = async (fromServer = false) => {
         setRefreshing(true);
@@ -153,6 +193,12 @@ export default function ProfileScreen({ navigation }: Props) {
                             icon={{ name: isDark ? "sunny-outline" : "moon-outline", color: "#8b5cf6", bg: "#8b5cf615" }}
                             label={`Appearance: ${isDark ? "Dark" : "Light"}`}
                             onPress={toggleTheme}
+                        />
+                        <ToggleItem
+                            icon={{ name: "phone-portrait-outline", color: "#10b981", bg: "#10b98115" }}
+                            label="Haptic feedback"
+                            value={hapticsOn}
+                            onValueChange={onToggleHaptics}
                             isLast
                         />
                     </View>

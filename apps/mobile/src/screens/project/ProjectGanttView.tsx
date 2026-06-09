@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format, isToday, startOfDay } from "date-fns";
 import { SPACING } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
+import { haptics } from "../../services/haptics";
 import { Task } from "../../types";
 import { getStatusHex, getStatusBgColor, STATUS_COLORS } from "../../utils/taskColors";
 import {
@@ -360,7 +361,7 @@ export default function ProjectGanttView({
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: SPACING.bottomTabBar }}
                         refreshControl={
-                            <RefreshControl refreshing={false} onRefresh={refreshData} tintColor={colors.primary} />
+                            <RefreshControl refreshing={false} onRefresh={() => { haptics.light(); refreshData(); }} tintColor={colors.primary} />
                         }
                     >
                         {flatItems.map(renderRow)}

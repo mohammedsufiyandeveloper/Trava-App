@@ -158,7 +158,7 @@ export default function ProjectTaskList({
             keyExtractor={item => item.id}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={false} onRefresh={refreshData} tintColor={colors.primary} />}
+            refreshControl={<RefreshControl refreshing={false} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshData(); }} tintColor={colors.primary} />}
             ListEmptyComponent={
                 <View style={styles.empty}>
                     <Ionicons name="list-outline" size={48} color={colors.textDim} />

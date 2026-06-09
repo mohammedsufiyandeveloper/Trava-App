@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import {
@@ -82,6 +83,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
     }, [loadData]);
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         loadData();
     };

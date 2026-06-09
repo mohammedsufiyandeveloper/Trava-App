@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNotifications, NotificationItem } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { RootStackParamList } from "../types";
 import { format } from "date-fns";
@@ -222,7 +223,7 @@ export default function NotificationScreen({ navigation }: Props) {
                         refreshControl={
                             <RefreshControl
                                 refreshing={loading}
-                                onRefresh={refresh}
+                                onRefresh={() => { haptics.light(); refresh(); }}
                                 tintColor={colors.primary}
                                 colors={[colors.primary]}
                             />
