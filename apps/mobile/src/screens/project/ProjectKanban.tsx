@@ -451,7 +451,7 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
-                                onRefresh={() => fetchKanbanTasks(true)}
+                                onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchKanbanTasks(true); }}
                                 tintColor={colors.primary}
                             />
                         }

@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { getTags, deleteTag } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
@@ -47,6 +48,7 @@ export default function ManageTagsScreen({ navigation }: any) {
     }, [fetchTags]);
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         fetchTags();
     };

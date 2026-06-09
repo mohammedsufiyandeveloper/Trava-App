@@ -1,15 +1,10 @@
 import React, { useState, useCallback } from "react";
-import { View, StyleSheet, Platform, TouchableOpacity, Text } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { useSharedValue, runOnJS } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { SPACING } from "../constants/theme";
-import { useTheme } from "../context/ThemeContext";
+import AnimatedTabBar from "./AnimatedTabBar";
 import HomeScreen from "../screens/HomeScreen";
 import ProjectsScreen from "../screens/ProjectsScreen";
 import AttendanceScreen from "../screens/AttendanceScreen";
@@ -47,7 +42,13 @@ import IndentDetailScreen from "../screens/IndentDetailScreen";
 const createTabStack = (BaseComponent: any, stackName?: string) => {
     return function TabStack() {
         return (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Navigator
+                screenOptions={{
+                    headerShown: false,
+                    animation: "slide_from_right",
+                    gestureEnabled: true,
+                }}
+            >
                 <Stack.Screen name="_Base" component={BaseComponent} />
                 <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen as any} />
                 <Stack.Screen name="ProjectSubTasks" component={ProjectSubTaskList as any} />
@@ -80,15 +81,6 @@ const ProfileStack = createTabStack(ProfileScreen, "Profile");
 
 export default function MainTabNavigator() {
     const navigation = useNavigation();
-    const { colors, isDark } = useTheme();
-    const insets = useSafeAreaInsets();
-
-    // Calculate dynamic dimensions
-    const isGestureNav = insets.bottom > 0;
-    const barHeight = 65 + insets.bottom;
-
-    // FAB position should be responsive to insets
-    const fabBottom = isGestureNav ? insets.bottom + 12 : 12;
 
     const [menuVisible, setMenuVisible] = useState(false);
     const [menuType, setMenuType] = useState("list");
@@ -97,18 +89,13 @@ export default function MainTabNavigator() {
     const [createProjectVisible, setCreateProjectVisible] = useState(false);
     const [createTagVisible, setCreateTagVisible] = useState(false);
 
-    const triggerHaptic = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
-
     const openMenu = useCallback(() => {
+        // Haptic is fired by the FAB's PressableScale (haptic="medium").
         setMenuType("speed-dial");
         setMenuVisible(true);
-        triggerHaptic();
     }, []);
 
     const handleAction = useCallback((id: string) => {
-        console.log("Action triggered:", id);
         setMenuVisible(false);
         if (id === "task") {
             setCreateTaskVisible(true);
@@ -125,118 +112,9 @@ export default function MainTabNavigator() {
         }
     }, [navigation]);
 
-    const renderTabBar = useCallback(({ state, descriptors, navigation }: any) => {
-        const routes = state.routes;
-        const barBgColor = isDark ? "#121212" : "#FFFFFF";
-
-        return (
-            <View style={{
-                flexDirection: 'row',
-                height: 65 + insets.bottom,
-                backgroundColor: barBgColor,
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
-                alignItems: 'center',
-                paddingBottom: insets.bottom,
-                paddingHorizontal: 12,
-                gap: 12,
-            }}>
-                {/* Main Navigation Pill Segment */}
-                <View style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    backgroundColor: isDark ? "#1a1a1a" : "#f3f4f6",
-                    height: 52,
-                    borderRadius: 26,
-                    padding: 4,
-                }}>
-                    {routes.map((route: any, index: number) => {
-                        const isFocused = state.index === index;
-
-                        const onPress = () => {
-                            const event = navigation.emit({
-                                type: 'tabPress',
-                                target: route.key,
-                                canPreventDefault: true,
-                            });
-                            if (!isFocused && !event.defaultPrevented) {
-                                navigation.navigate(route.name, { screen: "_Base" });
-                            }
-                        };
-
-                        const color = isFocused ? colors.primary : colors.textDim;
-                        let iconName = "help-outline";
-                        let displayLabel = route.name;
-
-                        if (route.name === "Home") iconName = isFocused ? "home" : "home-outline";
-                        else if (route.name === "Projects") iconName = isFocused ? "briefcase" : "briefcase-outline";
-                        else if (route.name === "MyTasks") {
-                            iconName = isFocused ? "list" : "list-outline";
-                            displayLabel = "Tasks";
-                        }
-                        else if (route.name === "Profile") iconName = isFocused ? "person" : "person-outline";
-
-                        return (
-                            <TouchableOpacity
-                                key={route.key}
-                                onPress={onPress}
-                                style={{
-                                    flex: 1,
-                                    borderRadius: 22,
-                                    backgroundColor: isFocused ? (isDark ? "#262626" : "#FFFFFF") : 'transparent',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    // The Zoom Effect
-                                    transform: [{ scale: isFocused ? 1.1 : 1 }],
-                                    // The "Front" Effect (Shadows/Elevation)
-                                    ...(isFocused && {
-                                        shadowColor: isDark ? "#000" : colors.primary,
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: isDark ? 0.4 : 0.15,
-                                        shadowRadius: 8,
-                                        elevation: 6,
-                                    })
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons
-                                    name={iconName as any}
-                                    size={isFocused ? 24 : 20}
-                                    color={color}
-                                />
-                                <Text style={{
-                                    fontSize: isFocused ? 10 : 9,
-                                    fontWeight: isFocused ? "800" : "500",
-                                    color,
-                                    marginTop: 1
-                                }}>
-                                    {displayLabel}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-
-                {/* Separate Create Circle */}
-                <TouchableOpacity
-                    onPress={openMenu}
-                    activeOpacity={0.8}
-                    style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 26,
-                        backgroundColor: isDark ? "#1a1a1a" : "#f3f4f6",
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: isDark ? "#262626" : "#e5e7eb",
-                    }}
-                >
-                    <Ionicons name="add" size={28} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
-        );
-    }, [colors, isDark, insets.bottom, openMenu]);
+    const renderTabBar = useCallback(({ state, navigation }: any) => (
+        <AnimatedTabBar state={state} navigation={navigation} onOpenMenu={openMenu} />
+    ), [openMenu]);
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -281,29 +159,3 @@ export default function MainTabNavigator() {
         </GestureHandlerRootView>
     );
 }
-
-const styles = StyleSheet.create({
-    fabContainer: {
-        justifyContent: "center",
-        alignItems: "center",
-        width: 70,
-    },
-    fab: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: "center",
-        alignItems: "center",
-        ...Platform.select({
-            ios: {
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.4,
-                shadowRadius: 10,
-            },
-            android: {
-                elevation: 10,
-            },
-        }),
-        borderWidth: 4,
-    },
-});

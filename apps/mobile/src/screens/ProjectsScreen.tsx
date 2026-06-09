@@ -1,12 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     View,
     Text,
     StyleSheet,
     FlatList,
-    TouchableOpacity,
     StatusBar,
-    ActivityIndicator,
     TextInput,
     RefreshControl,
     Alert,
@@ -15,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
 import ProjectActionModal from "../components/ProjectActionModal";
 import CreateProjectModal from "../components/CreateProjectModal";
 import EditProjectModal from "../components/EditProjectModal";
@@ -27,6 +24,11 @@ import { useNotifications } from "../context/NotificationContext";
 import { RootStackParamList, Project } from "../types";
 import { deleteProject } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import PressableScale from "../components/PressableScale";
+import { Skeleton } from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
+import { haptics } from "../services/haptics";
+import { useToast } from "../context/ToastContext";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Main">;
 
@@ -36,9 +38,17 @@ export default function ProjectsScreen() {
     const { unreadCount } = useNotifications();
     const navigation = useNavigation<NavigationProp>();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+    const toast = useToast();
 
     const [search, setSearch] = useState<string>("");
+    const [debouncedSearch, setDebouncedSearch] = useState<string>("");
     const [refreshing, setRefreshing] = useState<boolean>(false);
+
+    // Debounce search so filtering doesn't run on every keystroke.
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search), 200);
+        return () => clearTimeout(t);
+    }, [search]);
     
     // Action Modal State
     const [actionModalVisible, setActionModalVisible] = useState(false);
@@ -48,13 +58,14 @@ export default function ProjectsScreen() {
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
     const onRefresh = async () => {
+        haptics.light();
         setRefreshing(true);
         await refreshData();
         setRefreshing(false);
     };
 
     const handleProjectLongPress = (project: Project) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        haptics.medium();
         setSelectedProject(project);
         setActionModalVisible(true);
     };
@@ -92,13 +103,13 @@ export default function ProjectsScreen() {
                         try {
                             const res = await deleteProject(project.id);
                             if (res.success) {
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 await refreshData();
+                                toast.success(`"${project.name}" deleted`);
                             } else {
-                                Alert.alert("Error", res.error || "Failed to delete project");
+                                toast.error(res.error || "Failed to delete project");
                             }
                         } catch (err: any) {
-                            Alert.alert("Error", err.message || "An error occurred");
+                            toast.error(err.message || "An error occurred");
                         }
                     },
                 },
@@ -106,17 +117,19 @@ export default function ProjectsScreen() {
         );
     };
 
-    const filteredProjects = projects.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase())
+    const filteredProjects = useMemo(
+        () => projects.filter(p => p.name.toLowerCase().includes(debouncedSearch.toLowerCase())),
+        [projects, debouncedSearch]
     );
 
     const renderItem = ({ item }: { item: Project }) => (
-        <TouchableOpacity 
-            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            activeOpacity={0.7}
+        <PressableScale
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleViewProject(item)}
             onLongPress={() => handleProjectLongPress(item)}
             delayLongPress={300}
+            accessibilityLabel={`Project ${item.name}`}
+            accessibilityHint="Opens the project. Long-press for actions."
         >
             <View style={[styles.avatar, { backgroundColor: item.color || colors.primary }]}>
                 <Ionicons name="folder" size={20} color="#fff" />
@@ -128,7 +141,17 @@ export default function ProjectsScreen() {
                 </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </TouchableOpacity>
+        </PressableScale>
+    );
+
+    const renderSkeletonCard = (key: number) => (
+        <View key={key} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Skeleton width={44} height={44} radius={12} />
+            <View style={{ flex: 1, marginLeft: SPACING.md, gap: 8 }}>
+                <Skeleton width="55%" height={15} />
+                <Skeleton width="80%" height={12} />
+            </View>
+        </View>
     );
 
     return (
@@ -139,9 +162,11 @@ export default function ProjectsScreen() {
                 <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                     <Text style={[styles.title, { color: colors.text }]}>Projects</Text>
                     <View style={{ flexDirection: "row", gap: SPACING.sm }}>
-                        <TouchableOpacity 
+                        <PressableScale
                             style={[styles.headerBtn, { backgroundColor: colors.surfaceHighlight }]}
                             onPress={() => (navigation as any).navigate("Notifications")}
+                            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                            hitSlop={8}
                         >
                             <Ionicons name="notifications-outline" size={22} color={colors.text} />
                             {unreadCount > 0 && (
@@ -149,13 +174,15 @@ export default function ProjectsScreen() {
                                     <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
                                 </View>
                             )}
-                        </TouchableOpacity>
-                        <TouchableOpacity 
+                        </PressableScale>
+                        <PressableScale
                             style={[styles.headerBtn, { backgroundColor: colors.surfaceHighlight }]}
                             onPress={() => setCreateProjectVisible(true)}
+                            accessibilityLabel="Create project"
+                            hitSlop={8}
                         >
                             <Ionicons name="add" size={22} color={colors.primary} />
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 </View>
 
@@ -173,23 +200,31 @@ export default function ProjectsScreen() {
                 </View>
 
                 {loading ? (
-                    <View style={styles.center}>
-                        <ActivityIndicator color={colors.primary} size="large" />
+                    <View style={[styles.list, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
+                        {[0, 1, 2, 3, 4, 5].map(renderSkeletonCard)}
                     </View>
                 ) : (
                     <FlatList
                         data={filteredProjects}
                         renderItem={renderItem}
                         keyExtractor={item => item.id}
-                        contentContainerStyle={[styles.list, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
+                        contentContainerStyle={[
+                            styles.list,
+                            { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) },
+                            filteredProjects.length === 0 && { flexGrow: 1 },
+                        ]}
                         showsVerticalScrollIndicator={false}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
                         ListEmptyComponent={
-                            <View style={styles.empty}>
-                                <Ionicons name="folder-open-outline" size={64} color={colors.textDim} />
-                                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Projects Found</Text>
-                                <Text style={[styles.emptySub, { color: colors.textDim }]}>Try adjusting your search or create a new project.</Text>
-                            </View>
+                            <EmptyState
+                                icon="folder-open-outline"
+                                title={debouncedSearch ? "No matching projects" : "No projects yet"}
+                                message={debouncedSearch
+                                    ? "Try a different search term."
+                                    : "Create your first project to get started."}
+                                actionLabel={debouncedSearch ? undefined : "Create project"}
+                                onAction={debouncedSearch ? undefined : () => setCreateProjectVisible(true)}
+                            />
                         }
                     />
                 )}

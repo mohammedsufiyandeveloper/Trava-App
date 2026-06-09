@@ -2,18 +2,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TravisService } from "./travis.service";
 import prisma from "@/lib/db";
 
-// Use vi.hoisted so mockCreate is available inside the vi.mock factory
-const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
+// Use vi.hoisted so the mock fn is available inside the vi.mock factory.
+const { mockSendMessage } = vi.hoisted(() => ({ mockSendMessage: vi.fn() }));
 
-// Mock Anthropic SDK
-vi.mock("@anthropic-ai/sdk", () => {
-    class MockAnthropic {
-        messages = { create: mockCreate };
-        constructor(_opts?: any) {}
+// Mock the Google Generative AI SDK.
+//
+// IMPORTANT: the real enums (SchemaType, FunctionCallingMode) are evaluated at
+// module load time when travis.service.ts builds its TOOLS array, so we keep
+// the real exports via importActual and only swap out the network-calling
+// GoogleGenerativeAI class. This guarantees the suite never reaches Gemini.
+vi.mock("@google/generative-ai", async (importActual) => {
+    const actual = await importActual<typeof import("@google/generative-ai")>();
+    class MockGoogleGenerativeAI {
+        constructor(_apiKey?: string) {}
+        getGenerativeModel() {
+            return {
+                startChat: () => ({ sendMessage: mockSendMessage }),
+            };
+        }
     }
-    return {
-        default: MockAnthropic,
-    };
+    return { ...actual, GoogleGenerativeAI: MockGoogleGenerativeAI };
 });
 
 // Mock prisma
@@ -57,6 +65,18 @@ vi.mock("@/lib/db", () => ({
     },
 }));
 
+// Build a Gemini-style `sendMessage` result. The service reads
+// `result.response.functionCalls()` and `result.response.text()`.
+function geminiResult(opts: { functionCalls?: { name: string; args: any }[]; text?: string }) {
+    const calls = opts.functionCalls ?? [];
+    return {
+        response: {
+            functionCalls: () => (calls.length > 0 ? calls : undefined),
+            text: () => opts.text ?? "",
+        },
+    };
+}
+
 describe("TravisService.chat", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -64,10 +84,7 @@ describe("TravisService.chat", () => {
 
     it("returns a response when user is a workspace member", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1", workspaceRole: "MEMBER" });
-        mockCreate.mockResolvedValue({
-            stop_reason: "end_turn",
-            content: [{ type: "text", text: "Here are your projects." }],
-        });
+        mockSendMessage.mockResolvedValue(geminiResult({ text: "Here are your projects." }));
 
         const result = await TravisService.chat("ws1", "user1", "Show me projects", []);
         expect(result).toBe("Here are your projects.");
@@ -78,9 +95,11 @@ describe("TravisService.chat", () => {
 
         const result = await TravisService.chat("ws1", "outsider", "hello", []);
         expect(result).toMatch(/member/i);
+        // No model call should ever be made for a non-member.
+        expect(mockSendMessage).not.toHaveBeenCalled();
     });
 
-    it("executes tool calls and sends results back to Claude", async () => {
+    it("executes tool calls and sends results back to Gemini", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1", workspaceRole: "ADMIN" });
         (prisma.project.count as any).mockResolvedValue(5);
         (prisma.workspaceMember.count as any).mockResolvedValue(10);
@@ -89,59 +108,39 @@ describe("TravisService.chat", () => {
             { status: "COMPLETED", _count: { id: 7 } },
         ]);
 
-        // First call: tool_use
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [
-                {
-                    type: "tool_use",
-                    id: "tu_1",
-                    name: "get_workspace_summary",
-                    input: {},
-                },
-            ],
-        });
-        // Second call: end_turn with final answer
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "end_turn",
-            content: [{ type: "text", text: "Your workspace has 5 projects and 10 members." }],
-        });
+        // Round 1: model asks for a tool, then returns the final answer.
+        mockSendMessage
+            .mockResolvedValueOnce(geminiResult({ functionCalls: [{ name: "get_workspace_summary", args: {} }] }))
+            .mockResolvedValueOnce(geminiResult({ text: "Your workspace has 5 projects and 10 members." }));
 
         const result = await TravisService.chat("ws1", "user1", "Summarize workspace", []);
         expect(result).toBe("Your workspace has 5 projects and 10 members.");
-        expect(mockCreate).toHaveBeenCalledTimes(2);
+        // One call to request the tool, one to send the tool result back.
+        expect(mockSendMessage).toHaveBeenCalledTimes(2);
     });
 
     it("blocks tool execution for a non-member even after initial check passes (defense in depth)", async () => {
-        // First findUnique (for chat membership check) returns member
+        // First findUnique (chat-level membership check) returns a member,
+        // second findUnique (inside executeTool) returns null — revoked mid-request.
         (prisma.workspaceMember.findUnique as any)
             .mockResolvedValueOnce({ id: "mem1", workspaceRole: "MEMBER" })
-            // Second findUnique (inside executeTool) returns null — simulates revoked membership
             .mockResolvedValueOnce(null);
 
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [
-                {
-                    type: "tool_use",
-                    id: "tu_1",
-                    name: "get_workspace_summary",
-                    input: {},
-                },
-            ],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "end_turn",
-            content: [{ type: "text", text: "Access was denied in tools." }],
-        });
+        mockSendMessage
+            .mockResolvedValueOnce(geminiResult({ functionCalls: [{ name: "get_workspace_summary", args: {} }] }))
+            .mockResolvedValueOnce(geminiResult({ text: "Access was denied in tools." }));
 
         const result = await TravisService.chat("ws1", "user1", "Summary please", []);
-        // The second API call should have been made with a tool_result containing an access error
-        const secondCallMessages = mockCreate.mock.calls[1][0].messages;
-        const toolResultMsg = secondCallMessages[secondCallMessages.length - 1];
-        expect(toolResultMsg.role).toBe("user");
-        const toolResult = toolResultMsg.content[0];
-        expect(JSON.parse(toolResult.content)).toMatchObject({ error: expect.stringMatching(/access denied/i) });
+        expect(typeof result).toBe("string");
+
+        // The second sendMessage call carries the tool result, which must contain
+        // an access-denied error rather than real workspace data.
+        const secondCallArg = mockSendMessage.mock.calls[1][0];
+        const part = secondCallArg[0];
+        expect(part.functionResponse.name).toBe("get_workspace_summary");
+        expect(part.functionResponse.response.result).toMatchObject({
+            error: expect.stringMatching(/access denied/i),
+        });
     });
 
     it("respects max tool rounds (5)", async () => {
@@ -150,80 +149,36 @@ describe("TravisService.chat", () => {
         (prisma.workspaceMember.count as any).mockResolvedValue(1);
         (prisma.task.groupBy as any).mockResolvedValue([]);
 
-
-        // Always respond with tool_use (infinite loop scenario)
-        mockCreate.mockResolvedValue({
-            stop_reason: "tool_use",
-            content: [
-                {
-                    type: "tool_use",
-                    id: "tu_1",
-                    name: "get_workspace_summary",
-                    input: {},
-                },
-            ],
-        });
-
-        // After 5 rounds, the service calls Claude once more to synthesize — mock that too
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [{ type: "tool_use", id: "tu_1", name: "get_workspace_summary", input: {} }],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [{ type: "tool_use", id: "tu_2", name: "get_workspace_summary", input: {} }],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [{ type: "tool_use", id: "tu_3", name: "get_workspace_summary", input: {} }],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [{ type: "tool_use", id: "tu_4", name: "get_workspace_summary", input: {} }],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [{ type: "tool_use", id: "tu_5", name: "get_workspace_summary", input: {} }],
-        });
-        // Final synthesis call
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "end_turn",
-            content: [{ type: "text", text: "Reached max steps." }],
-        });
+        // Always respond with a tool call — simulates a model that never settles.
+        mockSendMessage.mockResolvedValue(
+            geminiResult({ functionCalls: [{ name: "get_workspace_summary", args: {} }] })
+        );
 
         const result = await TravisService.chat("ws1", "user1", "Summarize", []);
-        // Should resolve (not throw) and return a meaningful message
+        // Should resolve (not throw) with the max-steps fallback message.
         expect(typeof result).toBe("string");
-        // Total calls: 5 tool rounds + 1 final synthesis
-        expect(mockCreate).toHaveBeenCalledTimes(6);
+        expect(result).toMatch(/maximum number of reasoning steps/i);
+        // Each of the 5 rounds makes 2 sendMessage calls (request + tool result).
+        expect(mockSendMessage).toHaveBeenCalledTimes(10);
     });
 
     it("handles invalid tool args gracefully", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1", workspaceRole: "MEMBER" });
+        // No project matches the empty id, so prisma returns nothing.
+        (prisma.project.findFirst as any).mockResolvedValue(null);
 
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "tool_use",
-            content: [
-                {
-                    type: "tool_use",
-                    id: "tu_1",
-                    name: "get_project_detail",
-                    input: { projectId: "" }, // invalid: empty string
-                },
-            ],
-        });
-        mockCreate.mockResolvedValueOnce({
-            stop_reason: "end_turn",
-            content: [{ type: "text", text: "I couldn't find that project." }],
-        });
+        mockSendMessage
+            .mockResolvedValueOnce(
+                geminiResult({ functionCalls: [{ name: "get_project_detail", args: { projectId: "" } }] })
+            )
+            .mockResolvedValueOnce(geminiResult({ text: "I couldn't find that project." }));
 
         const result = await TravisService.chat("ws1", "user1", "Project detail", []);
         expect(typeof result).toBe("string");
 
-        // Verify the tool result contained an error (not a crash)
-        const secondCallMessages = mockCreate.mock.calls[1][0].messages;
-        const toolResultMsg = secondCallMessages[secondCallMessages.length - 1];
-        const toolResult = JSON.parse(toolResultMsg.content[0].content);
+        // The tool result sent back to the model should be an error, not a crash.
+        const secondCallArg = mockSendMessage.mock.calls[1][0];
+        const toolResult = secondCallArg[0].functionResponse.response.result;
         expect(toolResult.error).toBeDefined();
     });
 });

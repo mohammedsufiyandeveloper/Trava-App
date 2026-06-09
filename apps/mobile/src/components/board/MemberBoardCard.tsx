@@ -6,6 +6,7 @@ import { SPACING, BORDER_RADIUS, TYPOGRAPHY } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 
 import { toggleBoardItemStatus, deleteBoardItem } from "../../services/api";
+import AnimatedCheckbox from "../AnimatedCheckbox";
 
 type BoardItem = any;
 type Member = any;
@@ -130,17 +131,15 @@ export default function MemberBoardCard({ member, currentMemberId, isOwner, work
                                             }
                                         ]}
                                     >
-                                        <TouchableOpacity
-                                            onPress={() => handleToggle(item.id, item.status)}
+                                        <AnimatedCheckbox
+                                            checked={isDone}
+                                            onToggle={() => handleToggle(item.id, item.status)}
                                             disabled={loadingStates[item.id]}
                                             style={styles.checkboxContainer}
-                                        >
-                                            <Ionicons
-                                                name={isDone ? "checkmark-circle" : "ellipse-outline"}
-                                                size={20}
-                                                color={isDone ? colors.textDim : colors.primary}
-                                            />
-                                        </TouchableOpacity>
+                                            color={colors.primary}
+                                            doneColor={colors.textDim}
+                                            accessibilityLabel={isDone ? "Mark as not done" : "Mark as done"}
+                                        />
                                         <View style={styles.itemTextContainer}>
                                             <Text style={[
                                                 styles.itemNote,

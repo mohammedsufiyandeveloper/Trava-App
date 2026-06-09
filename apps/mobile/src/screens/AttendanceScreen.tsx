@@ -23,6 +23,7 @@ import * as Location from "expo-location";
 import { format, addDays } from "date-fns";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import {
     getTodayAttendance,
@@ -177,6 +178,7 @@ export default function AttendanceScreen() {
     }, [loadData]);
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         loadData();
     };

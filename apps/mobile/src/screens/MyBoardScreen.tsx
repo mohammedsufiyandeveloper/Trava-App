@@ -1071,7 +1071,7 @@ export default function MyBoardScreen() {
                     <ScrollView
                         style={{ flex: 1 }}
                         showsVerticalScrollIndicator={false}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={colors.primary} />}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchData(true); }} tintColor={colors.primary} />}
                         scrollEventThrottle={16}
                         onScroll={(e) => {
                             const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -1269,7 +1269,7 @@ export default function MyBoardScreen() {
                     style={{ flex: 1 }}
                     contentContainerStyle={{ padding: SPACING.md, gap: SPACING.md }}
                     refreshControl={
-                        <RefreshControl refreshing={kanbanRefreshing} onRefresh={refreshKanbanCols} tintColor={colors.primary} />
+                        <RefreshControl refreshing={kanbanRefreshing} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshKanbanCols(); }} tintColor={colors.primary} />
                     }
                 >
                     {KANBAN_COLUMNS_DEF.map(col => {

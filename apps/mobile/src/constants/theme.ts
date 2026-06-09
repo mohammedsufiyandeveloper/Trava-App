@@ -131,3 +131,79 @@ export const TYPOGRAPHY = {
     caption: { fontSize: 12, fontWeight: "400" as const, lineHeight: 16 },
     label: { fontSize: 10, fontWeight: "700" as const, letterSpacing: 1 },
 } as const;
+
+/**
+ * Motion tokens — one shared set of durations and spring configs so every
+ * animation across the app feels like it was tuned by one hand. Always prefer
+ * these over ad-hoc numbers. Durations follow the design brief:
+ *   press feedback 100–160ms · standard transitions 180–240ms.
+ */
+export const MOTION = {
+    duration: {
+        press: 120,   // button press scale settle
+        fast: 160,    // small state changes
+        base: 220,    // standard transitions
+        slow: 320,    // larger surfaces
+    },
+    spring: {
+        snappy: { damping: 18, stiffness: 220, mass: 0.9 },  // taps, toggles, tab indicator
+        gentle: { damping: 20, stiffness: 140, mass: 1 },    // sheets / large surfaces
+        bouncy: { damping: 12, stiffness: 180, mass: 0.8 },  // playful entrances
+    },
+    pressScale: 0.97,  // design brief: ~0.97 on press
+    stagger: 45,       // delay between sequential entrance items (ms)
+} as const;
+
+/**
+ * Minimum interactive sizes (iOS HIG / Material both target ~44–48pt).
+ * Use TOUCH_TARGET.min for any tappable; add hitSlop when the visual is smaller.
+ */
+export const TOUCH_TARGET = {
+    min: 44,
+} as const;
+
+/** Cross-platform elevation presets (iOS shadow + Android elevation). */
+export const ELEVATION = {
+    none: {
+        shadowColor: "transparent",
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        shadowOffset: { width: 0, height: 0 },
+        elevation: 0,
+    },
+    sm: {
+        shadowColor: "#000",
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+    },
+    md: {
+        shadowColor: "#000",
+        shadowOpacity: 0.16,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+    },
+    lg: {
+        shadowColor: "#000",
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 12,
+    },
+} as const;
+
+/** Layer ordering so overlapping surfaces never fight over z-order. */
+export const Z_INDEX = {
+    base: 0,
+    card: 1,
+    header: 10,
+    dropdown: 100,
+    fab: 200,
+    tabBar: 300,
+    sheet: 400,
+    sheetBackdrop: 399,
+    toast: 500,
+    modal: 600,
+} as const;

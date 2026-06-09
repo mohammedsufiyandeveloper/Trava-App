@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getLeaveRequests, updateLeaveStatus } from "../services/api";
@@ -46,6 +47,7 @@ export default function AdminLeaveScreen({ navigation }: any) {
     }, [loadRequests]);
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         loadRequests();
     };

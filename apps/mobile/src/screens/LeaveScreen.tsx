@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format, differenceInDays } from "date-fns";
 import { LeaveRequest, LeaveBalance, LeaveType, LeaveStatus, User } from "../types";
 import { useTheme } from "../context/ThemeContext";
+import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getLeaveBalance, getLeaveRequests, submitLeaveRequest, updateLeaveStatus, getCachedSession } from "../services/api";
@@ -80,6 +81,7 @@ export default function LeaveScreen({ navigation }: any) {
     }, [loadData]);
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         loadData();
     };

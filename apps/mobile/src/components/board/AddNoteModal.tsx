@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    Modal, 
-    TextInput, 
-    TouchableOpacity, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    TextInput,
     ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
-    Dimensions
+    Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SPACING, BORDER_RADIUS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
+import Sheet from "../Sheet";
+import PressableScale from "../PressableScale";
+import { haptics } from "../../services/haptics";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -27,7 +26,7 @@ interface AddNoteModalProps {
 }
 
 export default function AddNoteModal({ visible, onClose, onSubmit, memberSurname, isSelf }: AddNoteModalProps) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const [note, setNote] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,107 +39,78 @@ export default function AddNoteModal({ visible, onClose, onSubmit, memberSurname
     }, [visible]);
 
     const handleSubmit = async () => {
-        if (!note.trim()) return;
-        
+        if (!note.trim() || loading) return;
+
         setLoading(true);
         setError(null);
         try {
             await onSubmit(note.trim());
+            haptics.success();
             setNote("");
             onClose();
         } catch (err: any) {
             setError(err.message || "An error occurred");
+            haptics.error();
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="slide"
-            onRequestClose={onClose}
-        >
-            <View style={styles.overlay}>
-                <KeyboardAvoidingView 
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.container}
-                >
-                    <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
-                        <View style={styles.header}>
-                            <View style={[styles.handle, { backgroundColor: colors.border }]} />
-                            <View style={styles.titleRow}>
-                                <Text style={[styles.title, { color: colors.text }]}>Add Note</Text>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                                    <Ionicons name="close" size={24} color={colors.textDim} />
-                                </TouchableOpacity>
-                            </View>
-                            <Text style={[styles.subtitle, { color: colors.textDim }]}>
-                                Create a new item for {isSelf ? 'yourself' : `this team member (${memberSurname})`}.
-                            </Text>
-                        </View>
-
-                        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                placeholder="Type your note here... (e.g. Finish the UI audit)"
-                                placeholderTextColor={colors.textDim}
-                                value={note}
-                                onChangeText={setNote}
-                                autoFocus
-                                multiline
-                                textAlignVertical="top"
-                            />
-                            {error && <Text style={styles.errorText}>{error}</Text>}
-                        </ScrollView>
-
-                        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-                            <TouchableOpacity 
-                                style={[styles.createBtn, { backgroundColor: colors.primary }, (!note.trim() || loading) && styles.createBtnDisabled]}
-                                onPress={handleSubmit}
-                                disabled={!note.trim() || loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <>
-                                        <Text style={styles.createBtnText}>Add Note</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
+        <Sheet visible={visible} onClose={onClose} accessibilityLabel="Add note">
+            <View style={styles.header}>
+                <View style={styles.titleRow}>
+                    <Text style={[styles.title, { color: colors.text }]}>Add Note</Text>
+                    <PressableScale haptic="selection" onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
+                        <Ionicons name="close" size={24} color={colors.textDim} />
+                    </PressableScale>
+                </View>
+                <Text style={[styles.subtitle, { color: colors.textDim }]}>
+                    Create a new item for {isSelf ? 'yourself' : `this team member (${memberSurname})`}.
+                </Text>
             </View>
-        </Modal>
+
+            <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+                <TextInput
+                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="Type your note here... (e.g. Finish the UI audit)"
+                    placeholderTextColor={colors.textDim}
+                    value={note}
+                    onChangeText={setNote}
+                    autoFocus
+                    multiline
+                    textAlignVertical="top"
+                    accessibilityLabel="Note text"
+                />
+                {error && <Text style={styles.errorText}>{error}</Text>}
+            </ScrollView>
+
+            <View style={[styles.footer, { borderTopColor: colors.border }]}>
+                <PressableScale
+                    haptic={null}
+                    style={[styles.createBtn, { backgroundColor: colors.primary }, (!note.trim() || loading) && styles.createBtnDisabled]}
+                    onPress={handleSubmit}
+                    disabled={!note.trim() || loading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add note"
+                    accessibilityState={{ disabled: !note.trim() || loading, busy: loading }}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.createBtnText}>Add Note</Text>
+                    )}
+                </PressableScale>
+            </View>
+        </Sheet>
     );
 }
 
 const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        justifyContent: "flex-end",
-    },
-    container: {
-        width: "100%",
-    },
-    sheet: {
-        borderTopLeftRadius: BORDER_RADIUS.xl,
-        borderTopRightRadius: BORDER_RADIUS.xl,
-        maxHeight: "90%",
-    },
     header: {
         alignItems: "center",
-        paddingTop: 12,
+        paddingTop: 4,
         paddingBottom: 8,
-    },
-    handle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        marginBottom: 12,
     },
     titleRow: {
         flexDirection: "row",

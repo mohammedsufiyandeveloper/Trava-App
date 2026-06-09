@@ -26,6 +26,8 @@ import { useNotifications } from "../context/NotificationContext";
 import { MainTabParamList, RootStackParamList, User, Workspace } from "../types";
 import { format } from "date-fns";
 import WidgetPreviewModal from "../components/WidgetPreviewModal";
+import PressableScale from "../components/PressableScale";
+import { haptics } from "../services/haptics";
 import AttendanceWidget from "../components/AttendanceWidget";
 import { useResponsive } from "../hooks/useResponsive";
 
@@ -185,6 +187,7 @@ export default function HomeScreen({ navigation }: Props) {
     };
 
     const onRefresh = () => {
+        haptics.light();
         setRefreshing(true);
         refreshWorkspaces();
         loadData();
@@ -228,9 +231,10 @@ export default function HomeScreen({ navigation }: Props) {
 
                     {/* Right side: Actions */}
                     <View style={{ flexDirection: "row", gap: SPACING.sm, position: 'relative' }}>
-                        <TouchableOpacity
+                        <PressableScale
                             style={[styles.notificationBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                             onPress={() => (navigation as any)?.navigate("Notifications")}
+                            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
                         >
                             <Ionicons name="notifications-outline" size={24} color={colors.text} />
                             {unreadCount > 0 && (
@@ -238,59 +242,69 @@ export default function HomeScreen({ navigation }: Props) {
                                     <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
                                 </View>
                             )}
-                        </TouchableOpacity>
+                        </PressableScale>
 
-                        <TouchableOpacity
+                        <PressableScale
                             style={[styles.notificationBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                             onPress={() => setIsMenuOpen(!isMenuOpen)}
-                            activeOpacity={0.7}
+                            haptic="selection"
+                            accessibilityLabel="More options"
+                            accessibilityState={{ expanded: isMenuOpen }}
                         >
                             <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
-                        </TouchableOpacity>
+                        </PressableScale>
 
                         {/* Dropdown Menu */}
                         {isMenuOpen && (
                             <View style={[styles.dropdownMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                                <TouchableOpacity
+                                <PressableScale
+                                    haptic="selection"
                                     style={styles.dropdownItem}
                                     onPress={() => {
                                         toggleTheme();
                                         setIsMenuOpen(false);
                                     }}
+                                    accessibilityLabel={isDark ? "Switch to light mode" : "Switch to dark mode"}
                                 >
                                     <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={20} color={colors.text} />
                                     <Text style={[styles.dropdownText, { color: colors.text }]}>{isDark ? "Light Mode" : "Dark Mode"}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </PressableScale>
+                                <PressableScale
+                                    haptic="selection"
                                     style={styles.dropdownItem}
                                     onPress={() => {
                                         setIsMenuOpen(false);
                                         (navigation as any)?.navigate("AI");
                                     }}
+                                    accessibilityLabel="Trava AI"
                                 >
                                     <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
                                     <Text style={[styles.dropdownText, { color: colors.primary }]}>Trava AI</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </PressableScale>
+                                <PressableScale
+                                    haptic="selection"
                                     style={styles.dropdownItem}
                                     onPress={() => {
                                         setIsMenuOpen(false);
                                         (navigation as any)?.navigate("Attendance");
                                     }}
+                                    accessibilityLabel="Attendance"
                                 >
                                     <Ionicons name="time-outline" size={20} color={colors.text} />
                                     <Text style={[styles.dropdownText, { color: colors.text }]}>Attendance</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </PressableScale>
+                                <PressableScale
+                                    haptic="selection"
                                     style={styles.dropdownItem}
                                     onPress={() => {
                                         setIsMenuOpen(false);
                                         (navigation as any)?.navigate("Leave");
                                     }}
+                                    accessibilityLabel="Leaves"
                                 >
                                     <Ionicons name="calendar-outline" size={20} color={colors.text} />
                                     <Text style={[styles.dropdownText, { color: colors.text }]}>Leaves</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                                 {/* 
                                 <TouchableOpacity
                                     style={styles.dropdownItem}

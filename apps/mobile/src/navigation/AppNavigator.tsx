@@ -50,12 +50,18 @@ export default function AppNavigator() {
         <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
                 initialRouteName={initialRoute}
-                screenOptions={{ headerShown: false, animation: "fade" }}
+                screenOptions={{
+                    headerShown: false,
+                    // Default: native horizontal push → drill-down depth + edge-swipe back.
+                    animation: "slide_from_right",
+                    gestureEnabled: true,
+                }}
             >
 
-                <Stack.Screen name="SignIn" component={SignIn as any} />
-                <Stack.Screen name="SignUp" component={SignUp as any} />
-                <Stack.Screen name="Main" component={MainTabs as any} />
+                {/* Auth + root context swaps cross-fade (they are not a push). */}
+                <Stack.Screen name="SignIn" component={SignIn as any} options={{ animation: "fade" }} />
+                <Stack.Screen name="SignUp" component={SignUp as any} options={{ animation: "fade" }} />
+                <Stack.Screen name="Main" component={MainTabs as any} options={{ animation: "fade" }} />
                 <Stack.Screen name="TaskDetail" component={require("../screens/TaskDetailScreen").default as any} />
                 <Stack.Screen name="MySpace" component={require("../screens/MySpaceScreen").default as any} />
                 <Stack.Screen name="DirectChat" component={require("../screens/DirectChatScreen").default as any} />
