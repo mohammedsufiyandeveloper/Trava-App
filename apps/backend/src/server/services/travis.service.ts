@@ -41,8 +41,9 @@ import {
     type TravisEvent,
 } from "../travis/contract";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY ?? "");
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GOOGLE_GENAI_API_KEY = process.env.GOOGLE_GENAI_API_KEY?.trim() ?? "";
+const genAI = new GoogleGenerativeAI(GOOGLE_GENAI_API_KEY);
+const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
 const TOOL_LABELS: Record<string, string> = {
     search_tasks: "Searching tasks",
@@ -140,6 +141,12 @@ export class TravisService {
     static async runTurn(userId: string, input: TravisTurnInput): Promise<TravisChatResponse> {
         const events: TravisEvent[] = [];
         const conversationId = input.conversationId;
+
+        if (process.env.NODE_ENV !== "test" && !GOOGLE_GENAI_API_KEY) {
+            const msg = "Travis is not configured yet. Please contact your administrator.";
+            events.push(TravisEvents.error("provider_unavailable", msg));
+            return { success: false, conversationId, events, message: msg };
+        }
 
         const ctx = await resolveTravisContext({
             userId,
@@ -267,9 +274,12 @@ export class TravisService {
             const msg = timedOut
                 ? "Travis is taking too long to respond. Please try again."
                 : "Travis is temporarily unavailable. Please try again shortly.";
-            if (process.env.NODE_ENV === "development") {
-                console.error("[Travis] turn failed:", err?.message);
-            }
+            console.error("[Travis] provider request failed", {
+                model: MODEL,
+                status: err?.status ?? err?.response?.status ?? null,
+                code: err?.code ?? null,
+                type: err?.name ?? "Error",
+            });
             events.push(TravisEvents.error(code, msg));
             return { success: false, conversationId, events, message: msg };
         }

@@ -6,7 +6,7 @@ import { listConversations, listMessages, persistTurn } from "@/server/travis/pe
 import { HonoVariables } from "../types";
 import prisma from "@/lib/db";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
 /** Derive sanitized persistence metadata from the event stream. */
 function summarizeEvents(events: TravisEvent[]) {

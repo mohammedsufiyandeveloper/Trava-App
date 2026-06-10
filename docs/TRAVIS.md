@@ -61,7 +61,7 @@ Key backend modules (under `apps/backend/src/server/travis/`):
 | Variable | Purpose |
 |---|---|
 | `GOOGLE_GENAI_API_KEY` | Gemini API key (required for Travis to answer). |
-| `GEMINI_MODEL` | Model id (default `gemini-1.5-flash`). |
+| `GEMINI_MODEL` | Model id (default `gemini-2.5-flash`). |
 | `BETTER_AUTH_SECRET` | Already required; also signs Travis confirmation tokens. |
 | `DATABASE_URL` / `DIRECT_URL` | Postgres (existing). |
 
