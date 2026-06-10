@@ -9,7 +9,9 @@
       The monorepo build only works with this set.
 - [ ] Confirm build settings match `apps/backend/vercel.json`:
       - Install: `pnpm install`
-      - Build: `pnpm run build` (runs `prisma generate` + `tsup` → `api/`)
+      - Build: `pnpm run build` (runs `prisma generate` + a single-file
+        `tsup` bundle → `api/index.js`; keep code splitting disabled so the
+        Vercel Hobby plan sees one Serverless Function)
       - Region: `bom1`
 - [ ] Add **environment variables** (rotated values — see
       [SECURITY.md](../SECURITY.md)) for all keys in

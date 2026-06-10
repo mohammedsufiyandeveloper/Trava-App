@@ -1,1 +1,0 @@
-import{AsyncLocalStorage as s}from"async_hooks";var r=new s,n=async()=>{let e=r.getStore();return e?{user:e.user,session:e.session}:null},t=async()=>{let e=r.getStore();if(e?.user)return e.user;throw new Error("Unauthorized: No user session found in request context.")};export{r as a,n as b,t as c};

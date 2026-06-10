@@ -28,7 +28,7 @@ cron.get("/auto-absence", async (c) => {
                 gen_random_uuid(), 
                 wm."workspaceId", 
                 wm."userId", 
-                ${startOfDay}::date, 
+                ${startOfDay}::date,
                 'ABSENT'::"ReportStatus", 
                 true, 
                 now(), 
