@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -6,9 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    ActivityIndicator,
     RefreshControl,
-    Modal,
     Pressable,
     Animated,
 } from "react-native";
@@ -20,10 +18,9 @@ import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
-import { getCachedSession, getSession } from "../services/api";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
-import { MainTabParamList, RootStackParamList, User, Workspace } from "../types";
+import { MainTabParamList, RootStackParamList } from "../types";
 import { format } from "date-fns";
 import WidgetPreviewModal from "../components/WidgetPreviewModal";
 import PressableScale from "../components/PressableScale";
@@ -38,19 +35,15 @@ type Props = CompositeScreenProps<
 
 export default function HomeScreen({ navigation }: Props) {
     const {
-        workspaces,
         activeWorkspace,
         stats,
         loading: wsLoading,
-        switchWorkspace,
         refreshWorkspaces,
     } = useWorkspace();
     const { colors, isDark, toggleTheme } = useTheme();
     const { unreadCount } = useNotifications();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
 
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
     const [previewTarget, setPreviewTarget] = useState<"projects" | "teams" | "attendance" | null>(null);
@@ -60,8 +53,6 @@ export default function HomeScreen({ navigation }: Props) {
     const projRef = React.useRef<any>(null);
     const teamRef = React.useRef<any>(null);
     const attRef = React.useRef<any>(null);
-    const scrollRef = React.useRef<ScrollView>(null);
-
     const shimmerAnim = React.useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
@@ -100,81 +91,6 @@ export default function HomeScreen({ navigation }: Props) {
         });
     };
 
-    // ── Helper: get byte size of any JS value ──────────────────────────────
-    const byteSize = (val: any): string => {
-        try {
-            const str = JSON.stringify(val) ?? "";
-            const bytes = new TextEncoder().encode(str).length;
-            if (bytes < 1024) return `${bytes} B`;
-            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-        } catch {
-            return "N/A";
-        }
-    };
-
-    const loadData = useCallback(async () => {
-        try {
-            // ── 1. Cached Session ──────────────────────────────────────────────
-            const tCached = performance.now();
-            const cached = await getCachedSession();
-            console.log(`[HomeScreen] ⏱ getCachedSession took ${(performance.now() - tCached).toFixed(1)}ms`);
-            if (cached?.user) setUser(cached.user);
-            console.log(
-                "\n╔══════════════════════════════════════╗",
-                "\n║  🏠 HomeScreen — Data on Mount       ║",
-                "\n╚══════════════════════════════════════╝"
-            );
-            console.group("📦 [1] Cached Session");
-            console.log("Data   :", cached);
-            console.log("Size   :", byteSize(cached));
-            console.log("User   :", cached?.user ?? "none");
-            console.groupEnd();
-
-            // ── 2. Live Session (API) ──────────────────────────────────────────
-            const tLive = performance.now();
-            const live = await getSession();
-            console.log(`[HomeScreen] ⏱ getSession took ${(performance.now() - tLive).toFixed(1)}ms`);
-            if (live) setUser(live.user);
-            console.group("🌐 [2] Live Session (API)");
-            console.log("Data   :", live);
-            console.log("Size   :", byteSize(live));
-            console.log("User   :", live?.user ?? "none");
-            console.groupEnd();
-
-        } catch (err) {
-            console.error("HomeScreen load error:", err);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-
-    // ── Log Workspace + Notification data whenever they change ─────────────
-    useEffect(() => {
-        if (wsLoading) return; // wait until workspace data is ready
-        console.group("🏢 [3] WorkspaceContext");
-        console.log("Active Workspace :", activeWorkspace);
-        console.log("Active WS Size   :", byteSize(activeWorkspace));
-        console.log("All Workspaces   :", workspaces);
-        console.log("Workspaces Size  :", byteSize(workspaces));
-        console.log("Workspaces Count :", workspaces?.length ?? 0);
-        console.log("Stats            :", stats);
-        console.log("Stats Size       :", byteSize(stats));
-        console.groupEnd();
-    }, [wsLoading, activeWorkspace, workspaces, stats]);
-
-    useEffect(() => {
-        console.group("🔔 [4] NotificationContext");
-        console.log("Unread Count :", unreadCount);
-        console.log("Size         :", byteSize(unreadCount));
-        console.groupEnd();
-    }, [unreadCount]);
-
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
@@ -182,24 +98,15 @@ export default function HomeScreen({ navigation }: Props) {
         return () => clearInterval(timer);
     }, []);
 
-    const handleWorkspaceSwitch = (ws: Workspace) => {
-        switchWorkspace(ws);
-    };
-
-    const onRefresh = () => {
+    const onRefresh = async () => {
         haptics.light();
         setRefreshing(true);
-        refreshWorkspaces();
-        loadData();
+        try {
+            await refreshWorkspaces();
+        } finally {
+            setRefreshing(false);
+        }
     };
-
-    if (loading) {
-        return (
-            <View style={[styles.center, { backgroundColor: colors.background }]}>
-                <ActivityIndicator color={colors.primary} size="large" />
-            </View>
-        );
-    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
@@ -487,7 +394,6 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
     scrollContent: { paddingBottom: 20 },
 
     header: { paddingVertical: SPACING.sm, marginBottom: SPACING.sm },
