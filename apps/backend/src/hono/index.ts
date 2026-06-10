@@ -54,7 +54,11 @@ app.use("*", async (c, next) => {
         }
 
         c.header("x-request-id", requestId);
-        c.header("Server-Timing", timing.join(", "));
+        const routeTiming = c.res.headers.get("Server-Timing");
+        c.header(
+            "Server-Timing",
+            routeTiming ? `${routeTiming}, ${timing.join(", ")}` : timing.join(", ")
+        );
 
         if (!c.res.headers.has("Cache-Control")) {
             c.header("Cache-Control", "private, no-store");

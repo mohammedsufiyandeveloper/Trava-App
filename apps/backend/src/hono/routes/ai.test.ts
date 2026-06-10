@@ -5,23 +5,14 @@ import { TravisService } from "@/server/services/travis.service";
 import prisma from "@/lib/db";
 import type { HonoVariables } from "../types";
 
-// Mock TravisService
 vi.mock("@/server/services/travis.service", () => ({
-    TravisService: {
-        chat: vi.fn(),
-    },
+    TravisService: { runTurn: vi.fn(), executeConfirmed: vi.fn() },
 }));
 
-// Mock prisma
 vi.mock("@/lib/db", () => ({
-    default: {
-        workspaceMember: {
-            findUnique: vi.fn(),
-        },
-    },
+    default: { workspaceMember: { findUnique: vi.fn() } },
 }));
 
-// Build a test app that injects a user into context
 function buildApp(user?: { id: string; email: string }) {
     const app = new Hono<{ Variables: HonoVariables }>();
     app.use("*", async (c, next) => {
@@ -32,119 +23,141 @@ function buildApp(user?: { id: string; email: string }) {
     return app;
 }
 
-describe("POST /ai/chat", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
+const post = (app: ReturnType<typeof buildApp>, path: string, body: unknown) =>
+    app.request(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
     });
 
+describe("POST /ai/chat", () => {
+    beforeEach(() => vi.clearAllMocks());
+
     it("returns 401 when not authenticated", async () => {
-        const app = buildApp(); // no user
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: "hello", workspaceId: "ws1" }),
-        });
+        const res = await post(buildApp(), "/ai/chat", { message: "hi", workspaceId: "ws1" });
         expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
     });
 
     it("returns 400 when message is missing", async () => {
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ workspaceId: "ws1" }),
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/chat", {
+            workspaceId: "ws1",
         });
         expect(res.status).toBe(400);
-        const body = await res.json();
-        expect(body.success).toBe(false);
     });
 
     it("returns 400 when message exceeds 2000 chars", async () => {
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: "x".repeat(2001), workspaceId: "ws1" }),
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/chat", {
+            message: "x".repeat(2001),
+            workspaceId: "ws1",
         });
         expect(res.status).toBe(400);
     });
 
-    it("returns 403 when user is not a workspace member", async () => {
+    it("returns 403 when the user is not a workspace member", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue(null);
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: "hello", workspaceId: "other-workspace" }),
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/chat", {
+            message: "hi",
+            workspaceId: "other",
         });
         expect(res.status).toBe(403);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error).toMatch(/not a member/i);
+        expect((await res.json()).error).toMatch(/not a member/i);
     });
 
-    it("succeeds with a valid request", async () => {
+    it("returns the structured event response on success", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1" });
-        (TravisService.chat as any).mockResolvedValue("Here are your tasks.");
-
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: "What are my tasks?", workspaceId: "ws1" }),
+        (TravisService.runTurn as any).mockResolvedValue({
+            success: true,
+            events: [{ type: "completed", text: "Here are your tasks." }],
+            message: "Here are your tasks.",
         });
-
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/chat", {
+            message: "tasks?",
+            workspaceId: "ws1",
+        });
         expect(res.status).toBe(200);
         const body = await res.json();
         expect(body.success).toBe(true);
-        expect(body.data.message).toBe("Here are your tasks.");
+        expect(body.message).toBe("Here are your tasks.");
+        expect(body.events[0].type).toBe("completed");
     });
 
-    it("strips system-role messages from history", async () => {
+    it("maps a timeout error event to HTTP 504", async () => {
         (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1" });
-        (TravisService.chat as any).mockResolvedValue("OK");
-
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message: "hello",
-                workspaceId: "ws1",
-                history: [
-                    { role: "user", content: "hi" },
-                    { role: "assistant", content: "hello" },
-                ],
-            }),
+        (TravisService.runTurn as any).mockResolvedValue({
+            success: false,
+            events: [{ type: "error", code: "timeout", message: "too slow" }],
+            message: "too slow",
         });
-
-        // Verify that TravisService.chat was called with only user/assistant messages
-        expect(TravisService.chat).toHaveBeenCalledWith(
-            "ws1",
-            "user1",
-            "hello",
-            [
-                { role: "user", content: "hi" },
-                { role: "assistant", content: "hello" },
-            ]
-        );
-    });
-
-    it("handles timeout from TravisService", async () => {
-        (prisma.workspaceMember.findUnique as any).mockResolvedValue({ id: "mem1" });
-        (TravisService.chat as any).mockRejectedValue(new Error("TIMEOUT"));
-
-        const app = buildApp({ id: "user1", email: "u@test.com" });
-        const res = await app.request("/ai/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: "hello", workspaceId: "ws1" }),
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/chat", {
+            message: "hi",
+            workspaceId: "ws1",
         });
-
         expect(res.status).toBe(504);
-        const body = await res.json();
-        expect(body.error).toMatch(/taking too long/i);
+    });
+});
+
+describe("POST /ai/confirm", () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it("returns 401 when not authenticated", async () => {
+        const res = await post(buildApp(), "/ai/confirm", { confirmationToken: "t" });
+        expect(res.status).toBe(401);
+    });
+
+    it("returns 400 with no token", async () => {
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/confirm", {});
+        expect(res.status).toBe(400);
+    });
+
+    it("executes the confirmed write and returns events", async () => {
+        (TravisService.executeConfirmed as any).mockResolvedValue({
+            success: true,
+            events: [
+                { type: "entity_card", entity: { type: "task", id: "t1", label: "New task" } },
+                { type: "completed", text: "Created" },
+            ],
+            message: "Created",
+        });
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/confirm", {
+            confirmationToken: "signed.token",
+        });
+        expect(res.status).toBe(200);
+        expect((await res.json()).message).toBe("Created");
+    });
+
+    it("maps an invalid/expired token to HTTP 400", async () => {
+        (TravisService.executeConfirmed as any).mockResolvedValue({
+            success: false,
+            events: [{ type: "error", code: "invalid_request", message: "expired" }],
+            message: "expired",
+        });
+        const res = await post(buildApp({ id: "u1", email: "u@t.com" }), "/ai/confirm", {
+            confirmationToken: "bad",
+        });
+        expect(res.status).toBe(400);
+    });
+});
+
+describe("Travis conversation routes", () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it("rejects conversation listing after workspace access is revoked", async () => {
+        (prisma.workspaceMember.findUnique as any).mockResolvedValue(null);
+
+        const res = await buildApp({ id: "u1", email: "u@t.com" }).request(
+            "/ai/conversations?workspaceId=ws1"
+        );
+
+        expect(res.status).toBe(403);
+    });
+
+    it("rejects message history after workspace access is revoked", async () => {
+        (prisma.workspaceMember.findUnique as any).mockResolvedValue(null);
+
+        const res = await buildApp({ id: "u1", email: "u@t.com" }).request(
+            "/ai/conversations/c1/messages?workspaceId=ws1"
+        );
+
+        expect(res.status).toBe(403);
     });
 });

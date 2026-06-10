@@ -884,3 +884,60 @@ enum VendorStatus {
   INACTIVE
   BLACKLISTED
 }
+
+// ===========================================================================
+// Travis AI — assistant persistence & idempotency
+// Added by the Travis integration. The application tolerates these tables
+// being absent (graceful fallback), so the migration can be applied later.
+// ===========================================================================
+
+/// At-most-once guard for confirmed Travis write operations.
+model travisIdempotency {
+  key         String   @id
+  userId      String
+  workspaceId String
+  tool        String
+  state       String   @default("PENDING")
+  ok          Boolean?
+  result      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([createdAt])
+}
+
+/// A Travis conversation thread, scoped to a user + workspace.
+model travisConversation {
+  id          String          @id @default(uuid())
+  workspaceId String
+  userId      String
+  title       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  messages    travisMessage[]
+
+  @@index([workspaceId, userId, updatedAt(sort: Desc)])
+}
+
+/// One turn in a Travis conversation. Stores sanitized tool metadata only —
+/// never secrets, auth headers, or raw SQL.
+model travisMessage {
+  id                String             @id @default(uuid())
+  conversationId    String
+  role              String // 'user' | 'assistant'
+  content           String
+  toolName          String?
+  toolArgs          Json?
+  toolOutcome       String?
+  entityRefs        Json?
+  confirmationState String?
+  provider          String?
+  model             String?
+  latencyMs         Int?
+  errorCategory     String?
+  createdAt         DateTime           @default(now())
+  conversation      travisConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}

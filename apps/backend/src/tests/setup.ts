@@ -14,6 +14,7 @@ vi.mock("@/lib/db", () => {
         findMany: vi.fn(() => []),
         groupBy: vi.fn(() => []),
         upsert: vi.fn(async (args) => ({ id: args?.where?.id || `mock-${name}-id`, ...args?.create })),
+        updateMany: vi.fn(() => ({ count: 1 })),
         deleteMany: vi.fn(() => ({ count: 0 })),
     });
 
