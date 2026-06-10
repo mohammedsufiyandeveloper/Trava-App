@@ -23,7 +23,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { PusherClient } from "../services/PusherClient";
 import {
     getOrCreateConversation,
-    getDirectMessages,
+    getDirectMessagesPage,
     sendDirectMessage,
     getCachedSession,
     sendTypingIndicator
@@ -51,6 +51,9 @@ export default function DirectChatScreen({ route, navigation }: Props) {
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastTypingSentRef = useRef<number>(0);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [hasOlderMessages, setHasOlderMessages] = useState(false);
+    const [nextMessageCursor, setNextMessageCursor] = useState<string | null>(null);
+    const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
 
     const flatListRef = useRef<FlatList>(null);
 
@@ -87,8 +90,10 @@ export default function DirectChatScreen({ route, navigation }: Props) {
             }
 
             if (convId) {
-                const msgs = await getDirectMessages(convId);
-                setMessages([...msgs].reverse());
+                const page = await getDirectMessagesPage(convId);
+                setMessages(page.messages);
+                setHasOlderMessages(page.hasMore);
+                setNextMessageCursor(page.nextCursor);
             }
         } catch (error) {
             console.error("Failed to init chat:", error);
@@ -100,6 +105,36 @@ export default function DirectChatScreen({ route, navigation }: Props) {
     useEffect(() => {
         initChat();
     }, [conversationId, activeWorkspace?.id]);
+
+    const loadOlderMessages = async () => {
+        if (
+            !conversationId ||
+            !hasOlderMessages ||
+            !nextMessageCursor ||
+            loadingOlderMessages
+        ) {
+            return;
+        }
+
+        setLoadingOlderMessages(true);
+        try {
+            const page = await getDirectMessagesPage(
+                conversationId,
+                nextMessageCursor
+            );
+            setMessages((current) => {
+                const existingIds = new Set(current.map((message) => message.id));
+                return [
+                    ...current,
+                    ...page.messages.filter((message) => !existingIds.has(message.id)),
+                ];
+            });
+            setHasOlderMessages(page.hasMore);
+            setNextMessageCursor(page.nextCursor);
+        } finally {
+            setLoadingOlderMessages(false);
+        }
+    };
 
     // Set up Pusher real-time subscription
     useEffect(() => {
@@ -258,6 +293,17 @@ export default function DirectChatScreen({ route, navigation }: Props) {
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={styles.listContent}
                             inverted
+                            onEndReached={loadOlderMessages}
+                            onEndReachedThreshold={0.3}
+                            ListFooterComponent={
+                                loadingOlderMessages ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={colors.primary}
+                                        style={{ paddingVertical: 12 }}
+                                    />
+                                ) : null
+                            }
                             ListHeaderComponent={
                                 isOtherTyping ? (
                                     <View style={styles.typingContainer}>

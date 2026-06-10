@@ -1,9 +1,8 @@
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 const notFound = (..._args: any[]): never => { throw new Error('notFound not available in API server'); }; // next/navigation no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { CacheTags } from "@/data/cache-tags";
+import { cached } from "@/lib/cache/runtime-cache";
 
 export type WorkspaceMemberRow = {
   id: string;
@@ -26,7 +25,10 @@ export type WorkspaceMembersResult = {
   workspaceMembers: WorkspaceMemberRow[];
 };
 
-export const getWorkspaceMembers = cache(async (workspaceId: string, role?: string): Promise<WorkspaceMembersResult> => {
+export const getWorkspaceMembers = async (
+  workspaceId: string,
+  role?: string
+): Promise<WorkspaceMembersResult> => {
   if (!workspaceId) {
     throw new Error("workspaceId is required");
   }
@@ -36,34 +38,33 @@ export const getWorkspaceMembers = cache(async (workspaceId: string, role?: stri
     return notFound();
   }
 
-  // Pass role to the cached function
-  const result = await unstable_cache(
+  const result = await cached(
+    `workspace-members-${workspaceId}-${role || "all"}`,
     async () => _fetchWorkspaceMembersInternal(workspaceId, role),
-    [`workspace-members-${workspaceId}-${role || "all"}`],
     {
       tags: CacheTags.workspaceMembers(workspaceId),
-      revalidate: 60,
+      ttlSeconds: 60,
     }
-  )();
+  );
 
   const isUserMember = result.workspaceMembers.some((m) => m.userId === user.id);
-  if (!isUserMember && !role) { 
+  if (!isUserMember) {
     // Verify user is member of workspace regardless of role filter
-    const fullList = await unstable_cache(
+    const fullList = await cached(
+        `workspace-members-${workspaceId}-all`,
         async () => _fetchWorkspaceMembersInternal(workspaceId),
-        [`workspace-members-${workspaceId}-all`],
         {
           tags: CacheTags.workspaceMembers(workspaceId),
-          revalidate: 60,
+          ttlSeconds: 60,
         }
-    )();
+    );
     if (!fullList.workspaceMembers.some(m => m.userId === user.id)) {
         return notFound();
     }
   }
 
   return result;
-});
+};
 
 async function _fetchWorkspaceMembersInternal(workspaceId: string, role?: string): Promise<WorkspaceMembersResult> {
   const workspaceMembers = await prisma.workspaceMember.findMany({

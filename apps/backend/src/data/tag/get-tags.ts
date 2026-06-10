@@ -1,13 +1,13 @@
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 import { CacheTags } from "@/data/cache-tags";
 import prisma from "@/lib/db";
+import { cached } from "@/lib/cache/runtime-cache";
 
 /**
  * Get all tags for a workspace
  */
-export const getWorkspaceTags = cache(async (workspaceId: string) => {
-    return unstable_cache(
+export const getWorkspaceTags = async (workspaceId: string) => {
+    return cached(
+        `workspace-tags-${workspaceId}`,
         async () => {
             try {
                 const tags = await prisma.tag.findMany({
@@ -25,19 +25,19 @@ export const getWorkspaceTags = cache(async (workspaceId: string) => {
                 throw new Error("Failed to fetch workspace tags");
             }
         },
-        [`workspace-tags-${workspaceId}`],
         {
             tags: CacheTags.workspaceTags(workspaceId),
-            revalidate: 60 * 60 * 24, // 24 hours
+            ttlSeconds: 60 * 60,
         }
-    )();
-});
+    );
+};
 
 /**
  * Get all tags for a workspace with task counts
  */
-export const getWorkspaceTagsWithCount = cache(async (workspaceId: string) => {
-    return unstable_cache(
+export const getWorkspaceTagsWithCount = async (workspaceId: string) => {
+    return cached(
+        `workspace-tags-count-${workspaceId}`,
         async () => {
             try {
                 const tags = await prisma.tag.findMany({
@@ -62,13 +62,12 @@ export const getWorkspaceTagsWithCount = cache(async (workspaceId: string) => {
                 throw new Error("Failed to fetch workspace tags with count");
             }
         },
-        [`workspace-tags-count-${workspaceId}`],
         {
             tags: CacheTags.workspaceTags(workspaceId),
-            revalidate: 60 * 60 * 24, // 24 hours
+            ttlSeconds: 60 * 10,
         }
-    )();
-});
+    );
+};
 
 /**
  * Get a single tag by ID

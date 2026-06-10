@@ -122,6 +122,11 @@ export const conversationsRouter = new Hono<{ Variables: HonoVariables }>()
     .get("/:conversationId/messages", async (c) => {
         const user = c.get("user");
         const conversationId = c.req.param("conversationId");
+        const requestedLimit = Number.parseInt(c.req.query("limit") || "30", 10);
+        const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(requestedLimit, 50)
+            : 30;
+        const cursor = c.req.query("cursor") || undefined;
 
         try {
             const conversation = await prisma.conversation.findUnique({
@@ -140,15 +145,23 @@ export const conversationsRouter = new Hono<{ Variables: HonoVariables }>()
 
             const messages = await prisma.directMessage.findMany({
                 where: { conversationId },
-                include: {
+                select: {
+                    id: true,
+                    content: true,
+                    createdAt: true,
+                    senderId: true,
                     sender: {
                         select: { id: true, name: true, surname: true, image: true }
                     }
                 },
-                orderBy: { createdAt: "asc" }
+                orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+                take: limit + 1,
+                ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             });
 
-            const mapped = messages.map(m => ({
+            const hasMore = messages.length > limit;
+            const page = messages.slice(0, limit);
+            const mapped = page.map(m => ({
                 id: m.id,
                 content: m.content,
                 createdAt: m.createdAt,
@@ -161,7 +174,12 @@ export const conversationsRouter = new Hono<{ Variables: HonoVariables }>()
                 }
             }));
 
-            return c.json({ success: true, messages: mapped });
+            return c.json({
+                success: true,
+                messages: mapped,
+                hasMore,
+                nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+            });
         } catch (error: any) {
             console.error("Hono API Error [Messages GET]:", error);
             return c.json({ success: false, error: error.message }, 500);

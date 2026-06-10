@@ -13,10 +13,26 @@ export const leavesRouter = new Hono<{ Variables: HonoVariables }>()
     if (!workspaceId) return c.json({ success: false, error: "Workspace ID is required" }, 400);
 
     const onlyMine = c.req.query("onlyMine") === "true";
+    const requestedLimit = Number.parseInt(c.req.query("limit") || "25", 10);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(requestedLimit, 50)
+        : 25;
+    const cursor = c.req.query("cursor") || undefined;
+    const search = c.req.query("search")?.trim() || undefined;
 
     try {
-        const records = await LeaveService.getLeaveRequests(workspaceId, user.id, onlyMine ? user.id : undefined);
-        return c.json({ success: true, data: records });
+        const page = await LeaveService.getLeaveRequestsPage(
+            workspaceId,
+            user.id,
+            onlyMine ? user.id : undefined,
+            { limit, cursor, search }
+        );
+        return c.json({
+            success: true,
+            data: page.requests,
+            hasMore: page.hasMore,
+            nextCursor: page.nextCursor,
+        });
     } catch (error: any) {
         return c.json({ success: false, error: error.message }, 400);
     }

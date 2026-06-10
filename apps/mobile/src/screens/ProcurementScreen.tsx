@@ -18,7 +18,7 @@ import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
-import { getIndentRequests, getVendors } from "../services/api";
+import { getIndentRequestsPage, getVendors } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 
 const { width } = Dimensions.get("window");
@@ -34,16 +34,22 @@ export default function ProcurementScreen({ navigation }: any) {
     const [indents, setIndents] = useState<any[]>([]);
     const [vendors, setVendors] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [expandedVendorId, setExpandedVendorId] = useState<string | null>(null);
+    const [hasMoreIndents, setHasMoreIndents] = useState(false);
+    const [nextIndentCursor, setNextIndentCursor] = useState<string | null>(null);
+    const [loadingMoreIndents, setLoadingMoreIndents] = useState(false);
 
     const loadData = useCallback(async () => {
         if (!activeWorkspace?.id) return;
         try {
-            const [indentsData, vendorsData] = await Promise.all([
-                getIndentRequests(activeWorkspace.id),
+            const [indentPage, vendorsData] = await Promise.all([
+                getIndentRequestsPage(activeWorkspace.id, undefined, debouncedSearch),
                 getVendors(activeWorkspace.id)
             ]);
-            setIndents(indentsData);
+            setIndents(indentPage.indents);
+            setHasMoreIndents(indentPage.hasMore);
+            setNextIndentCursor(indentPage.nextCursor);
             setVendors(vendorsData);
         } catch (error) {
             console.error("ProcurementScreen load error:", error);
@@ -51,7 +57,53 @@ export default function ProcurementScreen({ navigation }: any) {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [activeWorkspace?.id]);
+    }, [activeWorkspace?.id, debouncedSearch]);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setDebouncedSearch(searchQuery.trim());
+        }, 300);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
+
+    const loadMoreIndents = useCallback(async () => {
+        if (
+            activeTab !== "indents" ||
+            !activeWorkspace?.id ||
+            !hasMoreIndents ||
+            !nextIndentCursor ||
+            loadingMoreIndents
+        ) {
+            return;
+        }
+
+        setLoadingMoreIndents(true);
+        try {
+            const page = await getIndentRequestsPage(
+                activeWorkspace.id,
+                nextIndentCursor,
+                debouncedSearch
+            );
+            setIndents((current) => {
+                const ids = new Set(current.map((indent) => indent.id));
+                return [
+                    ...current,
+                    ...page.indents.filter((indent) => !ids.has(indent.id)),
+                ];
+            });
+            setHasMoreIndents(page.hasMore);
+            setNextIndentCursor(page.nextCursor);
+        } finally {
+            setLoadingMoreIndents(false);
+        }
+    }, [
+        activeTab,
+        activeWorkspace?.id,
+        hasMoreIndents,
+        loadingMoreIndents,
+        nextIndentCursor,
+        debouncedSearch,
+    ]);
 
     useEffect(() => {
         loadData();
@@ -196,6 +248,14 @@ export default function ProcurementScreen({ navigation }: any) {
                     contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
                     showsVerticalScrollIndicator={false}
+                    scrollEventThrottle={200}
+                    onScroll={({ nativeEvent }) => {
+                        const remaining =
+                            nativeEvent.contentSize.height -
+                            nativeEvent.layoutMeasurement.height -
+                            nativeEvent.contentOffset.y;
+                        if (remaining < 240) loadMoreIndents();
+                    }}
                 >
                     {activeTab === "indents" ? (
                         filteredIndents.length === 0 ? (
@@ -382,6 +442,12 @@ export default function ProcurementScreen({ navigation }: any) {
                                 );
                             })
                         )
+                    )}
+                    {activeTab === "indents" && loadingMoreIndents && (
+                        <ActivityIndicator
+                            color={colors.primary}
+                            style={{ paddingVertical: 16 }}
+                        />
                     )}
                 </ScrollView>
             </View>

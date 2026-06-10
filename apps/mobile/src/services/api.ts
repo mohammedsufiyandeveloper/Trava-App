@@ -46,7 +46,9 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
 
     try {
         const url = `${API_BASE}${path}`;
-        console.log(`[apiFetch] Calling ${url}`);
+        if (__DEV__) {
+            console.log(`[apiFetch] Calling ${url}`);
+        }
 
         const response = await fetch(url, {
             ...options,
@@ -58,10 +60,17 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
             },
         });
 
-        console.log(`[apiFetch] Response from ${url}: ${response.status}`);
+        if (__DEV__) {
+            const serverTiming = response.headers.get("server-timing");
+            console.log(
+                `[apiFetch] Response from ${url}: ${response.status}${serverTiming ? ` (${serverTiming})` : ""}`
+            );
+        }
 
         if (response.status === 401) {
-            console.log("[apiFetch] 401 Unauthorized encountered. Clearing token and redirecting to SignIn...");
+            if (__DEV__) {
+                console.log("[apiFetch] 401 Unauthorized encountered. Clearing token and redirecting to SignIn...");
+            }
             await clearToken();
             try {
                 if (navigationRef.isReady()) {
@@ -233,6 +242,43 @@ export async function getWorkspaces(): Promise<Workspace[]> {
     }
 }
 
+export type WorkspaceBootstrapResponse = {
+    workspaces: Workspace[];
+    activeWorkspace: Workspace | null;
+    projects: Project[];
+    tags: any[];
+    todayAttendance: any | null;
+    teamAttendance: any[];
+};
+
+/**
+ * Load the complete workspace shell in one HTTP request.
+ */
+export async function getWorkspaceBootstrap(
+    preferredWorkspaceId?: string,
+    clientDateString?: string
+): Promise<WorkspaceBootstrapResponse> {
+    const query = new URLSearchParams();
+    if (preferredWorkspaceId) query.set("workspaceId", preferredWorkspaceId);
+    if (clientDateString) query.set("clientDateString", clientDateString);
+
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const res = await apiFetch(`/api/workspaces/bootstrap${suffix}`);
+    const data = await res.json();
+    if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to load workspace");
+    }
+
+    return {
+        workspaces: data.workspaces ?? [],
+        activeWorkspace: data.activeWorkspace ?? null,
+        projects: data.projects ?? [],
+        tags: data.tags ?? [],
+        todayAttendance: data.todayAttendance ?? null,
+        teamAttendance: data.teamAttendance ?? [],
+    };
+}
+
 /**
  * Fetch projects.
  */
@@ -281,7 +327,6 @@ export async function getProject(projectId: string): Promise<any | null> {
 
 // Helper to map complex backend relations to simple mobile types
 function mapTask(t: any): Task {
-    console.log(`[mapTask] Task: "${t.name}", assigneeId: ${t.assigneeId}, ProjectMemberID: ${t.ProjectMember_Task_assigneeIdToProjectMember?.id}`);
     const normalize = (m: any) => {
         if (!m) return undefined;
         const wsMember = m.WorkspaceMember || m.workspaceMember;
@@ -594,12 +639,63 @@ export async function getTaskById(taskId: string): Promise<Task | null> {
     }
 }
 
+export type TaskDetailResponse = {
+    task: Task;
+    subTasks: Task[];
+    subTasksPage: {
+        totalCount: number;
+        hasMore: boolean;
+        nextCursor: { id: string; createdAt: string } | null;
+    };
+    comments: any[];
+    commentsPage: {
+        hasMore: boolean;
+        nextCursor: string | null;
+    };
+    activities: any[];
+    activitiesPage: {
+        hasMore: boolean;
+        nextCursor: string | null;
+    };
+};
+
+/**
+ * Fetch everything required for the initial task-detail render in one request.
+ */
+export async function getTaskDetail(taskId: string): Promise<TaskDetailResponse> {
+    const query = new URLSearchParams({
+        subtaskLimit: "30",
+        commentLimit: "20",
+        activityLimit: "20",
+    });
+    const res = await apiFetch(`/api/tasks/${taskId}/detail?${query.toString()}`);
+    const data = await res.json();
+    if (!res.ok || !data?.task) {
+        throw new Error(data?.error || "Failed to load task details");
+    }
+
+    return {
+        task: mapTask(data.task),
+        subTasks: (data.subTasks ?? []).map(mapTask),
+        subTasksPage: data.subTasksPage,
+        comments: data.comments ?? [],
+        commentsPage: data.commentsPage,
+        activities: data.activities ?? [],
+        activitiesPage: data.activitiesPage,
+    };
+}
+
 /**
  * Fetch task messages/comments mapped to the given task
  */
-export async function getTaskComments(taskId: string): Promise<any[]> {
+export async function getTaskComments(
+    taskId: string,
+    cursor?: string
+): Promise<any[]> {
     try {
-        const res = await apiFetch(`/api/tasks/${taskId}/comments`);
+        const query = new URLSearchParams({ limit: "20" });
+        if (cursor) query.set("cursor", cursor);
+        const res = await apiFetch(`/api/tasks/${taskId}/comments?${query.toString()}`);
         if (!res.ok) return [];
         const data = await res.json();
         return data?.comments ?? [];
@@ -611,9 +707,14 @@ export async function getTaskComments(taskId: string): Promise<any[]> {
 /**
  * Fetch task/subtask activities from the database
  */
-export async function getTaskActivities(taskId: string): Promise<any[]> {
+export async function getTaskActivities(
+    taskId: string,
+    cursor?: string
+): Promise<any[]> {
     try {
-        const res = await apiFetch(`/api/tasks/${taskId}/activities`);
+        const query = new URLSearchParams({ limit: "20" });
+        if (cursor) query.set("cursor", cursor);
+        const res = await apiFetch(`/api/tasks/${taskId}/activities?${query.toString()}`);
         if (!res.ok) return [];
         const data = await res.json();
         return data?.activities ?? [];
@@ -1002,16 +1103,46 @@ export async function getLeaveBalance(workspaceId: string): Promise<LeaveBalance
 /**
  * Fetch leave requests (all or only current user's)
  */
-export async function getLeaveRequests(workspaceId: string, onlyMine: boolean = true): Promise<LeaveRequest[]> {
+export async function getLeaveRequestsPage(
+    workspaceId: string,
+    onlyMine: boolean = true,
+    cursor?: string,
+    search?: string
+): Promise<{
+    requests: LeaveRequest[];
+    hasMore: boolean;
+    nextCursor: string | null;
+}> {
     try {
-        const res = await apiFetch(`/api/leaves?workspaceId=${workspaceId}&onlyMine=${onlyMine}`);
-        if (!res.ok) return [];
+        const query = new URLSearchParams({
+            workspaceId,
+            onlyMine: String(onlyMine),
+            limit: "25",
+        });
+        if (cursor) query.set("cursor", cursor);
+        if (search) query.set("search", search);
+        const res = await apiFetch(`/api/leaves?${query.toString()}`);
+        if (!res.ok) {
+            return { requests: [], hasMore: false, nextCursor: null };
+        }
         const data = await res.json();
-        return data?.data ?? [];
+        return {
+            requests: data?.data ?? [],
+            hasMore: data?.hasMore ?? false,
+            nextCursor: data?.nextCursor ?? null,
+        };
     } catch (error) {
         console.error("[api] getLeaveRequests error:", error);
-        return [];
+        return { requests: [], hasMore: false, nextCursor: null };
     }
+}
+
+export async function getLeaveRequests(
+    workspaceId: string,
+    onlyMine: boolean = true
+): Promise<LeaveRequest[]> {
+    const page = await getLeaveRequestsPage(workspaceId, onlyMine);
+    return page.requests;
 }
 
 /**
@@ -1233,15 +1364,31 @@ export async function getOrCreateConversation(workspaceId: string, otherUserId: 
 /**
  * Get message history for a conversation
  */
-export async function getDirectMessages(conversationId: string): Promise<any[]> {
+export async function getDirectMessagesPage(
+    conversationId: string,
+    cursor?: string
+): Promise<{ messages: any[]; hasMore: boolean; nextCursor: string | null }> {
     try {
-        const res = await apiFetch(`/api/conversations/${conversationId}/messages`);
-        if (!res.ok) return [];
+        const query = new URLSearchParams({ limit: "30" });
+        if (cursor) query.set("cursor", cursor);
+        const res = await apiFetch(
+            `/api/conversations/${conversationId}/messages?${query.toString()}`
+        );
+        if (!res.ok) return { messages: [], hasMore: false, nextCursor: null };
         const data = await res.json();
-        return data?.messages ?? [];
+        return {
+            messages: data?.messages ?? [],
+            hasMore: data?.hasMore ?? false,
+            nextCursor: data?.nextCursor ?? null,
+        };
     } catch {
-        return [];
+        return { messages: [], hasMore: false, nextCursor: null };
     }
+}
+
+export async function getDirectMessages(conversationId: string): Promise<any[]> {
+    const page = await getDirectMessagesPage(conversationId);
+    return page.messages;
 }
 
 /**
@@ -1402,18 +1549,51 @@ export async function deleteMySpaceTodo(workspaceId: string, deleteTodoId: strin
 /**
  * Fetch all indents for a workspace
  */
-export async function getIndentRequests(workspaceId: string): Promise<any[]> {
+export async function getIndentRequestsPage(
+    workspaceId: string,
+    cursor?: string,
+    search?: string
+): Promise<{ indents: any[]; hasMore: boolean; nextCursor: string | null }> {
     try {
-        const res = await apiFetch(`/api/procurement/indents?workspaceId=${workspaceId}`);
-        if (!res.ok) return [];
+        const query = new URLSearchParams({ workspaceId, limit: "25" });
+        if (cursor) query.set("cursor", cursor);
+        if (search) query.set("search", search);
+        const res = await apiFetch(`/api/procurement/indents?${query.toString()}`);
+        if (!res.ok) {
+            return { indents: [], hasMore: false, nextCursor: null };
+        }
         const data = await res.json();
-        return data?.indents ?? [];
+        return {
+            indents: data?.indents ?? [],
+            hasMore: data?.hasMore ?? false,
+            nextCursor: data?.nextCursor ?? null,
+        };
     } catch (e) {
         console.error("[api] getIndentRequests error:", e);
-        return [];
+        return { indents: [], hasMore: false, nextCursor: null };
     }
 }
 
+export async function getIndentRequests(workspaceId: string): Promise<any[]> {
+    const page = await getIndentRequestsPage(workspaceId);
+    return page.indents;
+}
+
+export async function getIndentRequest(
+    workspaceId: string,
+    indentId: string
+): Promise<any | null> {
+    try {
+        const query = new URLSearchParams({ workspaceId, indentId });
+        const res = await apiFetch(`/api/procurement/indents?${query.toString()}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data?.indent ?? null;
+    } catch (error) {
+        console.error("[api] getIndentRequest error:", error);
+        return null;
+    }
+}
 /**
  * Fetch projects that allow indent procurement
  */
@@ -1565,6 +1745,3 @@ export async function rejectIndentLineItem(workspaceId: string, itemId: string, 
     }
     return data;
 }
-
-
-

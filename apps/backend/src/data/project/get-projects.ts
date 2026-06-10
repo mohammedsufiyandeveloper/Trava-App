@@ -1,11 +1,10 @@
 "use server";
 
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 import prisma from "@/lib/db";
 const notFound = (..._args: any[]): never => { throw new Error('notFound not available in API server'); }; // next/navigation no-op
 import { requireUser } from "@/lib/auth/require-user";
 import { CacheTags } from "@/data/cache-tags";
+import { cached } from "@/lib/cache/runtime-cache";
 
 /**
  * Project Visibility Rules (STRICT ENFORCEMENT):
@@ -152,7 +151,7 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
                 name: project.name,
                 slug: project.slug,
                 color: project.color,
-                description: undefined,
+                description: project.description,
                 createdBy: undefined,
                 canManageMembers: undefined,
                 memberCount: undefined,
@@ -195,17 +194,16 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
 
 // Cached version with Next.js unstable_cache (persists across requests)
 const getCachedUserProjects = (userId: string, workspaceId: string, lite = false) =>
-    unstable_cache(
+    cached(
+        `user-projects-${userId}-${workspaceId}-${lite ? "lite" : "full"}-v4`,
         async () => _getUserProjectsInternal(userId, workspaceId, lite),
-        [`user-projects-${userId}-${workspaceId}-${lite ? "lite" : "full"}-v3`],
         {
             tags: CacheTags.userProjects(userId, workspaceId),
-            revalidate: 60,
+            ttlSeconds: 60,
         }
-    )();
+    );
 
-// React cache wrapper (deduplicates requests within the same render)
-export const getUserProjects = cache(async (workspaceId: string, lite = false) => {
+export const getUserProjects = async (workspaceId: string, lite = false) => {
     const user = await requireUser();
     const projects = await getCachedUserProjects(user.id, workspaceId, lite);
 
@@ -214,6 +212,6 @@ export const getUserProjects = cache(async (workspaceId: string, lite = false) =
     }
 
     return projects;
-});
+};
 
 export type UserProjectsType = Awaited<ReturnType<typeof getUserProjects>>;

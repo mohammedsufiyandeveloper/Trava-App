@@ -1,4 +1,5 @@
 import { PrismaClient } from"@prisma/client";
+import { recordDatabaseQuery } from "@/lib/observability/request-metrics";
 
 /**
  * Prisma Singleton for Next.js
@@ -26,23 +27,41 @@ import { PrismaClient } from"@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaMetricsRegistered: boolean | undefined;
 };
 
 function createPrismaClient(): PrismaClient {
+  const enableDbTiming = process.env.ENABLE_DB_TIMING === "true";
   return new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
         ? [
-            // Uncomment the line below to log every SQL query during development:
-            // { level: "query", emit: "stdout" },
+            ...(enableDbTiming
+              ? [{ level: "query" as const, emit: "event" as const }]
+              : []),
             { level: "error", emit: "stdout" },
             { level: "warn", emit: "stdout" },
           ]
-        : [{ level: "error", emit: "stdout" }],
+        : [
+            ...(enableDbTiming
+              ? [{ level: "query" as const, emit: "event" as const }]
+              : []),
+            { level: "error", emit: "stdout" },
+          ],
   });
 }
 
 const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+if (
+  process.env.ENABLE_DB_TIMING === "true" &&
+  !globalForPrisma.prismaMetricsRegistered
+) {
+  (prisma as any).$on("query", (event: { duration: number }) => {
+    recordDatabaseQuery(event.duration);
+  });
+  globalForPrisma.prismaMetricsRegistered = true;
+}
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

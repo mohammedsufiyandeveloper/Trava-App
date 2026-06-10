@@ -23,7 +23,7 @@ import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
-import { getLeaveBalance, getLeaveRequests, submitLeaveRequest, updateLeaveStatus, getCachedSession } from "../services/api";
+import { getLeaveBalance, getLeaveRequestsPage, submitLeaveRequest, updateLeaveStatus, getCachedSession } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 
 const { width } = Dimensions.get("window");
@@ -42,10 +42,14 @@ export default function LeaveScreen({ navigation }: any) {
     const [balance, setBalance] = useState<LeaveBalance | null>(null);
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showStartPicker, setShowStartPicker] = useState(false);
     const [showEndPicker, setShowEndPicker] = useState(false);
+    const [hasMoreRequests, setHasMoreRequests] = useState(false);
+    const [nextRequestCursor, setNextRequestCursor] = useState<string | null>(null);
+    const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
 
     // Form state
     const [startDate, setStartDate] = useState(new Date());
@@ -61,20 +65,72 @@ export default function LeaveScreen({ navigation }: any) {
             if (session?.user) {
                 setCurrentUser(session.user);
             }
-            const [balanceData, requestsData] = await Promise.all([
+            const [balanceData, requestPage] = await Promise.all([
                 getLeaveBalance(activeWorkspace.id),
-                getLeaveRequests(activeWorkspace.id, !isAdmin) // If admin, get all team leaves
+                getLeaveRequestsPage(
+                    activeWorkspace.id,
+                    !isAdmin,
+                    undefined,
+                    debouncedSearch
+                )
             ]);
-            console.log(`[Leaves] Received ${requestsData.length} requests`);
             setBalance(balanceData);
-            setRequests(requestsData);
+            setRequests(requestPage.requests);
+            setHasMoreRequests(requestPage.hasMore);
+            setNextRequestCursor(requestPage.nextCursor);
         } catch (error) {
             console.error("LeaveScreen load error:", error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [activeWorkspace?.id, isAdmin]);
+    }, [activeWorkspace?.id, debouncedSearch, isAdmin]);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setDebouncedSearch(searchQuery.trim());
+        }, 300);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
+
+    const loadMoreRequests = useCallback(async () => {
+        if (
+            !activeWorkspace?.id ||
+            !hasMoreRequests ||
+            !nextRequestCursor ||
+            loadingMoreRequests
+        ) {
+            return;
+        }
+
+        setLoadingMoreRequests(true);
+        try {
+            const page = await getLeaveRequestsPage(
+                activeWorkspace.id,
+                !isAdmin,
+                nextRequestCursor,
+                debouncedSearch
+            );
+            setRequests((current) => {
+                const ids = new Set(current.map((request) => request.id));
+                return [
+                    ...current,
+                    ...page.requests.filter((request) => !ids.has(request.id)),
+                ];
+            });
+            setHasMoreRequests(page.hasMore);
+            setNextRequestCursor(page.nextCursor);
+        } finally {
+            setLoadingMoreRequests(false);
+        }
+    }, [
+        activeWorkspace?.id,
+        debouncedSearch,
+        hasMoreRequests,
+        isAdmin,
+        loadingMoreRequests,
+        nextRequestCursor,
+    ]);
 
     useEffect(() => {
         loadData();
@@ -188,6 +244,14 @@ export default function LeaveScreen({ navigation }: any) {
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                scrollEventThrottle={200}
+                onScroll={({ nativeEvent }) => {
+                    const remaining =
+                        nativeEvent.contentSize.height -
+                        nativeEvent.layoutMeasurement.height -
+                        nativeEvent.contentOffset.y;
+                    if (remaining < 240) loadMoreRequests();
+                }}
             >
                 {/* Balance & Accrual Section */}
                 <View style={styles.dashboardSection}>
@@ -312,6 +376,12 @@ export default function LeaveScreen({ navigation }: any) {
                             )}
                         </View>
                     ))
+                )}
+                {loadingMoreRequests && (
+                    <ActivityIndicator
+                        color={colors.primary}
+                        style={{ paddingVertical: 16 }}
+                    />
                 )}
             </ScrollView>
 

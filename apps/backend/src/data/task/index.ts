@@ -3,6 +3,12 @@ export { getTasks as getWorkspaceTasks, type GetTasksResponse as WorkspaceTasksR
 export type { WorkspaceTaskType, WorkspaceTaskType as SubTaskType } from "./legacy-types"; // We will create this shim to avoid breaking changes if specific types were relied on
 export { getSubTasksByParentIds, type BatchSubTasksResponse, type BatchSubTaskItem } from "./get-subtasks-batch";
 export { getTaskById, type TaskByIdType } from "./get-task-by-id";
+export {
+    getTaskDetail,
+    getTaskCommentsPage,
+    getTaskActivitiesPage,
+    normalizeDetailPageSize,
+} from "./get-task-detail";
 
 // Kanban Specific Type Aliases
 export type { WorkspaceTaskType as KanbanSubTaskType } from "./legacy-types";

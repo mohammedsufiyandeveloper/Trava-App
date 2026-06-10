@@ -17,7 +17,7 @@ import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
-import { getLeaveRequests, updateLeaveStatus } from "../services/api";
+import { getLeaveRequestsPage, updateLeaveStatus } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 
 export default function AdminLeaveScreen({ navigation }: any) {
@@ -28,12 +28,17 @@ export default function AdminLeaveScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [requests, setRequests] = useState<any[]>([]);
+    const [hasMoreRequests, setHasMoreRequests] = useState(false);
+    const [nextRequestCursor, setNextRequestCursor] = useState<string | null>(null);
+    const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
 
     const loadRequests = useCallback(async () => {
         if (!activeWorkspace?.id) return;
         try {
-            const data = await getLeaveRequests(activeWorkspace.id, false);
-            setRequests(data);
+            const page = await getLeaveRequestsPage(activeWorkspace.id, false);
+            setRequests(page.requests);
+            setHasMoreRequests(page.hasMore);
+            setNextRequestCursor(page.nextCursor);
         } catch (error) {
             console.error("Failed to load team requests:", error);
         } finally {
@@ -41,6 +46,42 @@ export default function AdminLeaveScreen({ navigation }: any) {
             setRefreshing(false);
         }
     }, [activeWorkspace?.id]);
+
+    const loadMoreRequests = useCallback(async () => {
+        if (
+            !activeWorkspace?.id ||
+            !hasMoreRequests ||
+            !nextRequestCursor ||
+            loadingMoreRequests
+        ) {
+            return;
+        }
+
+        setLoadingMoreRequests(true);
+        try {
+            const page = await getLeaveRequestsPage(
+                activeWorkspace.id,
+                false,
+                nextRequestCursor
+            );
+            setRequests((current) => {
+                const ids = new Set(current.map((request) => request.id));
+                return [
+                    ...current,
+                    ...page.requests.filter((request) => !ids.has(request.id)),
+                ];
+            });
+            setHasMoreRequests(page.hasMore);
+            setNextRequestCursor(page.nextCursor);
+        } finally {
+            setLoadingMoreRequests(false);
+        }
+    }, [
+        activeWorkspace?.id,
+        hasMoreRequests,
+        loadingMoreRequests,
+        nextRequestCursor,
+    ]);
 
     useEffect(() => {
         loadRequests();
@@ -106,6 +147,14 @@ export default function AdminLeaveScreen({ navigation }: any) {
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                scrollEventThrottle={200}
+                onScroll={({ nativeEvent }) => {
+                    const remaining =
+                        nativeEvent.contentSize.height -
+                        nativeEvent.layoutMeasurement.height -
+                        nativeEvent.contentOffset.y;
+                    if (remaining < 240) loadMoreRequests();
+                }}
             >
                 {requests.length === 0 ? (
                     <View style={styles.emptyState}>
@@ -159,6 +208,12 @@ export default function AdminLeaveScreen({ navigation }: any) {
                             )}
                         </View>
                     ))
+                )}
+                {loadingMoreRequests && (
+                    <ActivityIndicator
+                        color={colors.primary}
+                        style={{ paddingVertical: 16 }}
+                    />
                 )}
             </ScrollView>
             </View>

@@ -20,7 +20,7 @@ import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import {
-    getIndentRequests,
+    getIndentRequest,
     getVendors,
     approveIndentQuantity,
     addVendorQuote,
@@ -63,12 +63,11 @@ export default function IndentDetailScreen({ route, navigation }: any) {
     const loadData = useCallback(async () => {
         if (!activeWorkspace?.id || !indentId) return;
         try {
-            const [indentsData, vendorsData] = await Promise.all([
-                getIndentRequests(activeWorkspace.id),
+            const [indentData, vendorsData] = await Promise.all([
+                getIndentRequest(activeWorkspace.id, indentId),
                 getVendors(activeWorkspace.id)
             ]);
-            const matchedIndent = indentsData.find((ind: any) => ind.id === indentId);
-            setIndent(matchedIndent || null);
+            setIndent(indentData);
             setVendors(vendorsData);
         } catch (error) {
             console.error("IndentDetailScreen load error:", error);

@@ -18,6 +18,13 @@ const generateId = () => {
 procurement.get("/indents", async (c) => {
     const user = c.get("user");
     const workspaceId = c.req.query("workspaceId");
+    const indentId = c.req.query("indentId");
+    const requestedLimit = Number.parseInt(c.req.query("limit") || "25", 10);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+        ? Math.min(requestedLimit, 50)
+        : 25;
+    const cursor = c.req.query("cursor") || undefined;
+    const search = c.req.query("search")?.trim() || undefined;
 
     if (!workspaceId) {
         return c.json({ success: false, error: "workspaceId is required" }, 400);
@@ -29,37 +36,82 @@ procurement.get("/indents", async (c) => {
             return c.json({ success: false, error: "Access denied" }, 403);
         }
 
-        const indents = await prisma.indent.findMany({
-            where: { workspaceId },
-            include: {
-                Project: {
-                    select: { id: true, name: true, color: true }
-                },
-                Task: {
-                    select: { id: true, name: true, taskSlug: true }
-                },
-                WorkspaceMember_indent_requestedByIdToWorkspaceMember: {
-                    include: { user: { select: { id: true, name: true, surname: true, image: true, email: true } } }
-                },
-                WorkspaceMember_indent_assignedToIdToWorkspaceMember: {
-                    include: { user: { select: { id: true, name: true, surname: true, image: true, email: true } } }
-                },
-                indent_line_item: {
-                    include: {
-                        vendor_quote_indent_line_item_approvedQuoteIdTovendor_quote: {
-                            include: { vendor: { select: { id: true, name: true } } }
-                        },
-                        vendor_quote_vendor_quote_lineItemIdToindent_line_item: {
-                            include: { vendor: { select: { id: true, name: true } } }
-                        }
+        const indentInclude = {
+            Project: {
+                select: { id: true, name: true, color: true }
+            },
+            Task: {
+                select: { id: true, name: true, taskSlug: true }
+            },
+            WorkspaceMember_indent_requestedByIdToWorkspaceMember: {
+                include: { user: { select: { id: true, name: true, surname: true, image: true, email: true } } }
+            },
+            WorkspaceMember_indent_assignedToIdToWorkspaceMember: {
+                include: { user: { select: { id: true, name: true, surname: true, image: true, email: true } } }
+            },
+            indent_line_item: {
+                include: {
+                    vendor_quote_indent_line_item_approvedQuoteIdTovendor_quote: {
+                        include: { vendor: { select: { id: true, name: true } } }
+                    },
+                    vendor_quote_vendor_quote_lineItemIdToindent_line_item: {
+                        include: { vendor: { select: { id: true, name: true } } }
                     }
                 }
+            }
+        } as const;
+
+        if (indentId) {
+            const indent = await prisma.indent.findFirst({
+                where: { id: indentId, workspaceId },
+                include: indentInclude,
+            });
+            if (!indent) {
+                return c.json({ success: false, error: "Indent not found" }, 404);
+            }
+            return c.json({ success: true, indent });
+        }
+
+        const rows = await prisma.indent.findMany({
+            where: {
+                workspaceId,
+                ...(search
+                    ? {
+                        OR: [
+                            { name: { contains: search, mode: "insensitive" } },
+                            { indentId: { contains: search, mode: "insensitive" } },
+                            {
+                                Project: {
+                                    is: {
+                                        name: {
+                                            contains: search,
+                                            mode: "insensitive",
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    }
+                    : {}),
             },
-            orderBy: { createdAt: "desc" }
+            include: {
+                ...indentInclude,
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: limit + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         });
 
-        // Map model fields to friendly camelCase output if needed or keep raw structure
-        return c.json({ success: true, indents });
+        const hasMore = rows.length > limit;
+        const indents = rows.slice(0, limit);
+        return c.json({
+            success: true,
+            indents,
+            hasMore,
+            nextCursor: hasMore
+                ? indents[indents.length - 1]?.id ?? null
+                : null,
+        });
     } catch (error: any) {
         console.error("[procurement.get.indents] Error:", error);
         return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);

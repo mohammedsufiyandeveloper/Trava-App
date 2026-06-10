@@ -18,6 +18,7 @@ import {
     postTaskComment, 
     getCachedSession, 
     getTaskById, 
+    getTaskDetail,
     getSubTasks, 
     getTaskActivities,
     updateTask,
@@ -147,50 +148,65 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
 
     // Removed auto scrollToEnd on load so the top card remains visible.
 
-    useEffect(() => {
-        let isMounted = true;
-        const init = async () => {
-            const session = await getCachedSession();
-            if (session?.user && isMounted) {
-                setCurrentUserId(session.user.id);
-            }
-
-            try {
-                if (isMounted) setLoadingComments(true);
-                const data = await getTaskComments(taskId);
-                if (isMounted) setComments(data);
-            } catch (err) {
-                console.error("Failed to load comments", err);
-            } finally {
-                if (isMounted) setLoadingComments(false);
-            }
-
-            try {
-                if (isMounted) setLoadingActivities(true);
-                const actData = await getTaskActivities(taskId);
-                if (isMounted) setActivities(actData);
-            } catch (err) {
-                console.error("Failed to load activities", err);
-            } finally {
-                if (isMounted) setLoadingActivities(false);
-            }
-        };
-        init();
-        fetchSubTasks();
-        return () => { isMounted = false; };
-    }, [taskId, activeWorkspace?.id]);
-
     // Find task from context OR fetch directly (needed for subtasks not in global state)
     const taskFromContext = tasks.find((t: Task) => t.id === taskId);
     useEffect(() => {
-        if (!taskFromContext) {
+        let isMounted = true;
+
+        const init = async () => {
             setLoadingTask(true);
-            getTaskById(taskId).then(t => {
-                setFetchedTask(t);
-                setLoadingTask(false);
-            });
-        }
-    }, [taskId, taskFromContext]);
+            setLoadingSubTasks(true);
+            setLoadingComments(true);
+            setLoadingActivities(true);
+
+            const sessionPromise = getCachedSession();
+            try {
+                const detail = await getTaskDetail(taskId);
+                if (!isMounted) return;
+                setFetchedTask(detail.task);
+                setSubTasks(detail.subTasks);
+                setComments(detail.comments);
+                setActivities(detail.activities);
+            } catch (error) {
+                // Supports a rolling deployment where the mobile build reaches an
+                // older backend that does not have the consolidated endpoint yet.
+                console.warn("Task detail bootstrap unavailable, using compatibility requests", error);
+                const [taskResult, subTaskResult, commentResult, activityResult] =
+                    await Promise.all([
+                        getTaskById(taskId),
+                        getSubTasks(
+                            taskId,
+                            activeWorkspace?.id || "",
+                            taskFromContext?.projectId || ""
+                        ),
+                        getTaskComments(taskId),
+                        getTaskActivities(taskId),
+                    ]);
+                if (!isMounted) return;
+                setFetchedTask(taskResult);
+                setSubTasks(subTaskResult);
+                setComments(commentResult);
+                setActivities(activityResult);
+            } finally {
+                if (isMounted) {
+                    setLoadingTask(false);
+                    setLoadingSubTasks(false);
+                    setLoadingComments(false);
+                    setLoadingActivities(false);
+                }
+            }
+
+            const session = await sessionPromise;
+            if (session?.user && isMounted) {
+                setCurrentUserId(session.user.id);
+            }
+        };
+
+        init();
+        return () => {
+            isMounted = false;
+        };
+    }, [taskId, activeWorkspace?.id, taskFromContext?.projectId]);
 
     const handleSend = async () => {
         if (!newMessage.trim() || sendingComment) return;

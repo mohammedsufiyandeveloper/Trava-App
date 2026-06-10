@@ -13,6 +13,12 @@ import { getSubTasksByParentIds } from "@/data/task/get-subtasks-batch";
 import { invalidateTaskMutation } from "@/lib/cache/invalidation";
 import { buildWorkspaceFilterWhere } from "@/lib/tasks/query-builder";
 import { getKanbanBoard } from "@/data/task/get-kanban";
+import {
+    getTaskActivitiesPage,
+    getTaskCommentsPage,
+    getTaskDetail,
+    normalizeDetailPageSize,
+} from "@/data/task/get-task-detail";
 
 const tasks = new Hono<{ Variables: HonoVariables }>();
 
@@ -449,6 +455,43 @@ tasks.delete("/", async (c) => {
     }
 });
 
+// GET /api/tasks/:taskId/detail
+// Consolidates the initial task-detail bootstrap into one authenticated request.
+tasks.get("/:taskId/detail", async (c) => {
+    const taskId = c.req.param("taskId");
+    const user = c.get("user");
+    const parseLimit = (name: string, fallback: number) => {
+        const raw = c.req.query(name);
+        return normalizeDetailPageSize(
+            raw === undefined ? undefined : Number.parseInt(raw, 10),
+            fallback
+        );
+    };
+
+    try {
+        const result = await getTaskDetail(taskId, user.id, {
+            subtaskLimit: parseLimit("subtaskLimit", 30),
+            commentLimit: parseLimit("commentLimit", 20),
+            activityLimit: parseLimit("activityLimit", 20),
+        });
+
+        if (result.status === "not_found") {
+            return c.json({ success: false, error: "Task not found" }, 404);
+        }
+        if (result.status === "forbidden") {
+            return c.json({ success: false, error: "Forbidden" }, 403);
+        }
+
+        return c.json({ success: true, ...result, status: undefined });
+    } catch (error: any) {
+        console.error("Hono API Error [Task detail GET]:", error);
+        return c.json(
+            { success: false, error: error.message || "Internal Server Error" },
+            500
+        );
+    }
+});
+
 // GET /api/tasks/:taskId
 tasks.get("/:taskId", async (c) => {
     const taskId = c.req.param("taskId");
@@ -638,33 +681,27 @@ tasks.post("/:taskId/subtasks", async (c) => {
 // GET /api/tasks/:taskId/comments
 tasks.get("/:taskId/comments", async (c) => {
     const taskId = c.req.param("taskId");
+    const user = c.get("user");
+    const limit = normalizeDetailPageSize(
+        Number.parseInt(c.req.query("limit") || "", 10)
+    );
+    const cursor = c.req.query("cursor") || undefined;
+
     try {
-        const comments = await prisma.comment.findMany({
-            where: { taskId, isDeleted: false },
-            include: {
-                user: {
-                    select: { id: true, name: true, surname: true, image: true }
-                },
-            },
-            orderBy: { createdAt: "asc" },
+        const result = await getTaskCommentsPage(taskId, user.id, { limit, cursor });
+        if (result.status === "not_found") {
+            return c.json({ success: false, error: "Task not found" }, 404);
+        }
+        if (result.status === "forbidden") {
+            return c.json({ success: false, error: "Forbidden" }, 403);
+        }
+
+        return c.json({
+            success: true,
+            comments: result.comments,
+            hasMore: result.hasMore,
+            nextCursor: result.nextCursor,
         });
-
-        const mapped = comments.map(co => ({
-            id: co.id,
-            content: co.content,
-            createdAt: co.createdAt,
-            userId: co.userId,
-            user: co.user
-                ? {
-                    id: co.user.id,
-                    name: `${co.user.name || ""} ${co.user.surname || ""}`.trim(),
-                    surname: co.user.surname,
-                    image: (co.user as any).image ?? null,
-                }
-                : null,
-        }));
-
-        return c.json({ success: true, comments: mapped });
     } catch (error: any) {
         console.error("Hono API Error [Comments GET]:", error);
         return c.json({ success: false, error: error.message }, 500);
@@ -818,38 +855,26 @@ tasks.patch("/:taskId/assignee", async (c) => {
 // GET /api/tasks/:taskId/activities
 tasks.get("/:taskId/activities", async (c) => {
     const taskId = c.req.param("taskId");
+    const user = c.get("user");
+    const limit = normalizeDetailPageSize(
+        Number.parseInt(c.req.query("limit") || "", 10)
+    );
+    const cursor = c.req.query("cursor") || undefined;
 
     try {
-        const activities = await prisma.activity.findMany({
-            where: {
-                subTaskId: taskId,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        surname: true,
-                        image: true,
-                    },
-                },
-            },
-            orderBy: {
-                createdAt: "desc",
-            },
-        });
-
-        const mapped = activities.map(act => ({
-            id: act.id,
-            text: act.text,
-            attachment: act.attachment,
-            createdAt: act.createdAt,
-            author: act.user,
-        }));
+        const result = await getTaskActivitiesPage(taskId, user.id, { limit, cursor });
+        if (result.status === "not_found") {
+            return c.json({ success: false, error: "Task not found" }, 404);
+        }
+        if (result.status === "forbidden") {
+            return c.json({ success: false, error: "Forbidden" }, 403);
+        }
 
         return c.json({
             success: true,
-            activities: mapped,
+            activities: result.activities,
+            hasMore: result.hasMore,
+            nextCursor: result.nextCursor,
         });
     } catch (error: any) {
         console.error(`[GET Task Activities Error]:`, error);

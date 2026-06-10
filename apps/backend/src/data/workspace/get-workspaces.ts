@@ -1,11 +1,10 @@
 // src/data/workspace/get-workspaces.ts
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 const notFound = (..._args: any[]): never => { throw new Error('notFound not available in API server'); }; // next/navigation no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { WorkspaceRole } from"@prisma/client";
 import { CacheTags } from "@/data/cache-tags";
+import { cached, invalidateCacheTags } from "@/lib/cache/runtime-cache";
 
 /**
  * Types for workspace list data
@@ -27,9 +26,8 @@ export type WorkspacesResult = {
     totalCount: number;
 };
 
-export function invalidateWorkspacesCache(userId: string) {
-    // With memory cache removed, we rely entirely on revalidateTag via our actions
-    // This is still exported for consistency in the codebase
+export async function invalidateWorkspacesCache(userId: string) {
+    await invalidateCacheTags(CacheTags.userWorkspaces(userId));
 }
 
 async function _fetchWorkspacesInternal(userId: string): Promise<WorkspacesResult> {
@@ -72,18 +70,17 @@ async function _fetchWorkspacesInternal(userId: string): Promise<WorkspacesResul
 /**
  * Cached version with Next.js unstable_cache
  */
-const getCachedWorkspaces = (userId: string, bypass: boolean) => {
+const getCachedWorkspaces = (userId: string) => {
     const cacheKey = `user-workspaces-${userId}`;
 
-    // Use Next.js App Router Cache with tags and a short revalidate for manual DB sync
-    return unstable_cache(
+    return cached(
+        cacheKey,
         async () => _fetchWorkspacesInternal(userId),
-        [cacheKey],
         {
             tags: CacheTags.userWorkspaces(userId),
-            revalidate: 5, // Fast revalidation for manual DB changes
+            ttlSeconds: 30,
         }
-    )();
+    );
 };
 
 /**
@@ -104,18 +101,17 @@ const getCachedWorkspaces = (userId: string, bypass: boolean) => {
  *   console.log(`${ws.name} - Role: ${ws.workspaceRole}`);
  * });
  */
-export const getWorkspaces = cache(async (providedUserId?: string): Promise<WorkspacesResult> => {
+export const getWorkspaces = async (providedUserId?: string): Promise<WorkspacesResult> => {
     // Ensure authenticated user
     const userId = providedUserId || (await requireUser()).id;
     if (!userId) {
         return notFound();
     }
 
-    // Fetch workspaces (bypass cache for troubleshooting)
-    const result = await _fetchWorkspacesInternal(userId);
+    const result = await getCachedWorkspaces(userId);
 
     return result;
-});
+};
 
 /**
  * Export types for callers

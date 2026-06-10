@@ -3,8 +3,10 @@
 import prisma from "@/lib/db";
 import { ApiResponse } from "@/lib/types";
 import { requireUser } from "@/lib/auth/require-user";
-const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
-import { CacheTags } from "@/data/cache-tags";
+import {
+  invalidateUserWorkspaces,
+  invalidateWorkspace,
+} from "@/lib/cache/invalidation";
 
 /**
  * Deletes a workspace and all its members.
@@ -42,11 +44,10 @@ export async function deleteWorkSpace(workspaceId: string): Promise<ApiResponse>
     });
 
     // 3. Invalidate caches
-    // Invalidate the user's workspace list
-    (revalidateTag as any)(CacheTags.userWorkspaces(user.id)[0], 'layout');
-    (revalidateTag as any)("workspaces", 'layout');
-    // Invalidate the specific workspace data
-    (revalidateTag as any)(CacheTags.workspace(workspaceId)[0], 'layout');
+    await Promise.all([
+      invalidateUserWorkspaces(user.id),
+      invalidateWorkspace(workspaceId),
+    ]);
 
     return {
       status: "success",

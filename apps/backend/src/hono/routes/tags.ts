@@ -4,6 +4,7 @@ import { getWorkspaceTags } from "@/data/tag/get-tags";
 import { createTag } from "@/actions/tag/create-tag";
 import { updateTag } from "@/actions/tag/update-tag";
 import { deleteTag } from "@/actions/tag/delete-tag";
+import { getWorkspacePermissions } from "@/data/user/get-user-permissions";
 
 export const tagsRouter = new Hono<{ Variables: HonoVariables }>()
 
@@ -15,6 +16,11 @@ export const tagsRouter = new Hono<{ Variables: HonoVariables }>()
         }
 
         try {
+            const user = c.get("user");
+            const permissions = await getWorkspacePermissions(workspaceId, user.id);
+            if (!permissions.hasAccess) {
+                return c.json({ success: false, error: "Forbidden" }, 403);
+            }
             const tags = await getWorkspaceTags(workspaceId);
             return c.json({
                 success: true,

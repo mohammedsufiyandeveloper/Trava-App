@@ -3,6 +3,9 @@ import { WorkspaceService } from "@/server/services/workspace.service";
 import { getWorkspaces } from "@/data/workspace/get-workspaces";
 import { getWorkspaceMembers } from "@/data/workspace/get-workspace-members";
 import { HonoVariables } from "../types";
+import { getUserProjects } from "@/data/project/get-projects";
+import { getWorkspaceTags } from "@/data/tag/get-tags";
+import { AttendanceService } from "@/server/services/attendance.service";
 
 export const workspaceRouter = new Hono<{ Variables: HonoVariables }>()
 
@@ -18,6 +21,75 @@ export const workspaceRouter = new Hono<{ Variables: HonoVariables }>()
         } catch (error: any) {
             console.error("Hono API Error [Workspaces]:", error);
             return c.json({ success: false, error: error.message || "Internal Server Error" }, 500);
+        }
+    })
+
+    .get("/bootstrap", async (c) => {
+        const user = c.get("user");
+        const preferredWorkspaceId = c.req.query("workspaceId") || undefined;
+        const clientDateString = c.req.query("clientDateString");
+        const requestedDate = clientDateString
+            ? new Date(clientDateString)
+            : new Date();
+        const registerDate = Number.isNaN(requestedDate.getTime())
+            ? new Date()
+            : requestedDate;
+
+        try {
+            const workspaceResult = await getWorkspaces(user.id);
+            const selectedWorkspace =
+                workspaceResult.workspaces.find(
+                    (workspace) => workspace.id === preferredWorkspaceId
+                ) ??
+                workspaceResult.workspaces[0] ??
+                null;
+
+            if (!selectedWorkspace) {
+                return c.json({
+                    success: true,
+                    workspaces: workspaceResult.workspaces,
+                    activeWorkspace: null,
+                    projects: [],
+                    tags: [],
+                    todayAttendance: null,
+                    teamAttendance: [],
+                });
+            }
+
+            const isAdmin =
+                selectedWorkspace.workspaceRole === "OWNER" ||
+                selectedWorkspace.workspaceRole === "ADMIN";
+            const [projects, tags, todayAttendance, teamAttendance] =
+                await Promise.all([
+                    getUserProjects(selectedWorkspace.id, true),
+                    getWorkspaceTags(selectedWorkspace.id),
+                    AttendanceService.getTodayAttendance(
+                        selectedWorkspace.id,
+                        user.id
+                    ),
+                    isAdmin
+                        ? AttendanceService.getTeamRegister(
+                            selectedWorkspace.id,
+                            registerDate
+                        )
+                        : Promise.resolve([]),
+                ]);
+
+            return c.json({
+                success: true,
+                workspaces: workspaceResult.workspaces,
+                activeWorkspace: selectedWorkspace,
+                projects,
+                tags,
+                todayAttendance,
+                teamAttendance,
+            });
+        } catch (error: any) {
+            console.error("Hono API Error [Workspace bootstrap]:", error);
+            return c.json(
+                { success: false, error: error.message || "Internal Server Error" },
+                500
+            );
         }
     })
 

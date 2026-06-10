@@ -20,6 +20,10 @@ import { HonoVariables } from "./types";
 import { authMiddleware } from "./middleware/auth";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
+import {
+    getRequestMetrics,
+    runWithRequestMetrics,
+} from "@/lib/observability/request-metrics";
 
 
 /**
@@ -30,6 +34,33 @@ const app = new Hono<{ Variables: HonoVariables }>().basePath("/api");
 
 // Global Middleware
 app.use("*", logger());
+app.use("*", async (c, next) => {
+    const requestId = c.req.header("x-request-id") || crypto.randomUUID();
+    const startedAt = performance.now();
+
+    return runWithRequestMetrics(requestId, async () => {
+        await next();
+
+        const durationMs = performance.now() - startedAt;
+        const metrics = getRequestMetrics();
+        const timing = [`app;dur=${durationMs.toFixed(1)}`];
+        if (metrics?.authMs) {
+            timing.push(`auth;dur=${metrics.authMs.toFixed(1)}`);
+        }
+        if (metrics?.dbQueries) {
+            timing.push(
+                `db;dur=${metrics.dbMs.toFixed(1)};desc="${metrics.dbQueries} queries"`
+            );
+        }
+
+        c.header("x-request-id", requestId);
+        c.header("Server-Timing", timing.join(", "));
+
+        if (!c.res.headers.has("Cache-Control")) {
+            c.header("Cache-Control", "private, no-store");
+        }
+    });
+});
 
 // CORS Configuration
 app.use(
@@ -41,6 +72,7 @@ app.use(
             return allowed.includes(origin) ? origin : allowed[0];
         },
         credentials: true,
+        exposeHeaders: ["Server-Timing", "x-request-id"],
     })
 );
 
@@ -170,4 +202,3 @@ app.route("/procurement", procurement);
 
 export default app;
 export type AppType = typeof app;
-

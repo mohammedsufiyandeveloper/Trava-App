@@ -124,25 +124,42 @@ async function getInvitedMetadataForEntity(entityId: string, workspaceId: string
 app.get("/", authMiddleware, async (c) => {
     const user = c.get("user");
     const workspaceId = c.req.query("workspaceId");
-    const limit = parseInt(c.req.query("limit") || "20");
-    const offset = parseInt(c.req.query("offset") || "0");
+    const parsedLimit = Number.parseInt(c.req.query("limit") || "20", 10);
+    const parsedOffset = Number.parseInt(c.req.query("offset") || "0", 10);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, 50)
+        : 20;
+    const offset = Number.isFinite(parsedOffset) && parsedOffset > 0
+        ? Math.min(parsedOffset, 10_000)
+        : 0;
 
     if (!workspaceId) {
         return c.json({ success: false, error: "Workspace ID is required" }, 400);
     }
 
     try {
-        const notifications = await prisma.notification.findMany({
-            where: {
-                userId: user.id,
-                workspaceId,
-            },
-            orderBy: {
-                createdAt: "desc",
-            },
-            take: limit,
-            skip: offset,
-        });
+        const notificationWhere = {
+            userId: user.id,
+            workspaceId,
+        };
+        const [notificationRows, unreadCount] = await Promise.all([
+            prisma.notification.findMany({
+                where: notificationWhere,
+                orderBy: {
+                    createdAt: "desc",
+                },
+                take: limit + 1,
+                skip: offset,
+            }),
+            prisma.notification.count({
+                where: {
+                    ...notificationWhere,
+                    isRead: false,
+                },
+            }),
+        ]);
+        const hasMore = notificationRows.length > limit;
+        const notifications = notificationRows.slice(0, limit);
 
         // Map notifications to fix body actor and enrich metadata on-the-fly
         const mappedNotifications = await Promise.all(notifications.map(async (n) => {
@@ -240,19 +257,11 @@ app.get("/", authMiddleware, async (c) => {
             };
         }));
 
-        const unreadCount = await prisma.notification.count({
-            where: {
-                userId: user.id,
-                workspaceId,
-                isRead: false,
-            },
-        });
-
         return c.json({
             success: true,
             notifications: mappedNotifications,
             unreadCount,
-            hasMore: notifications.length === limit,
+            hasMore,
         });
     } catch (error) {
         console.error("[GET_NOTIFICATIONS_ERROR]", error);

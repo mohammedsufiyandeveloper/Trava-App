@@ -5,8 +5,6 @@ import { ApiResponse } from "@/lib/types";
 import { workSpaceSchema, WorkSpaceSchemaType } from "@/lib/zodSchemas";
 import { requireUser } from "@/lib/auth/require-user";
 import { generateInviteCode } from "@/utils/get-invite-code";
-const revalidateTag = (..._args: any[]) => {}; // next/cache no-op
-import { CacheTags } from "@/data/cache-tags";
 import { invalidateWorkspacesCache } from "@/data/workspace/get-workspaces";
 
 export async function createWorkSpace(values: WorkSpaceSchemaType): Promise<ApiResponse> {
@@ -37,9 +35,7 @@ export async function createWorkSpace(values: WorkSpaceSchemaType): Promise<ApiR
         });
 
         // Invalidate cache to ensure the user is not redirected back to create-workspace
-        invalidateWorkspacesCache(user.id);
-        (revalidateTag as any)(CacheTags.userWorkspaces(user.id)[0], 'layout');
-        (revalidateTag as any)('workspaces', 'layout');
+        await invalidateWorkspacesCache(user.id);
 
         return {
             status: "success",

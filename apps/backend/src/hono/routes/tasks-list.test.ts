@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import tasks from "./tasks";
 import { getTasks } from "@/data/task/get-tasks";
 import { getKanbanBoard } from "@/data/task/get-kanban";
+import {
+    getTaskCommentsPage,
+    getTaskDetail,
+} from "@/data/task/get-task-detail";
 import { HonoVariables } from "../types";
 
 vi.mock("@/data/task/get-tasks", () => ({
@@ -12,6 +16,16 @@ vi.mock("@/data/task/get-tasks", () => ({
 
 vi.mock("@/data/task/get-kanban", () => ({
     getKanbanBoard: vi.fn(),
+}));
+
+vi.mock("@/data/task/get-task-detail", () => ({
+    getTaskDetail: vi.fn(),
+    getTaskCommentsPage: vi.fn(),
+    getTaskActivitiesPage: vi.fn(),
+    normalizeDetailPageSize: (value: number | undefined, fallback = 20) => {
+        if (!Number.isFinite(value) || !value || value < 1) return fallback;
+        return Math.min(Math.trunc(value), 50);
+    },
 }));
 
 const app = new Hono<{ Variables: HonoVariables }>();
@@ -31,6 +45,22 @@ describe("GET /tasks parsing", () => {
             nextCursor: null,
         });
         (getKanbanBoard as any).mockResolvedValue({ columns: {} });
+        (getTaskDetail as any).mockResolvedValue({
+            status: "ok",
+            task: { id: "t1" },
+            subTasks: [],
+            subTasksPage: { totalCount: 0, hasMore: false, nextCursor: null },
+            comments: [],
+            commentsPage: { hasMore: false, nextCursor: null },
+            activities: [],
+            activitiesPage: { hasMore: false, nextCursor: null },
+        });
+        (getTaskCommentsPage as any).mockResolvedValue({
+            status: "ok",
+            comments: [],
+            hasMore: false,
+            nextCursor: null,
+        });
     });
 
     it("propagates view_mode and uses its default limit", async () => {
@@ -92,5 +122,36 @@ describe("GET /tasks parsing", () => {
             dueBefore: undefined,
             pageSize: 25,
         }, "u1");
+    });
+
+    it("consolidates task detail and clamps collection page sizes", async () => {
+        const response = await app.request(
+            "/tasks/t1/detail?subtaskLimit=999&commentLimit=0&activityLimit=not-a-number"
+        );
+
+        expect(response.status).toBe(200);
+        expect(getTaskDetail).toHaveBeenCalledWith("t1", "u1", {
+            subtaskLimit: 50,
+            commentLimit: 20,
+            activityLimit: 20,
+        });
+        expect(await response.json()).toEqual(
+            expect.objectContaining({ success: true, task: { id: "t1" } })
+        );
+    });
+
+    it("forwards comment cursors and returns forbidden access results", async () => {
+        await app.request("/tasks/t1/comments?limit=999&cursor=c20");
+        expect(getTaskCommentsPage).toHaveBeenCalledWith("t1", "u1", {
+            limit: 50,
+            cursor: "c20",
+        });
+
+        (getTaskCommentsPage as any).mockResolvedValueOnce({
+            status: "forbidden",
+            task: null,
+        });
+        const forbidden = await app.request("/tasks/t1/comments");
+        expect(forbidden.status).toBe(403);
     });
 });

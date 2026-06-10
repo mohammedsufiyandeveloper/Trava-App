@@ -65,6 +65,20 @@ export class LeaveService {
      * Get all leave requests for a workspace or a specific user.
      */
     static async getLeaveRequests(workspaceId: string, requestingUserId: string, targetUserId?: string) {
+        const page = await this.getLeaveRequestsPage(
+            workspaceId,
+            requestingUserId,
+            targetUserId
+        );
+        return page.requests;
+    }
+
+    static async getLeaveRequestsPage(
+        workspaceId: string,
+        requestingUserId: string,
+        targetUserId?: string,
+        options: { limit?: number; cursor?: string; search?: string } = {}
+    ) {
         const isAdmin = await this.isAdmin(workspaceId, requestingUserId);
 
         const where: any = { workspaceId };
@@ -79,8 +93,28 @@ export class LeaveService {
                 throw AppError.Forbidden("Only admins can view team leave requests.");
             }
         }
+        const search = options.search?.trim();
+        if (search) {
+            where.OR = [
+                { reason: { contains: search, mode: "insensitive" } },
+                {
+                    WorkspaceMember: {
+                        user: {
+                            OR: [
+                                { name: { contains: search, mode: "insensitive" } },
+                                { surname: { contains: search, mode: "insensitive" } },
+                            ],
+                        },
+                    },
+                },
+            ];
+        }
 
-        return await prisma.leave_request.findMany({
+        const requestedLimit = options.limit ?? 25;
+        const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+            ? Math.min(Math.trunc(requestedLimit), 50)
+            : 25;
+        const rows = await prisma.leave_request.findMany({
             where,
             include: {
                 WorkspaceMember: {
@@ -99,10 +133,22 @@ export class LeaveService {
                     }
                 }
             },
-            orderBy: {
-                createdAt: 'desc'
-            }
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: limit + 1,
+            ...(options.cursor
+                ? { cursor: { id: options.cursor }, skip: 1 }
+                : {}),
         });
+
+        const hasMore = rows.length > limit;
+        const requests = rows.slice(0, limit);
+        return {
+            requests,
+            hasMore,
+            nextCursor: hasMore
+                ? requests[requests.length - 1]?.id ?? null
+                : null,
+        };
     }
 
     /**

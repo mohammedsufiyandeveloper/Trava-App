@@ -1,11 +1,10 @@
 // src/data/workspace/get-workspace-by-id.ts
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 const notFound = (..._args: any[]): never => { throw new Error('notFound not available in API server'); }; // next/navigation no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { CacheTags } from "@/data/cache-tags";
 import { WorkspaceRole } from"@prisma/client";
+import { cached } from "@/lib/cache/runtime-cache";
 
 /**
  * Types for workspace data
@@ -109,14 +108,14 @@ async function _fetchWorkspaceByIdInternal(workspaceId: string): Promise<Workspa
  * Cached version with Next.js unstable_cache
  */
 const getCachedWorkspaceById = (workspaceId: string) =>
-    unstable_cache(
+    cached(
+        `workspace-${workspaceId}`,
         async () => _fetchWorkspaceByIdInternal(workspaceId),
-        [`workspace-${workspaceId}`],
         {
             tags: CacheTags.workspace(workspaceId),
-            revalidate: 60 * 60 * 24, // 24 hours
+            ttlSeconds: 60 * 5,
         }
-    )();
+    );
 
 /**
  * Public function — returns workspace data for given workspaceId
@@ -127,7 +126,7 @@ const getCachedWorkspaceById = (workspaceId: string) =>
  * - Verifies user is a member of the workspace
  * - Returns workspace data or notFound()
  */
-export const getWorkspaceById = cache(async (workspaceId: string): Promise<WorkspaceData> => {
+export const getWorkspaceById = async (workspaceId: string): Promise<WorkspaceData> => {
     if (!workspaceId) {
         throw new Error("workspaceId is required");
     }
@@ -152,7 +151,7 @@ export const getWorkspaceById = cache(async (workspaceId: string): Promise<Works
     }
 
     return workspace;
-});
+};
 
 /**
  * Export types for callers

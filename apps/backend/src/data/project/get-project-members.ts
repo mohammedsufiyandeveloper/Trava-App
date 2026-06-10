@@ -1,10 +1,13 @@
 "use server";
 
-const cache = <T extends (...args: any[]) => any>(fn: T) => fn; // react cache no-op
-const unstable_cache = <T extends (...args: any[]) => any>(fn: T, _keys?: string[], _opts?: any) => fn; // next/cache no-op
 import prisma from "@/lib/db";
 import { requireUser } from "@/lib/auth/require-user";
 import { CacheTags, combineTags } from "@/data/cache-tags";
+import {
+    getUserPermissions,
+    getWorkspacePermissions,
+} from "@/data/user/get-user-permissions";
+import { cached } from "@/lib/cache/runtime-cache";
 
 import { ProjectRole } from"@prisma/client";
 
@@ -87,21 +90,21 @@ async function _getProjectMembersInternal(params: { projectId?: string; workspac
  */
 const getCachedProjectMembers = (params: { projectId?: string; workspaceId?: string }) => {
     const cacheKey = params.projectId
-        ? [`project-members-${params.projectId}`]
-        : [`workspace-project-members-${params.workspaceId}`];
+        ? `project-members-${params.projectId}`
+        : `workspace-project-members-${params.workspaceId}`;
 
     const tags = params.projectId
         ? CacheTags.projectMembers(params.projectId)
         : combineTags(CacheTags.workspace(params.workspaceId!), ["project-members"]);
 
-    return unstable_cache(
-        async () => _getProjectMembersInternal(params),
+    return cached(
         cacheKey,
+        async () => _getProjectMembersInternal(params),
         {
             tags,
-            revalidate: 60,
+            ttlSeconds: 60,
         }
-    )();
+    );
 };
 
 /**
@@ -110,17 +113,46 @@ const getCachedProjectMembers = (params: { projectId?: string; workspaceId?: str
  *   getProjectMembers(projectId) 
  *   getProjectMembers({ workspaceId })
  */
-export const getProjectMembers = cache(async (arg: string | { workspaceId: string; projectId?: string }) => {
-    await requireUser();
+export const getProjectMembers = async (
+    arg: string | { workspaceId: string; projectId?: string }
+) => {
+    const user = await requireUser();
 
-    const params = typeof arg === "string" ? { projectId: arg } : arg;
+    const params: { projectId?: string; workspaceId?: string } =
+        typeof arg === "string" ? { projectId: arg } : arg;
 
     try {
+        if (params.projectId) {
+            const project = await prisma.project.findUnique({
+                where: { id: params.projectId },
+                select: { workspaceId: true },
+            });
+            if (!project) return [];
+
+            const permissions = await getUserPermissions(
+                project.workspaceId,
+                params.projectId,
+                user.id
+            );
+            if (
+                !permissions.WorkspaceMemberId ||
+                (!permissions.isWorkspaceAdmin && !permissions.projectMember)
+            ) {
+                return [];
+            }
+        } else if (params.workspaceId) {
+            const permissions = await getWorkspacePermissions(
+                params.workspaceId,
+                user.id
+            );
+            if (!permissions.WorkspaceMemberId) return [];
+        }
+
         return await getCachedProjectMembers(params);
     } catch (error) {
         console.error("Error fetching project members:", error);
         return [];
     }
-});
+};
 
 export type ProjectMembersType = Awaited<ReturnType<typeof getProjectMembers>>;

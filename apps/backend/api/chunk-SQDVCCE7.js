@@ -1,1 +1,0 @@
-import{PrismaClient as t}from"@prisma/client";var e=globalThis;function i(){return new t({log:process.env.NODE_ENV==="development"?[{level:"error",emit:"stdout"},{level:"warn",emit:"stdout"}]:[{level:"error",emit:"stdout"}]})}var r=e.prisma??i();process.env.NODE_ENV!=="production"&&(e.prisma=r);var s=r;export{s as a};

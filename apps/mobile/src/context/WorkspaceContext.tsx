@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DeviceEventEmitter } from "react-native";
-import { getWorkspaces, getProjects, getTasks, getTags, getTodayAttendance, getTeamAttendance } from "../services/api";
+import { getWorkspaces, getWorkspaceBootstrap, getProjects, getTasks, getTags, getTodayAttendance, getTeamAttendance } from "../services/api";
 import { Workspace, Project, Task } from "../types";
 
 interface WorkspaceStats {
@@ -110,7 +110,40 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
             const lastId = await AsyncStorage.getItem(LAST_WS_ID);
             const todayString = new Date().toISOString().split('T')[0];
 
-            // Step 2: Run workspaces fetch AND workspace-specific fetches in parallel!
+            try {
+                const bootstrap = await getWorkspaceBootstrap(
+                    lastId || undefined,
+                    todayString
+                );
+                setWorkspaces(bootstrap.workspaces);
+                setActiveWorkspace(bootstrap.activeWorkspace);
+                setProjects(bootstrap.projects);
+                setTasks([]);
+                setTags(bootstrap.tags);
+                setTodayAttendance(bootstrap.todayAttendance);
+                setTeamAttendance(bootstrap.teamAttendance);
+                loadedWorkspaceIdRef.current = bootstrap.activeWorkspace?.id ?? null;
+
+                if (bootstrap.activeWorkspace?.id) {
+                    await AsyncStorage.setItem(
+                        LAST_WS_ID,
+                        bootstrap.activeWorkspace.id
+                    );
+                }
+
+                console.log(
+                    `[WorkspaceContext] ⏱ bootstrap took ${(performance.now() - t0_total).toFixed(1)}ms`
+                );
+                return;
+            } catch (bootstrapError) {
+                // Compatibility path for a mobile build reaching an older backend.
+                console.warn(
+                    "[WorkspaceContext] Bootstrap unavailable, using compatibility requests",
+                    bootstrapError
+                );
+            }
+
+            // Compatibility path: run the previous workspace-specific requests in parallel.
             const workspacesPromise = (async () => {
                 const t = performance.now();
                 const res = await getWorkspaces();

@@ -33,6 +33,15 @@ vi.mock("@/lib/db", () => {
             createMany: vi.fn(() => ({ count: 0 })),
         },
         comment: mockModel("comment"),
+        activity: mockModel("activity"),
+        session: mockModel("session"),
+        conversation: mockModel("conversation"),
+        directMessage: mockModel("directMessage"),
+        notification: mockModel("notification"),
+        indent: mockModel("indent"),
+        leave_request: mockModel("leave_request"),
+        vendor: mockModel("vendor"),
+        material_catalog: mockModel("material_catalog"),
         member_todos: mockModel("member_todos"),
         $transaction: vi.fn(async (cb) => {
             if (typeof cb === 'function') {
@@ -108,6 +117,9 @@ vi.mock("@/data/workspace/get-workspace-by-id", () => ({
 
 vi.mock("@/lib/auth/require-user", () => ({
     requireUser: vi.fn(),
+    honoUserStorage: {
+        run: vi.fn(async (_store, callback) => callback()),
+    },
 }));
 
 // Mock Data Invalidation Utilities
