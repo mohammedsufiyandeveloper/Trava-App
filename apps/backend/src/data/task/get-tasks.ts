@@ -262,7 +262,9 @@ export const resolveTaskPermissions = cache(async (workspaceId: string, projectI
     } else {
         const wsPerms = await getWorkspacePermissions(workspaceId, userId);
         permissions = wsPerms;
-        isWorkspaceAdmin = wsPerms.isWorkspaceAdmin;
+        // Workspace MANAGER is an operational role, not unrestricted task
+        // visibility. Only true workspace owners/admins can see every task.
+        isWorkspaceAdmin = wsPerms.isWorkspaceOwnerOrAdmin === true;
 
         if (isWorkspaceAdmin) {
             authorizedProjectIds = [];
@@ -1137,7 +1139,7 @@ export const getTasks = cache(async (opts: GetTasksOptions, providedUserId?: str
     }
 
     const sig = buildQuerySignature(workspaceId, projectId, { fullAccessProjectIds, restrictedProjectIds }, opts);
-    const cacheKey = `tasks-v11-${workspaceId}-${isWorkspaceAdmin ? 'admin' : 'user'}-${effectiveUserId}-${sig}`;
+    const cacheKey = `tasks-v12-${workspaceId}-${isWorkspaceAdmin ? 'admin' : 'user'}-${effectiveUserId}-${sig}`;
 
     const tags = projectId
         ? CacheTags.projectTasks(projectId, effectiveUserId)

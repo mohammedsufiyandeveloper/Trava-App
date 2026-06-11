@@ -43,6 +43,8 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
         if (!workspaceMember && workspace?.ownerId !== userId) {
             return {
                 isWorkspaceAdmin: false,
+                isWorkspaceOwnerOrAdmin: false,
+                isWorkspaceManager: false,
                 canCreateProject: false,
                 isProjectLead: false,
                 hasAccess: false,
@@ -56,10 +58,11 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
             };
         }
 
-        const isWorkspaceAdmin = workspace?.ownerId === userId || 
-            workspaceMember?.workspaceRole === "OWNER" || 
-            workspaceMember?.workspaceRole === "ADMIN" || 
-            workspaceMember?.workspaceRole === "MANAGER";
+        const isWorkspaceOwnerOrAdmin = workspace?.ownerId === userId ||
+            workspaceMember?.workspaceRole === "OWNER" ||
+            workspaceMember?.workspaceRole === "ADMIN";
+        const isWorkspaceManager = workspaceMember?.workspaceRole === "MANAGER";
+        const isWorkspaceAdmin = isWorkspaceOwnerOrAdmin || isWorkspaceManager;
         const canCreateProject = isWorkspaceAdmin;
 
         // projectRoles is now the result of the separate query
@@ -74,6 +77,8 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
 
         return {
             isWorkspaceAdmin,
+            isWorkspaceOwnerOrAdmin,
+            isWorkspaceManager,
             canCreateProject,
             isProjectLead,
             isProjectManager,
@@ -91,6 +96,8 @@ async function _fetchWorkspacePermissionsInternal(workspaceId: string, userId: s
         console.error("Error fetching workspace permissions:", error);
         return {
             isWorkspaceAdmin: false,
+            isWorkspaceOwnerOrAdmin: false,
+            isWorkspaceManager: false,
             canCreateProject: false,
             isProjectLead: false,
             hasAccess: false,
