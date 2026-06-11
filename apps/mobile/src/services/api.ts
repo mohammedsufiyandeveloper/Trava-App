@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DeviceEventEmitter } from "react-native";
+import { DeviceEventEmitter, Platform } from "react-native";
 import { navigationRef } from "../navigation/navigationRef";
 import {
     AuthResponse,
@@ -14,6 +14,7 @@ import {
 // ─── Config ────────────────────────────────────────────────────────────────
 export const API_BASE = "https://backend-kohl-tau-56.vercel.app";
 // export const API_BASE = "http://192.168.88.12:3000"; // Point to local dev server by default for testing
+const API_ORIGIN = new URL(API_BASE).origin;
 const SESSION_KEY = "better_auth_session";
 const TOKEN_KEY = "better_auth_token";
 const FETCH_TIMEOUT = 30000; // 30 seconds
@@ -55,6 +56,9 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
             signal: controller.signal,
             headers: {
                 "Content-Type": "application/json",
+                // Native fetch keeps Better Auth cookies but does not add the
+                // browser Origin header required by its CSRF protection.
+                ...(Platform.OS !== "web" ? { Origin: API_ORIGIN } : {}),
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 ...(options.headers || {}),
             },
