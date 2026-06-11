@@ -214,7 +214,6 @@ export default function MyBoardScreen() {
 
         try {
             if (activeWorkspace) {
-                const isPM = managedProjectIds.length > 0;
                 const isMyTasksMode = ownerViewMode === "Personal";
 
                 const PAGE_SIZE = 15;
@@ -248,7 +247,10 @@ export default function MyBoardScreen() {
                     } else {
                         result = await getTasks(activeWorkspace.id, buildFilters(assigneeFilter));
                     }
-                } else if (isWorkspaceAdmin || isPM) {
+                } else {
+                    // Universal mode is authorized by the backend. It returns
+                    // every subtask in projects the user manages and only the
+                    // user's assigned work in restricted member projects.
                     if (isFirstPage) {
                         [result, count] = await Promise.all([
                             getTasks(activeWorkspace.id, buildFilters()),
@@ -256,16 +258,6 @@ export default function MyBoardScreen() {
                         ]);
                     } else {
                         result = await getTasks(activeWorkspace.id, buildFilters());
-                    }
-                } else {
-                    const assigneeFilter = { assigneeId: currentUser.id ? [currentUser.id] : undefined };
-                    if (isFirstPage) {
-                        [result, count] = await Promise.all([
-                            getTasks(activeWorkspace.id, buildFilters(assigneeFilter)),
-                            getTasksCount(activeWorkspace.id, buildCountFilters(assigneeFilter)),
-                        ]);
-                    } else {
-                        result = await getTasks(activeWorkspace.id, buildFilters(assigneeFilter));
                     }
                 }
 
@@ -287,7 +279,7 @@ export default function MyBoardScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [activeWorkspace?.id, isWorkspaceAdmin, managedProjectIds, filters, ownerViewMode, currentUser]);
+    }, [activeWorkspace?.id, filters, ownerViewMode, currentUser]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor || isFetchingMoreRef.current) return;

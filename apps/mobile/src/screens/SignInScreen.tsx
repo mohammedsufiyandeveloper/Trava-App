@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import {
     View,
     Text,
@@ -96,7 +95,11 @@ export default function SignInScreen({ navigation }: Props) {
                             {/* Password Input */}
                             <View style={styles.labelRow}>
                                 <Text style={[styles.label, { color: colors.textMuted }]}>Password</Text>
-                                <TouchableOpacity>
+                                <TouchableOpacity
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Reset password"
+                                    onPress={() => navigation.navigate("ForgotPassword", { email: email.trim() })}
+                                >
                                     <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot?</Text>
                                 </TouchableOpacity>
                             </View>
@@ -274,4 +277,3 @@ const styles = StyleSheet.create({
         marginTop: 20
     },
 });
-

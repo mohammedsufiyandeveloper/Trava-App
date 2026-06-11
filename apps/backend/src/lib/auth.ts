@@ -73,20 +73,24 @@ export const auth = betterAuth({
   },
   plugins: [
     emailOTP({
-      async sendVerificationOTP({ email, otp }) {
-        // For development, log the OTP to the console
-        console.log('\n==============================================');
-        console.log('📧 EMAIL OTP');
-        console.log('==============================================');
-        console.log('Email:', email);
-        console.log('OTP:', otp);
-        console.log('==============================================\n');
+      async sendVerificationOTP({ email, otp, type }) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[Email OTP] ${type} code for ${email}: ${otp}`);
+        }
 
-        await sendEmail({
+        const isPasswordReset = type === "forget-password";
+        const result = await sendEmail({
           to: email,
-          subject: 'Tusker Management - Verify your email',
-          html: `<p>Your OTP is <strong>${otp}</strong></p>`,
+          subject: isPasswordReset
+            ? "Trava - Reset your password"
+            : "Trava - Verify your email",
+          html: isPasswordReset
+            ? `<p>Your Trava password reset code is <strong>${otp}</strong>.</p><p>If you did not request this, you can ignore this email.</p>`
+            : `<p>Your Trava verification code is <strong>${otp}</strong>.</p>`,
         });
+        if (!result.success) {
+          throw new Error("Unable to send verification email");
+        }
       }
     }),
     phoneNumber({

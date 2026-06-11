@@ -142,6 +142,32 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
     return data as AuthResponse;
 }
 
+export async function requestPasswordResetOtp(email: string): Promise<void> {
+    const res = await apiFetch("/api/auth/forget-password/email-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to send the password reset code.");
+    }
+}
+
+export async function resetPasswordWithOtp(
+    email: string,
+    otp: string,
+    password: string
+): Promise<void> {
+    const res = await apiFetch("/api/auth/email-otp/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ email, otp, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(data.message || "Invalid or expired reset code.");
+    }
+}
+
 /**
  * Send OTP verification email.
  */

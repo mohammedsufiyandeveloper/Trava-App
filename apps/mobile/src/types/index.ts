@@ -145,6 +145,7 @@ export type RootStackParamList = {
     HelpCenter: undefined;
     SignIn: undefined;
     SignUp: undefined;
+    ForgotPassword: { email?: string } | undefined;
     Main: undefined;
     Notifications: undefined;
     AI: undefined;
