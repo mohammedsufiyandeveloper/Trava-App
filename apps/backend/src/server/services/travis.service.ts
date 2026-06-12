@@ -1,14 +1,18 @@
 /**
  * Travis AI Service
  * -----------------
- * Powered by Google Gemini. Tools execute exclusively through the strict tool
- * registry, which enforces permission policies, argument validation, timeouts,
- * and audit. The model never accesses Prisma directly and never supplies its
- * own authorization context — that is resolved server-side per turn.
+ * Routes all AI reasoning through the TRAVIS brain server (TRAVIS_BRAIN_URL).
+ * Tools execute exclusively through the strict tool registry, which enforces
+ * permission policies, argument validation, timeouts, and audit. The model
+ * never accesses Prisma directly and never supplies its own authorization
+ * context — that is resolved server-side per turn.
  *
  * Reads run automatically. Writes never run from a model response: the model
  * proposes a write, the backend returns a signed confirmation preview, and the
  * mutation only happens via executeConfirmed() after the client echoes the token.
+ *
+ * If TRAVIS_BRAIN_URL is not set the service falls back to calling Gemini
+ * directly so local dev works without the brain server running.
  */
 import { randomUUID } from "crypto";
 import {
@@ -42,8 +46,11 @@ import {
 } from "../travis/contract";
 
 const GOOGLE_GENAI_API_KEY = process.env.GOOGLE_GENAI_API_KEY?.trim() ?? "";
-const genAI = new GoogleGenerativeAI(GOOGLE_GENAI_API_KEY);
+const TRAVIS_BRAIN_URL = process.env.TRAVIS_BRAIN_URL?.trim().replace(/\/$/, "") ?? "";
 const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+
+// Gemini direct client — used only when TRAVIS_BRAIN_URL is not configured.
+const genAI = new GoogleGenerativeAI(GOOGLE_GENAI_API_KEY);
 
 const TOOL_LABELS: Record<string, string> = {
     search_tasks: "Searching tasks",
@@ -64,7 +71,56 @@ const TOOL_LABELS: Record<string, string> = {
 };
 const labelFor = (name: string) => TOOL_LABELS[name] ?? name.replace(/_/g, " ");
 
-function buildSystemPrompt(ctx: TravisContext): string {
+// ─── Brain message types ──────────────────────────────────────────────────────
+
+type BrainMessage =
+    | { role: "user"; content: string }
+    | { role: "assistant"; content?: string; tool_calls?: Array<{ name: string; args: Record<string, unknown> }> }
+    | { role: "tool"; name: string; content: string };
+
+interface BrainResponse {
+    role: "assistant";
+    content?: string;
+    tool_calls?: Array<{ name: string; args: Record<string, unknown> }>;
+}
+
+// ─── Brain server call ────────────────────────────────────────────────────────
+
+async function callTravisBrain(
+    messages: BrainMessage[],
+    ctx: TravisContext,
+    tools: FunctionDeclaration[]
+): Promise<BrainResponse> {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: ctx.timezone }).format(ctx.now);
+    const body = {
+        messages,
+        tools,
+        trava_context: {
+            role: ctx.role,
+            workspace_name: ctx.workspaceId,
+            timezone: ctx.timezone,
+            today,
+        },
+    };
+
+    const res = await fetch(`${TRAVIS_BRAIN_URL}/trava/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(28_000),
+    });
+
+    if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`TRAVIS brain server returned ${res.status}: ${text}`);
+    }
+
+    return res.json() as Promise<BrainResponse>;
+}
+
+// ─── Fallback: direct Gemini system prompt (used when no brain URL is set) ───
+
+function buildFallbackSystemPrompt(ctx: TravisContext): string {
     return `You are Travis, a professional assistant inside Trava, a project & team management app.
 
 RULES:
@@ -77,6 +133,8 @@ RULES:
 - The user's role is ${ctx.role}; they may only see data they can access.
 - Today's date is ${new Intl.DateTimeFormat("en-CA", { timeZone: ctx.timezone }).format(ctx.now)} (timezone ${ctx.timezone}). Resolve relative dates like "tomorrow" against it.`;
 }
+
+// ─── Shared types ─────────────────────────────────────────────────────────────
 
 const FUNCTION_DECLARATIONS: FunctionDeclaration[] = getFunctionDeclarations();
 
@@ -109,13 +167,11 @@ function runWithTimeout<T>(p: Promise<T>): Promise<T> {
     ]);
 }
 
-export class TravisService {
-    private static readonly MAX_TOOL_ROUNDS = MAX_TOOL_ROUNDS;
-    private static readonly TIMEOUT_MS = TIMEOUT_MS;
+// ─── Service ──────────────────────────────────────────────────────────────────
 
+export class TravisService {
     /**
-     * Back-compat plain-text turn (used by older callers/tests). Delegates to
-     * runTurn and returns the final assembled message.
+     * Back-compat plain-text turn. Delegates to runTurn and returns final text.
      */
     static async chat(
         workspaceId: string,
@@ -134,15 +190,17 @@ export class TravisService {
     }
 
     /**
-     * Run one Travis turn, returning the structured event stream. Reads execute
-     * automatically; a proposed write yields a `confirmation_required` event and
-     * the turn stops (nothing is mutated).
+     * Run one Travis turn. If TRAVIS_BRAIN_URL is set, all reasoning goes
+     * through the TRAVIS brain server. Otherwise falls back to direct Gemini.
      */
     static async runTurn(userId: string, input: TravisTurnInput): Promise<TravisChatResponse> {
         const events: TravisEvent[] = [];
         const conversationId = input.conversationId;
 
-        if (process.env.NODE_ENV !== "test" && !GOOGLE_GENAI_API_KEY) {
+        const hasBrainUrl = Boolean(TRAVIS_BRAIN_URL);
+        const hasApiKey = Boolean(GOOGLE_GENAI_API_KEY);
+
+        if (process.env.NODE_ENV !== "test" && !hasBrainUrl && !hasApiKey) {
             const msg = "Travis is not configured yet. Please contact your administrator.";
             events.push(TravisEvents.error("provider_unavailable", msg));
             return { success: false, conversationId, events, message: msg };
@@ -162,112 +220,20 @@ export class TravisService {
             return { success: false, conversationId, events, message: msg };
         }
 
-        const model = genAI.getGenerativeModel({
-            model: MODEL,
-            systemInstruction: buildSystemPrompt(ctx),
-            tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
-            toolConfig: { functionCallingConfig: { mode: FunctionCallingMode.AUTO } },
-        });
-
-        // History is loaded from the server-owned conversation only. Client
-        // history is intentionally ignored because assistant-role text is not
-        // a trustworthy source of model instructions.
         const serverHistory = input.conversationId
-            ? await loadConversationHistory(
-                  userId,
-                  input.workspaceId,
-                  input.conversationId,
-                  20
-              )
+            ? await loadConversationHistory(userId, input.workspaceId, input.conversationId, 20)
             : [];
-        const geminiHistory = serverHistory
-            .map((h) => ({
-                role: h.role === "assistant" ? "model" : "user",
-                parts: [{ text: h.content }],
-            }));
-
-        const chat = model.startChat({ history: geminiHistory });
 
         try {
-            let result = await runWithTimeout(chat.sendMessage(input.message));
-            let rounds = 0;
-
-            while (rounds < MAX_TOOL_ROUNDS) {
-                const response = result.response;
-                const calls = response.functionCalls();
-
-                if (!calls || calls.length === 0) {
-                    const text = response.text() || "I'm not sure how to help with that yet.";
-                    events.push(TravisEvents.textDelta(text));
-                    events.push(TravisEvents.completed(text, conversationId));
-                    return { success: true, conversationId, events, message: text };
-                }
-
-                rounds++;
-
-                // A proposed write short-circuits the turn with a confirmation.
-                const writeCall = calls.find((c) => isWriteTool(c.name));
-                if (writeCall) {
-                    events.push(TravisEvents.toolStarted(writeCall.name, labelFor(writeCall.name)));
-                    const prep = await prepareWrite(writeCall.name, writeCall.args, ctx);
-                    if (!prep.ok) {
-                        events.push(TravisEvents.toolCompleted(writeCall.name, false, prep.error));
-                        events.push(TravisEvents.completed(prep.error, conversationId));
-                        return { success: true, conversationId, events, message: prep.error };
-                    }
-                    const idem = input.clientRequestId
-                        ? `${userId}:${ctx.workspaceId}:${input.clientRequestId}:${writeCall.name}`
-                        : randomUUID();
-                    const { token, expiresAt } = issueConfirmationToken({
-                        tool: writeCall.name,
-                        args: prep.validatedArgs,
-                        userId,
-                        workspaceId: ctx.workspaceId,
-                        idempotencyKey: idem,
-                    });
-                    const preview: ConfirmationPreview = {
-                        tool: writeCall.name,
-                        title: prep.preview.title,
-                        summary: prep.preview.summary,
-                        fields: prep.preview.fields,
-                        destructive: prep.preview.destructive ?? false,
-                        affectedEntity: prep.preview.affectedEntity,
-                        token,
-                        expiresAt,
-                    };
-                    events.push(TravisEvents.toolCompleted(writeCall.name, true, "Awaiting confirmation"));
-                    events.push(TravisEvents.confirmationRequired(preview));
-                    const msg = `Please review and confirm: ${prep.preview.summary}`;
-                    events.push(TravisEvents.completed(msg, conversationId));
-                    return { success: true, conversationId, events, message: msg };
-                }
-
-                // Otherwise run all (read/navigate) tools and feed results back.
-                const functionResponses: {
-                    functionResponse: { name: string; response: { result: unknown } };
-                }[] = [];
-                for (const call of calls) {
-                    events.push(TravisEvents.toolStarted(call.name, labelFor(call.name)));
-                    const r = await executeTool(call.name, call.args, ctx);
-                    events.push(
-                        TravisEvents.toolCompleted(call.name, r.ok, r.ok ? r.summary : r.error)
-                    );
-                    for (const e of r.entities ?? []) events.push(TravisEvents.entityCard(e));
-                    if (r.navigation) {
-                        events.push(TravisEvents.navigation(r.navigation.route, r.navigation.entity));
-                    }
-                    const modelView = r.ok ? r.data ?? { ok: true } : { error: r.error };
-                    functionResponses.push({
-                        functionResponse: { name: call.name, response: { result: modelView } },
-                    });
-                }
-                result = await runWithTimeout(chat.sendMessage(functionResponses));
+            if (hasBrainUrl) {
+                return await runWithTimeout(
+                    TravisService._runWithBrain(userId, input, ctx, serverHistory, events, conversationId)
+                );
+            } else {
+                return await runWithTimeout(
+                    TravisService._runWithGemini(userId, input, ctx, serverHistory, events, conversationId)
+                );
             }
-
-            const text =
-                "I reached the maximum number of reasoning steps. Please try a more specific question.";
-            events.push(TravisEvents.completed(text, conversationId));
-            return { success: true, conversationId, events, message: text };
         } catch (err: any) {
             const timedOut = err?.message === "TIMEOUT";
             const code = timedOut ? "timeout" : "provider_unavailable";
@@ -275,15 +241,217 @@ export class TravisService {
                 ? "Travis is taking too long to respond. Please try again."
                 : "Travis is temporarily unavailable. Please try again shortly.";
             console.error("[Travis] provider request failed", {
-                model: MODEL,
+                provider: hasBrainUrl ? "brain_server" : "gemini_direct",
                 status: err?.status ?? err?.response?.status ?? null,
                 code: err?.code ?? null,
                 type: err?.name ?? "Error",
+                message: err?.message ?? null,
             });
             events.push(TravisEvents.error(code, msg));
             return { success: false, conversationId, events, message: msg };
         }
     }
+
+    // ── Brain server path ────────────────────────────────────────────────────
+
+    private static async _runWithBrain(
+        userId: string,
+        input: TravisTurnInput,
+        ctx: TravisContext,
+        serverHistory: TravisMessage[],
+        events: TravisEvent[],
+        conversationId: string | undefined
+    ): Promise<TravisChatResponse> {
+        // Build the initial messages array from conversation history + current message.
+        const messages: BrainMessage[] = [
+            ...serverHistory.map((h) => ({ role: h.role, content: h.content } as BrainMessage)),
+            { role: "user", content: input.message },
+        ];
+
+        let rounds = 0;
+
+        while (rounds < MAX_TOOL_ROUNDS) {
+            const brainResp = await callTravisBrain(messages, ctx, FUNCTION_DECLARATIONS);
+            const toolCalls = brainResp.tool_calls ?? [];
+
+            if (!toolCalls.length) {
+                const text = brainResp.content || "I'm not sure how to help with that yet.";
+                events.push(TravisEvents.textDelta(text));
+                events.push(TravisEvents.completed(text, conversationId));
+                return { success: true, conversationId, events, message: text };
+            }
+
+            rounds++;
+
+            // A proposed write short-circuits the turn with a confirmation preview.
+            const writeCall = toolCalls.find((c) => isWriteTool(c.name));
+            if (writeCall) {
+                events.push(TravisEvents.toolStarted(writeCall.name, labelFor(writeCall.name)));
+                const prep = await prepareWrite(writeCall.name, writeCall.args, ctx);
+                if (!prep.ok) {
+                    events.push(TravisEvents.toolCompleted(writeCall.name, false, prep.error));
+                    events.push(TravisEvents.completed(prep.error, conversationId));
+                    return { success: true, conversationId, events, message: prep.error };
+                }
+                const idem = input.clientRequestId
+                    ? `${userId}:${ctx.workspaceId}:${input.clientRequestId}:${writeCall.name}`
+                    : randomUUID();
+                const { token, expiresAt } = issueConfirmationToken({
+                    tool: writeCall.name,
+                    args: prep.validatedArgs,
+                    userId,
+                    workspaceId: ctx.workspaceId,
+                    idempotencyKey: idem,
+                });
+                const preview: ConfirmationPreview = {
+                    tool: writeCall.name,
+                    title: prep.preview.title,
+                    summary: prep.preview.summary,
+                    fields: prep.preview.fields,
+                    destructive: prep.preview.destructive ?? false,
+                    affectedEntity: prep.preview.affectedEntity,
+                    token,
+                    expiresAt,
+                };
+                events.push(TravisEvents.toolCompleted(writeCall.name, true, "Awaiting confirmation"));
+                events.push(TravisEvents.confirmationRequired(preview));
+                const msg = `Please review and confirm: ${prep.preview.summary}`;
+                events.push(TravisEvents.completed(msg, conversationId));
+                return { success: true, conversationId, events, message: msg };
+            }
+
+            // Append assistant's tool-call proposal to message history.
+            messages.push({ role: "assistant", tool_calls: toolCalls });
+
+            // Execute read/navigate tools and append results to message history.
+            for (const call of toolCalls) {
+                events.push(TravisEvents.toolStarted(call.name, labelFor(call.name)));
+                const r = await executeTool(call.name, call.args, ctx);
+                events.push(
+                    TravisEvents.toolCompleted(call.name, r.ok, r.ok ? r.summary : r.error)
+                );
+                for (const e of r.entities ?? []) events.push(TravisEvents.entityCard(e));
+                if (r.navigation) {
+                    events.push(TravisEvents.navigation(r.navigation.route, r.navigation.entity));
+                }
+                const modelView = r.ok ? r.data ?? { ok: true } : { error: r.error };
+                messages.push({
+                    role: "tool",
+                    name: call.name,
+                    content: JSON.stringify(modelView),
+                });
+            }
+        }
+
+        const text =
+            "I reached the maximum number of reasoning steps. Please try a more specific question.";
+        events.push(TravisEvents.completed(text, conversationId));
+        return { success: true, conversationId, events, message: text };
+    }
+
+    // ── Direct Gemini fallback path ──────────────────────────────────────────
+
+    private static async _runWithGemini(
+        userId: string,
+        input: TravisTurnInput,
+        ctx: TravisContext,
+        serverHistory: TravisMessage[],
+        events: TravisEvent[],
+        conversationId: string | undefined
+    ): Promise<TravisChatResponse> {
+        const model = genAI.getGenerativeModel({
+            model: MODEL,
+            systemInstruction: buildFallbackSystemPrompt(ctx),
+            tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
+            toolConfig: { functionCallingConfig: { mode: FunctionCallingMode.AUTO } },
+        });
+
+        const geminiHistory = serverHistory.map((h) => ({
+            role: h.role === "assistant" ? "model" : "user",
+            parts: [{ text: h.content }],
+        }));
+
+        const chat = model.startChat({ history: geminiHistory });
+        let result = await chat.sendMessage(input.message);
+        let rounds = 0;
+
+        while (rounds < MAX_TOOL_ROUNDS) {
+            const response = result.response;
+            const calls = response.functionCalls();
+
+            if (!calls || calls.length === 0) {
+                const text = response.text() || "I'm not sure how to help with that yet.";
+                events.push(TravisEvents.textDelta(text));
+                events.push(TravisEvents.completed(text, conversationId));
+                return { success: true, conversationId, events, message: text };
+            }
+
+            rounds++;
+
+            const writeCall = calls.find((c) => isWriteTool(c.name));
+            if (writeCall) {
+                events.push(TravisEvents.toolStarted(writeCall.name, labelFor(writeCall.name)));
+                const prep = await prepareWrite(writeCall.name, writeCall.args as Record<string, unknown>, ctx);
+                if (!prep.ok) {
+                    events.push(TravisEvents.toolCompleted(writeCall.name, false, prep.error));
+                    events.push(TravisEvents.completed(prep.error, conversationId));
+                    return { success: true, conversationId, events, message: prep.error };
+                }
+                const idem = input.clientRequestId
+                    ? `${userId}:${ctx.workspaceId}:${input.clientRequestId}:${writeCall.name}`
+                    : randomUUID();
+                const { token, expiresAt } = issueConfirmationToken({
+                    tool: writeCall.name,
+                    args: prep.validatedArgs,
+                    userId,
+                    workspaceId: ctx.workspaceId,
+                    idempotencyKey: idem,
+                });
+                const preview: ConfirmationPreview = {
+                    tool: writeCall.name,
+                    title: prep.preview.title,
+                    summary: prep.preview.summary,
+                    fields: prep.preview.fields,
+                    destructive: prep.preview.destructive ?? false,
+                    affectedEntity: prep.preview.affectedEntity,
+                    token,
+                    expiresAt,
+                };
+                events.push(TravisEvents.toolCompleted(writeCall.name, true, "Awaiting confirmation"));
+                events.push(TravisEvents.confirmationRequired(preview));
+                const msg = `Please review and confirm: ${prep.preview.summary}`;
+                events.push(TravisEvents.completed(msg, conversationId));
+                return { success: true, conversationId, events, message: msg };
+            }
+
+            const functionResponses: {
+                functionResponse: { name: string; response: { result: unknown } };
+            }[] = [];
+            for (const call of calls) {
+                events.push(TravisEvents.toolStarted(call.name, labelFor(call.name)));
+                const r = await executeTool(call.name, call.args as Record<string, unknown>, ctx);
+                events.push(
+                    TravisEvents.toolCompleted(call.name, r.ok, r.ok ? r.summary : r.error)
+                );
+                for (const e of r.entities ?? []) events.push(TravisEvents.entityCard(e));
+                if (r.navigation) {
+                    events.push(TravisEvents.navigation(r.navigation.route, r.navigation.entity));
+                }
+                const modelView = r.ok ? r.data ?? { ok: true } : { error: r.error };
+                functionResponses.push({
+                    functionResponse: { name: call.name, response: { result: modelView } },
+                });
+            }
+            result = await chat.sendMessage(functionResponses);
+        }
+
+        const text =
+            "I reached the maximum number of reasoning steps. Please try a more specific question.";
+        events.push(TravisEvents.completed(text, conversationId));
+        return { success: true, conversationId, events, message: text };
+    }
+
+    // ── Confirmed write execution ─────────────────────────────────────────────
 
     /**
      * Execute a previously-proposed write after the user confirms. Validates the
@@ -320,14 +488,7 @@ export class TravisService {
             return { success: false, events, message: msg };
         }
 
-        // Claim before mutation. The unique database key closes concurrent
-        // confirmation races across serverless instances.
-        const claim = await claimIdempotencyKey(
-            idem,
-            userId,
-            workspaceId,
-            tool
-        );
+        const claim = await claimIdempotencyKey(idem, userId, workspaceId, tool);
         if (claim.status === "completed") {
             return TravisService.replayOutcome(claim.outcome, events);
         }
