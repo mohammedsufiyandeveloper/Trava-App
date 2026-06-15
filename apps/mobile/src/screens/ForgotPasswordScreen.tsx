@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { requestPasswordResetOtp, resetPasswordWithOtp } from "../services/api";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
+import { isValidEmail } from "../utils/validation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ForgotPassword">;
 
@@ -35,7 +36,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
     const sendCode = async () => {
         const normalizedEmail = email.trim().toLowerCase();
-        if (!normalizedEmail || !normalizedEmail.includes("@")) {
+        if (!isValidEmail(normalizedEmail)) {
             Alert.alert("Invalid Email", "Enter the email address used for your Trava account.");
             return;
         }

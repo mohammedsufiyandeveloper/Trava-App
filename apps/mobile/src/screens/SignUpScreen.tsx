@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { requestEmailOtp } from "../services/api";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
+import { isValidEmail } from "../utils/validation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
@@ -35,6 +36,10 @@ export default function SignUpScreen({ navigation }: Props) {
     async function handleContinue() {
         if (!firstName || !lastName || !email) {
             Alert.alert("Error", "Please fill in all fields.");
+            return;
+        }
+        if (!isValidEmail(email)) {
+            Alert.alert("Invalid email", "Please enter a valid email address (e.g. name@company.com).");
             return;
         }
         setLoading(true);
