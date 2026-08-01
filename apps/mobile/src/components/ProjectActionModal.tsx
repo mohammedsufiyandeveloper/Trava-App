@@ -31,7 +31,7 @@ export default function ProjectActionModal({
     onDelete,
     canManage = false
 }: ProjectActionModalProps) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
 
     const ActionItem = ({
         icon,
@@ -54,14 +54,14 @@ export default function ProjectActionModal({
             accessibilityRole="button"
             accessibilityLabel={label}
         >
-            <View style={[styles.iconContainer, { backgroundColor: destructive ? "#fee2e2" : isDark ? colors.surfaceHighlight : "#f1f5f9" }]}>
+            <View style={[styles.iconContainer, { backgroundColor: destructive ? `${colors.error}18` : colors.surfaceHighlight }]}>
                 <Ionicons
                     name={icon}
                     size={20}
-                    color={destructive ? "#ef4444" : colors.primary}
+                    color={destructive ? colors.error : colors.primary}
                 />
             </View>
-            <Text style={[styles.actionLabel, { color: destructive ? "#ef4444" : colors.text }]}>
+            <Text style={[styles.actionLabel, { color: destructive ? colors.error : colors.text }]}>
                 {label}
             </Text>
         </PressableScale>
@@ -88,7 +88,7 @@ export default function ProjectActionModal({
 
             <PressableScale
                 haptic="selection"
-                style={[styles.cancelBtn, { backgroundColor: isDark ? colors.surfaceHighlight : "#f8fafc" }]}
+                style={[styles.cancelBtn, { backgroundColor: colors.surfaceHighlight }]}
                 onPress={onClose}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"

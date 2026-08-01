@@ -25,6 +25,8 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getLeaveBalance, getLeaveRequestsPage, submitLeaveRequest, updateLeaveStatus, getCachedSession } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import StatusChip, { StatusKind } from "../components/StatusChip";
+import ConfirmationSheet from "../components/ConfirmationSheet";
 
 const { width } = Dimensions.get("window");
 
@@ -57,6 +59,9 @@ export default function LeaveScreen({ navigation }: any) {
     const [leaveType, setLeaveType] = useState<LeaveType>("CASUAL");
     const [reason, setReason] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [actionSheet, setActionSheet] = useState<{ request: LeaveRequest; status: "APPROVED" | "REJECTED" } | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const loadData = useCallback(async () => {
         if (!activeWorkspace?.id) return;
@@ -142,22 +147,35 @@ export default function LeaveScreen({ navigation }: any) {
         loadData();
     };
 
-    const handleAction = async (requestId: string, status: "APPROVED" | "REJECTED") => {
-        if (!activeWorkspace?.id) return;
+    const requestAction = (request: LeaveRequest, status: "APPROVED" | "REJECTED") => {
+        haptics.warning();
+        setActionSheet({ request, status });
+    };
+
+    const handleAction = async () => {
+        if (!activeWorkspace?.id || !actionSheet) return;
+        const { request, status } = actionSheet;
+        setActionLoading(true);
         try {
-            await updateLeaveStatus(activeWorkspace.id, requestId, status);
+            await updateLeaveStatus(activeWorkspace.id, request.id, status);
+            haptics.success();
+            setActionSheet(null);
             loadData();
         } catch (error: any) {
+            haptics.error();
             Alert.alert("Error", error.message || "Failed to update leave status");
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleSubmit = async () => {
         if (!activeWorkspace?.id) return;
         if (!reason.trim()) {
-            Alert.alert("Error", "Please provide a reason for your leave.");
+            setFormError("Please provide a reason for your leave.");
             return;
         }
+        setFormError(null);
 
         setSubmitting(true);
         try {
@@ -167,12 +185,14 @@ export default function LeaveScreen({ navigation }: any) {
                 reason,
                 type: leaveType
             });
+            haptics.success();
             Alert.alert("Success", "Leave request submitted successfully.");
             setIsModalOpen(false);
             setReason("");
             loadData();
         } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to submit leave request.");
+            haptics.error();
+            setFormError(error.message || "Failed to submit leave request.");
         } finally {
             setSubmitting(false);
         }
@@ -192,6 +212,15 @@ export default function LeaveScreen({ navigation }: any) {
             case "REJECTED": return "#ef4444";
             case "PENDING": return "#f59e0b";
             default: return colors.textDim;
+        }
+    };
+
+    const getStatusKind = (status: LeaveStatus): StatusKind => {
+        switch (status) {
+            case "APPROVED": return "success";
+            case "REJECTED": return "error";
+            case "PENDING": return "warning";
+            default: return "neutral";
         }
     };
 
@@ -222,7 +251,7 @@ export default function LeaveScreen({ navigation }: any) {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
             <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View>
@@ -236,6 +265,8 @@ export default function LeaveScreen({ navigation }: any) {
                 <TouchableOpacity
                     style={[styles.addButton, { backgroundColor: colors.primary }]}
                     onPress={() => setIsModalOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Apply for leave"
                 >
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -332,9 +363,7 @@ export default function LeaveScreen({ navigation }: any) {
                                         <Text style={[styles.memberBal, { color: colors.textDim }]}>BAL: C:{req.WorkspaceMember.casualLeaveBalance} • S:{req.WorkspaceMember.sickLeaveBalance}</Text>
                                     </View>
                                 </View>
-                                <View style={[styles.statusBadgeSmall, { backgroundColor: getStatusColor(req.status) + "15" }]}>
-                                    <Text style={[styles.statusTextSmall, { color: getStatusColor(req.status) }]}>{req.status}</Text>
-                                </View>
+                                <StatusChip label={req.status} kind={getStatusKind(req.status)} size="sm" />
                             </View>
 
                             {/* Card Body: Dates & Type */}
@@ -361,16 +390,22 @@ export default function LeaveScreen({ navigation }: any) {
                             {isAdmin && req.status === "PENDING" && (
                                 <View style={styles.rowActions}>
                                     <TouchableOpacity
-                                        style={[styles.miniActionBtn, { backgroundColor: "#dcfce7" }]}
-                                        onPress={() => handleAction(req.id, "APPROVED")}
+                                        style={[styles.approveActionBtn, { backgroundColor: "#dcfce7" }]}
+                                        onPress={() => requestAction(req, "APPROVED")}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Approve leave request from ${req.WorkspaceMember.user.name}`}
                                     >
                                         <Ionicons name="checkmark" size={18} color="#166534" />
+                                        <Text style={styles.approveActionText}>Approve</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.miniActionBtn, { backgroundColor: "#fee2e2" }]}
-                                        onPress={() => handleAction(req.id, "REJECTED")}
+                                        style={[styles.approveActionBtn, { backgroundColor: "#fee2e2" }]}
+                                        onPress={() => requestAction(req, "REJECTED")}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Reject leave request from ${req.WorkspaceMember.user.name}`}
                                     >
                                         <Ionicons name="close" size={18} color="#991b1b" />
+                                        <Text style={[styles.approveActionText, { color: "#991b1b" }]}>Reject</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -391,7 +426,15 @@ export default function LeaveScreen({ navigation }: any) {
                     <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>Apply for Leave</Text>
-                            <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setIsModalOpen(false);
+                                    setFormError(null);
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close"
+                                hitSlop={8}
+                            >
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
@@ -476,19 +519,32 @@ export default function LeaveScreen({ navigation }: any) {
 
                             <Text style={[styles.label, { color: colors.textDim }]}>Reason</Text>
                             <TextInput
-                                style={[styles.input, styles.textArea, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                style={[
+                                    styles.input,
+                                    styles.textArea,
+                                    { backgroundColor: colors.background, color: colors.text, borderColor: formError ? colors.error : colors.border },
+                                ]}
                                 value={reason}
-                                onChangeText={setReason}
+                                onChangeText={(t) => {
+                                    setReason(t);
+                                    if (formError) setFormError(null);
+                                }}
                                 multiline
                                 numberOfLines={4}
                                 placeholder="Provide a brief reason..."
                                 placeholderTextColor={colors.textDim}
                             />
+                            {formError && (
+                                <Text style={[styles.formErrorText, { color: colors.error }]}>{formError}</Text>
+                            )}
 
                             <TouchableOpacity
-                                style={[styles.submitButton, { backgroundColor: colors.primary }]}
+                                style={[styles.submitButton, { backgroundColor: colors.primary }, submitting && { opacity: 0.7 }]}
                                 onPress={handleSubmit}
                                 disabled={submitting}
+                                accessibilityRole="button"
+                                accessibilityLabel="Submit leave request"
+                                accessibilityState={{ disabled: submitting, busy: submitting }}
                             >
                                 {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit Request</Text>}
                             </TouchableOpacity>
@@ -496,6 +552,22 @@ export default function LeaveScreen({ navigation }: any) {
                     </View>
                 </View>
             </Modal>
+
+            <ConfirmationSheet
+                visible={!!actionSheet}
+                title={actionSheet?.status === "APPROVED" ? "Approve this leave request?" : "Reject this leave request?"}
+                description={
+                    actionSheet
+                        ? `${actionSheet.status === "APPROVED" ? "Approve" : "Reject"} the ${actionSheet.request.type.toLowerCase()} leave request from ${actionSheet.request.WorkspaceMember.user.name}.`
+                        : undefined
+                }
+                tone={actionSheet?.status === "REJECTED" ? "destructive" : "default"}
+                confirmLabel={actionSheet?.status === "APPROVED" ? "Approve" : "Reject"}
+                cancelLabel="Cancel"
+                loading={actionLoading}
+                onConfirm={handleAction}
+                onClose={() => setActionSheet(null)}
+            />
             </View>
         </SafeAreaView>
     );
@@ -569,6 +641,9 @@ const styles = StyleSheet.create({
 
     rowActions: { flexDirection: "row", gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)" },
     miniActionBtn: { width: 40, height: 36, borderRadius: 8, justifyContent: "center", alignItems: "center" },
+    approveActionBtn: { flex: 1, flexDirection: "row", gap: 6, minHeight: 44, borderRadius: 8, justifyContent: "center", alignItems: "center" },
+    approveActionText: { fontSize: 13, fontWeight: "700", color: "#166534" },
+    formErrorText: { fontSize: 12, fontWeight: "600", marginTop: -4, marginBottom: SPACING.md },
 
     emptyState: { alignItems: "center", marginTop: 40 },
     emptyText: { marginTop: 12, fontSize: 16 },

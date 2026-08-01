@@ -1,13 +1,15 @@
 import React, { useState, useEffect, forwardRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { SPACING, BORDER_RADIUS } from '../constants/theme';
+import { haptics } from '../services/haptics';
 import { getTodayAttendance, submitCheckIn, submitCheckOut, getWorkspaces, getTeamAttendance, getCachedSession } from '../services/api';
 
 import { useWorkspace } from '../context/WorkspaceContext';
+import ConfirmationSheet from './ConfirmationSheet';
 
 interface Props {
   workspaceId: string;
@@ -31,6 +33,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
   });
   const [actionLoading, setActionLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'personal' | 'team'>('personal');
+  const [checkOutSheetVisible, setCheckOutSheetVisible] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   // Derive attendance from todayAttendance in context
   const attendance = todayAttendance;
@@ -108,19 +112,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
   }, [workspaceId, isAdmin]);
 
   const confirmAndCheckOut = () => {
-    Alert.alert(
-      'Check Out for the Day?',
-      'Are you sure you want to check out? This will end your shift for today.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes, Check Out',
-          style: 'destructive',
-          onPress: () => handleAction('check-out'),
-        },
-      ],
-      { cancelable: true }
-    );
+    haptics.warning();
+    setCheckOutSheetVisible(true);
   };
 
   const handleAction = async (type: 'check-in' | 'check-out') => {
@@ -128,10 +121,21 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Permission to access location was denied');
+        setLocationDenied(true);
+        setCheckOutSheetVisible(false);
+        haptics.error();
+        Alert.alert(
+          'Location access needed',
+          'Trava needs location access to record attendance. Enable it for this app in your device settings, then try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: openLocationSettings },
+          ]
+        );
         setActionLoading(false);
         return;
       }
+      setLocationDenied(false);
 
       let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
 
@@ -153,16 +157,28 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
       if (type === 'check-in') {
         const result = await submitCheckIn(workspaceId, latitude, longitude, addressString, todayString);
         setTodayAttendance(result);
-        Alert.alert('Success', 'Checked in successfully!');
+        haptics.success();
+        Alert.alert('Checked In', 'Checked in successfully!');
       } else {
         const result = await submitCheckOut(workspaceId, latitude, longitude, addressString, todayString);
         setTodayAttendance(result);
-        Alert.alert('Success', 'Checked out successfully!');
+        setCheckOutSheetVisible(false);
+        haptics.success();
+        Alert.alert('Checked Out', 'Checked out successfully!');
       }
     } catch (error: any) {
+      haptics.error();
       Alert.alert('Error', error.message || 'Something went wrong');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const openLocationSettings = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('app-settings:');
+    } else {
+      Linking.openSettings();
     }
   };
 
@@ -237,6 +253,9 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
           }
         }}
         disabled={actionLoading || isCheckedOut && !onLongPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${titleText}, ${valueText}`}
+        accessibilityState={{ disabled: actionLoading || (isCheckedOut && !onLongPress), busy: actionLoading }}
       >
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
           <View style={[styles.miniIcon, { backgroundColor: iconColor + "20" }]}>
@@ -270,6 +289,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
           <TouchableOpacity
             style={styles.toggleBtn}
             onPress={() => setViewMode(viewMode === 'team' ? 'personal' : 'team')}
+            accessibilityRole="button"
+            accessibilityLabel={viewMode === 'team' ? "Switch to personal attendance view" : "Switch to team attendance view"}
           >
             <Ionicons
               name={viewMode === 'team' ? "person-outline" : "people-outline"}
@@ -349,9 +370,30 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
                 )}
               </TouchableOpacity>
             )}
+
+            {locationDenied && (
+              <View style={[styles.deniedBanner, { backgroundColor: "#ef444412", borderColor: "#ef444440" }]}>
+                <Ionicons name="location-outline" size={14} color="#ef4444" />
+                <Text style={styles.deniedText}>
+                  Location access is off. Enable it in Settings to check in/out.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </BlurView>
+
+      <ConfirmationSheet
+        visible={checkOutSheetVisible}
+        title="Check out for the day?"
+        description="This will end your shift for today."
+        tone="warning"
+        confirmLabel="Check Out"
+        cancelLabel="Cancel"
+        loading={actionLoading}
+        onConfirm={() => handleAction('check-out')}
+        onClose={() => setCheckOutSheetVisible(false)}
+      />
     </View>
   );
 });
@@ -468,5 +510,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-  }
+  },
+  deniedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: SPACING.sm,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+  },
+  deniedText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
 });

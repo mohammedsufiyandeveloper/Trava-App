@@ -14,8 +14,21 @@ import { useWorkspace, DEFAULT_FILTERS } from "../../context/WorkspaceContext";
 import { RootStackParamList, Task } from "../../types";
 import TaskFilterSheet from "../../components/TaskFilterSheet";
 import CreateSubTaskModal from "../../components/CreateSubTaskModal";
+import ConfirmationSheet from "../../components/ConfirmationSheet";
+import StatusChip, { StatusKind } from "../../components/StatusChip";
 import { getSubTasks, getTasks, deleteTask } from "../../services/api";
-import { getStatusHex, getStatusBgColor } from "../../utils/taskColors";
+
+// Local mapping from backend status string to the shared StatusChip's semantic kind.
+// Kept local to this screen to avoid touching the shared taskColors util (out of scope).
+const STATUS_CHIP_KIND: Record<string, StatusKind> = {
+    TO_DO: "todo",
+    IN_PROGRESS: "inProgress",
+    REVIEW: "review",
+    HOLD: "hold",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+};
+const statusToChipKind = (status?: string): StatusKind => STATUS_CHIP_KIND[status || ""] || "neutral";
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 
 // View components
@@ -34,6 +47,8 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
     const [createSubTaskVisible, setCreateSubTaskVisible] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [viewMode, setViewMode] = useState<"List" | "Kanban" | "Gantt">("List");
+    const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const activeProject = useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
     const projectColor = activeProject?.color || colors.primary;
@@ -187,33 +202,25 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                 {
                     text: "Delete",
                     style: "destructive",
-                    onPress: () => confirmDelete(item)
+                    onPress: () => setDeleteTarget(item)
                 }
             ]
         );
     };
 
-    const confirmDelete = (item: Task) => {
-        Alert.alert(
-            "Delete Deliverable",
-            `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await deleteTask(item.id);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            fetchSubTasks();
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message || "Failed to delete task");
-                        }
-                    }
-                }
-            ]
-        );
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await deleteTask(deleteTarget.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setDeleteTarget(null);
+            fetchSubTasks();
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to delete task");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const renderItem = ({ item }: { item: Task }) => {
@@ -238,11 +245,11 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                             {item.name}
                         </Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(item.status) }]}>
-                        <Text style={[styles.statusText, { color: getStatusHex(item.status) }]}>
-                            {item.status.replace("_", " ")}
-                        </Text>
-                    </View>
+                    <StatusChip
+                        label={item.status.replace("_", " ")}
+                        kind={statusToChipKind(item.status)}
+                        size="sm"
+                    />
                 </View>
 
 
@@ -330,7 +337,7 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
 
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                     <Ionicons name="arrow-back" size={24} color={projectColor} />
                 </TouchableOpacity>
                 <View style={styles.titleContainer}>
@@ -352,12 +359,16 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                 <TouchableOpacity
                     style={[styles.filterBtn, { backgroundColor: colors.surfaceHighlight, marginRight: 8 }]}
                     onPress={() => setCreateSubTaskVisible(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add deliverable"
                 >
                     <Ionicons name="add" size={22} color={colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.filterBtn, { backgroundColor: colors.surfaceHighlight }, activeFilterCount > 0 && { backgroundColor: isDark ? colors.activeTab : "#e0e7ff" }]}
                     onPress={() => setFilterVisible(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : "Filters"}
                 >
                     <Ionicons
                         name="filter"
@@ -383,21 +394,32 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                 <View style={[styles.activeFiltersBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
                         {filters.search ? (
-                            <TouchableOpacity style={[styles.filterChip, { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary + "30" }]} onPress={() => setProjectFilters(projectId, { ...filters, search: "" })}>
+                            <TouchableOpacity
+                                style={[styles.filterChip, { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary + "30" }]}
+                                onPress={() => setProjectFilters(projectId, { ...filters, search: "" })}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove filter: Search ${filters.search}`}
+                            >
                                 <Text style={[styles.filterChipText, { color: colors.primary }]}>Search: {filters.search}</Text>
                                 <Ionicons name="close-circle" size={14} color={colors.primary} />
                             </TouchableOpacity>
                         ) : null}
                         {filters.status.map((s: string) => (
-                            <TouchableOpacity key={s} style={[styles.filterChip, { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary + "30" }]} onPress={() => {
-                                const newStatus = filters.status.filter((x: string) => x !== s);
-                                setProjectFilters(projectId, { ...filters, status: newStatus });
-                            }}>
+                            <TouchableOpacity
+                                key={s}
+                                style={[styles.filterChip, { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary + "30" }]}
+                                onPress={() => {
+                                    const newStatus = filters.status.filter((x: string) => x !== s);
+                                    setProjectFilters(projectId, { ...filters, status: newStatus });
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove filter: ${s.replace("_", " ")}`}
+                            >
                                 <Text style={[styles.filterChipText, { color: colors.primary }]}>{s}</Text>
                                 <Ionicons name="close-circle" size={14} color={colors.primary} />
                             </TouchableOpacity>
                         ))}
-                        <TouchableOpacity style={{ marginLeft: 8 }} onPress={() => setProjectFilters(projectId, DEFAULT_FILTERS)}>
+                        <TouchableOpacity style={{ marginLeft: 8 }} onPress={() => setProjectFilters(projectId, DEFAULT_FILTERS)} accessibilityRole="button" accessibilityLabel="Clear all filters">
                             <Text style={styles.clearAllText}>Clear All</Text>
                         </TouchableOpacity>
                     </ScrollView>
@@ -513,6 +535,17 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                 initialProjectId={projectId}
                 initialParentName={parentId !== "all" ? parentName : undefined}
                 editingTask={editingTask}
+            />
+
+            <ConfirmationSheet
+                visible={!!deleteTarget}
+                title="Delete deliverable?"
+                description={deleteTarget ? `"${deleteTarget.name}" will be permanently deleted. This action cannot be undone.` : undefined}
+                tone="destructive"
+                confirmLabel="Delete"
+                loading={deleting}
+                onConfirm={handleConfirmDelete}
+                onClose={() => setDeleteTarget(null)}
             />
         </SafeAreaView>
     );

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../../constants/theme";
+import { SPACING, TOUCH_TARGET } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getActivities, getCachedSession, getTaskById } from "../../services/api";
 import { format } from "date-fns";
+import AppCard from "../../components/AppCard";
+import PressableScale from "../../components/PressableScale";
+import EmptyState from "../../components/EmptyState";
 
 type Props = {
     route: { params: { projectId: string; projectName?: string; projectColor?: string } };
@@ -102,9 +105,15 @@ export default function ProjectActivityScreen({ route, navigation }: Props) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <PressableScale
+                    onPress={() => navigation.goBack()}
+                    style={styles.backBtn}
+                    accessibilityLabel="Go back"
+                    accessibilityRole="button"
+                    hitSlop={8}
+                >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
-                </TouchableOpacity>
+                </PressableScale>
                 <View style={styles.titleContainer}>
                     <View style={[styles.colorDot, { backgroundColor: projectColor || colors.primary }]} />
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
@@ -125,19 +134,17 @@ export default function ProjectActivityScreen({ route, navigation }: Props) {
                         <ActivityIndicator color={colors.primary} />
                     </View>
                 ) : activities.length === 0 ? (
-                    <View style={[styles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border, justifyContent: "center", borderStyle: "dashed" }]}>
-                        <Text style={[styles.activityText, { color: colors.textDim, textAlign: "center" }]}>
-                            No activity found.
-                        </Text>
-                    </View>
+                    <EmptyState icon="time-outline" title="No activity found" message="Activity for this project will show up here." />
                 ) : (
                     <View style={styles.activityList}>
                         {activities.map((act) => (
-                            <TouchableOpacity
+                            <AppCard
                                 key={act.id}
-                                style={[styles.activityItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                 onPress={() => handleActivityPress(act)}
-                                activeOpacity={0.7}
+                                elevation="none"
+                                padded={false}
+                                style={styles.activityItem}
+                                accessibilityLabel={act.text}
                             >
                                 <View style={[styles.activityIconBox, { backgroundColor: colors.primary + "10" }]}>
                                     <Ionicons name="chatbubble-outline" size={16} color={colors.primary} />
@@ -153,7 +160,7 @@ export default function ProjectActivityScreen({ route, navigation }: Props) {
                                     </View>
                                     {/* Entity sub-line removed per user request */}
                                 </View>
-                            </TouchableOpacity>
+                            </AppCard>
                         ))}
                     </View>
                 )}
@@ -166,19 +173,16 @@ export default function ProjectActivityScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.md, height: 60, borderBottomWidth: 1 },
-    backBtn: { padding: 4 },
-    titleContainer: { flex: 1, flexDirection: "row", alignItems: "center", marginLeft: SPACING.md },
+    backBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, justifyContent: "center", alignItems: "flex-start" },
+    titleContainer: { flex: 1, flexDirection: "row", alignItems: "center", marginLeft: SPACING.sm },
     colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
     title: { fontSize: 18, fontWeight: "700" },
     content: { paddingVertical: SPACING.md },
-    activityCard: { marginHorizontal: SPACING.lg, padding: SPACING.lg, borderRadius: BORDER_RADIUS.lg, borderWidth: 1 },
     activityList: { paddingHorizontal: SPACING.lg, gap: SPACING.sm },
     activityItem: {
         flexDirection: "row",
         alignItems: "center",
         padding: 10,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
         gap: 12,
     },
     activityIconBox: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },

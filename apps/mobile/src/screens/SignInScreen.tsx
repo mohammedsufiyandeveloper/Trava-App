@@ -3,39 +3,45 @@ import {
     View,
     Text,
     TextInput,
-    TouchableOpacity,
     StyleSheet,
     StatusBar,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { signIn } from "../services/api";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
+import AmbientBackground from "../components/AmbientBackground";
+import AppButton from "../components/AppButton";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export default function SignInScreen({ navigation }: Props) {
     const { colors, isDark } = useTheme();
     const { FORM_MAX_WIDTH, value } = useResponsive();
-    
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPwd, setShowPwd] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [fieldError, setFieldError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
 
     async function handleSignIn() {
-        if (!email || !password) {
-            Alert.alert("Error", "Please fill in all fields.");
+        if (loading) return;
+        setFormError(null);
+        if (!email.trim() || !password) {
+            setFieldError("Please enter your email and password.");
             return;
         }
+        setFieldError(null);
         setLoading(true);
         try {
             await signIn(email.trim(), password);
@@ -44,26 +50,24 @@ export default function SignInScreen({ navigation }: Props) {
                 routes: [{ name: "Main" }],
             });
         } catch (err: any) {
-            Alert.alert("Sign In Failed", err.message || "Something went wrong.");
+            setFormError(err?.message || "We couldn't sign you in. Check your credentials and try again.");
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["top"]}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+        <SafeAreaView style={styles.safe} edges={["top"]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+            <AmbientBackground />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
                 <ScrollView
                     contentContainerStyle={[
-                        styles.scroll, 
-                        { 
-                            backgroundColor: colors.background,
-                            paddingHorizontal: value(SPACING.lg * 1.1, SPACING.xl, SPACING.xxl)
-                        }
+                        styles.scroll,
+                        { paddingHorizontal: value(SPACING.lg * 1.1, SPACING.xl, SPACING.xxl) }
                     ]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
@@ -74,10 +78,20 @@ export default function SignInScreen({ navigation }: Props) {
                             <Text style={[styles.logoText, { color: colors.primary }]}>TRAVA</Text>
                         </View>
 
-                        {/* Login Card */}
-                        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        {/* Login Card — solid surface: forms stay fully readable, no glass. */}
+                        <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
                             <Text style={[styles.cardTitle, { color: colors.text }]}>Welcome back!</Text>
                             <Text style={[styles.cardDesc, { color: colors.textDim }]}>Log in to manage your workspaces</Text>
+
+                            {formError && (
+                                <View
+                                    accessibilityRole="alert"
+                                    style={[styles.errorBanner, { backgroundColor: isDark ? "rgba(248,113,113,0.12)" : "rgba(220,38,38,0.08)", borderColor: colors.validationError }]}
+                                >
+                                    <Ionicons name="alert-circle" size={16} color={colors.validationError} />
+                                    <Text style={[styles.errorBannerText, { color: colors.validationError }]}>{formError}</Text>
+                                </View>
+                            )}
 
                             {/* Email Input */}
                             <Text style={[styles.label, { color: colors.textMuted }]}>Email Address</Text>
@@ -88,20 +102,25 @@ export default function SignInScreen({ navigation }: Props) {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoCorrect={false}
+                                autoComplete="email"
+                                textContentType="emailAddress"
                                 value={email}
-                                onChangeText={setEmail}
+                                onChangeText={(t) => { setEmail(t); setFieldError(null); }}
+                                accessibilityLabel="Email address"
                             />
 
                             {/* Password Input */}
                             <View style={styles.labelRow}>
                                 <Text style={[styles.label, { color: colors.textMuted }]}>Password</Text>
-                                <TouchableOpacity
+                                <PressableScale
+                                    haptic="light"
                                     accessibilityRole="button"
                                     accessibilityLabel="Reset password"
                                     onPress={() => navigation.navigate("ForgotPassword", { email: email.trim() })}
+                                    style={styles.forgotBtn}
                                 >
                                     <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot?</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
                             <View style={[styles.passwordWrapper, { borderColor: colors.border, backgroundColor: colors.background }]}>
                                 <TextInput
@@ -109,33 +128,44 @@ export default function SignInScreen({ navigation }: Props) {
                                     placeholder="••••••••"
                                     placeholderTextColor={colors.textDim}
                                     secureTextEntry={!showPwd}
+                                    autoComplete="password"
+                                    textContentType="password"
                                     value={password}
-                                    onChangeText={setPassword}
+                                    onChangeText={(t) => { setPassword(t); setFieldError(null); }}
+                                    accessibilityLabel="Password"
                                 />
-                                <TouchableOpacity onPress={() => setShowPwd(v => !v)} style={styles.eyeBtn}>
-                                    <Text style={styles.eyeText}>{showPwd ? "🙈" : "👁"}</Text>
-                                </TouchableOpacity>
+                                <PressableScale
+                                    haptic="selection"
+                                    onPress={() => setShowPwd(v => !v)}
+                                    style={styles.eyeBtn}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={showPwd ? "Hide password" : "Show password"}
+                                >
+                                    <Ionicons name={showPwd ? "eye-off-outline" : "eye-outline"} size={20} color={colors.iconMuted} />
+                                </PressableScale>
                             </View>
 
+                            {fieldError && (
+                                <Text style={[styles.fieldErrorText, { color: colors.validationError }]}>{fieldError}</Text>
+                            )}
+
                             {/* Submit Button */}
-                            <TouchableOpacity
-                                style={[styles.primaryBtn, { backgroundColor: colors.primary }, (!email || !password || loading) && styles.disabled]}
+                            <AppButton
+                                label="Sign In"
                                 onPress={handleSignIn}
-                                disabled={!email || !password || loading}
-                                activeOpacity={0.85}
-                            >
-                                {loading
-                                    ? <ActivityIndicator color="#fff" size="small" />
-                                    : <Text style={styles.primaryText}>Sign In</Text>
-                                }
-                            </TouchableOpacity>
+                                loading={loading}
+                                fullWidth
+                                size="lg"
+                                haptic="medium"
+                                style={styles.primaryBtn}
+                            />
 
                             {/* Footer */}
                             <View style={styles.footerRow}>
                                 <Text style={[styles.footerText, { color: colors.textDim }]}>New here? </Text>
-                                <TouchableOpacity onPress={() => navigation.navigate("SignUp")}>
+                                <PressableScale haptic="light" onPress={() => navigation.navigate("SignUp")}>
                                     <Text style={[styles.footerLink, { color: colors.text }]}>Create Account</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
                         </View>
 
@@ -163,20 +193,6 @@ const styles = StyleSheet.create({
         width: "100%",
         alignItems: "center",
     },
-    backBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        alignSelf: "flex-start",
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        marginBottom: 32,
-    },
-    backText: {
-        fontSize: 14,
-        fontWeight: "500"
-    },
     logoRow: {
         marginBottom: 24,
         alignItems: "center"
@@ -202,6 +218,27 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginBottom: 24
     },
+    errorBanner: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        borderWidth: 1,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.sm,
+        marginBottom: 16,
+    },
+    errorBannerText: {
+        flex: 1,
+        fontSize: 13,
+        fontWeight: "600",
+        lineHeight: 18,
+    },
+    fieldErrorText: {
+        fontSize: 13,
+        fontWeight: "600",
+        marginBottom: 16,
+        marginTop: -12,
+    },
     label: {
         fontSize: 13,
         marginBottom: 8,
@@ -212,6 +249,10 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 8
+    },
+    forgotBtn: {
+        minHeight: TOUCH_TARGET.min,
+        justifyContent: "center",
     },
     forgotText: {
         fontSize: 13,
@@ -230,7 +271,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderWidth: 1,
         borderRadius: 8,
-        marginBottom: 24
+        marginBottom: 12
     },
     passwordInput: {
         flex: 1,
@@ -239,24 +280,15 @@ const styles = StyleSheet.create({
         fontSize: 15
     },
     eyeBtn: {
-        paddingHorizontal: 12
-    },
-    eyeText: {
-        fontSize: 16
+        paddingHorizontal: 12,
+        minWidth: TOUCH_TARGET.min,
+        minHeight: TOUCH_TARGET.min,
+        alignItems: "center",
+        justifyContent: "center",
     },
     primaryBtn: {
-        paddingVertical: 15,
-        borderRadius: 8,
-        alignItems: "center",
+        marginTop: 8,
         marginBottom: 20
-    },
-    disabled: {
-        opacity: 0.5
-    },
-    primaryText: {
-        color: "#fff",
-        fontWeight: "700",
-        fontSize: 16
     },
     footerRow: {
         flexDirection: "row",

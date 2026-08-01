@@ -7,7 +7,6 @@ import {
     StatusBar,
     TextInput,
     RefreshControl,
-    Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +16,7 @@ import ProjectActionModal from "../components/ProjectActionModal";
 import CreateProjectModal from "../components/CreateProjectModal";
 import EditProjectModal from "../components/EditProjectModal";
 import ProjectMembersModal from "../components/ProjectMembersModal";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -27,6 +26,7 @@ import { useResponsive } from "../hooks/useResponsive";
 import PressableScale from "../components/PressableScale";
 import { Skeleton } from "../components/Skeleton";
 import EmptyState from "../components/EmptyState";
+import ConfirmationSheet from "../components/ConfirmationSheet";
 import { haptics } from "../services/haptics";
 import { useToast } from "../context/ToastContext";
 
@@ -49,13 +49,17 @@ export default function ProjectsScreen() {
         const t = setTimeout(() => setDebouncedSearch(search), 200);
         return () => clearTimeout(t);
     }, [search]);
-    
+
     // Action Modal State
     const [actionModalVisible, setActionModalVisible] = useState(false);
     const [createProjectVisible, setCreateProjectVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [membersModalVisible, setMembersModalVisible] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+    // Delete confirmation (replaces native Alert for this consequential action).
+    const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const onRefresh = async () => {
         haptics.light();
@@ -72,10 +76,10 @@ export default function ProjectsScreen() {
 
     const handleViewProject = (project: Project) => {
         setActionModalVisible(false);
-        navigation.navigate("ProjectDetail", { 
-            projectId: project.id, 
+        navigation.navigate("ProjectDetail", {
+            projectId: project.id,
             projectName: project.name,
-            projectColor: project.color 
+            projectColor: project.color
         });
     };
 
@@ -91,30 +95,26 @@ export default function ProjectsScreen() {
 
     const handleDeleteProject = (project: Project) => {
         setActionModalVisible(false);
-        Alert.alert(
-            "Delete Project",
-            `Are you sure you want to delete "${project.name}"? This action cannot be undone and will delete all tasks within it.`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            const res = await deleteProject(project.id);
-                            if (res.success) {
-                                await refreshData();
-                                toast.success(`"${project.name}" deleted`);
-                            } else {
-                                toast.error(res.error || "Failed to delete project");
-                            }
-                        } catch (err: any) {
-                            toast.error(err.message || "An error occurred");
-                        }
-                    },
-                },
-            ]
-        );
+        setDeleteTarget(project);
+    };
+
+    const confirmDeleteProject = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            const res = await deleteProject(deleteTarget.id);
+            if (res.success) {
+                await refreshData();
+                toast.success(`"${deleteTarget.name}" deleted`);
+                setDeleteTarget(null);
+            } else {
+                toast.error(res.error || "Failed to delete project");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "An error occurred");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const filteredProjects = useMemo(
@@ -122,30 +122,58 @@ export default function ProjectsScreen() {
         [projects, debouncedSearch]
     );
 
-    const renderItem = ({ item }: { item: Project }) => (
-        <PressableScale
-            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => handleViewProject(item)}
-            onLongPress={() => handleProjectLongPress(item)}
-            delayLongPress={300}
-            accessibilityLabel={`Project ${item.name}`}
-            accessibilityHint="Opens the project. Long-press for actions."
-        >
-            <View style={[styles.avatar, { backgroundColor: item.color || colors.primary }]}>
-                <Ionicons name="folder" size={20} color="#fff" />
-            </View>
-            <View style={{ flex: 1, marginLeft: SPACING.md }}>
-                <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
-                <Text style={[styles.desc, { color: colors.textDim }]} numberOfLines={1}>
-                    {item.description || "No description provided"}
-                </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </PressableScale>
-    );
+    const renderItem = ({ item }: { item: Project }) => {
+        const managers = item.projectManagers ?? [];
+        const visibleManagers = managers.slice(0, 3);
+        const extraManagers = managers.length - visibleManagers.length;
+
+        return (
+            <PressableScale
+                style={[styles.card, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
+                onPress={() => handleViewProject(item)}
+                onLongPress={() => handleProjectLongPress(item)}
+                delayLongPress={300}
+                accessibilityLabel={`Project ${item.name}`}
+                accessibilityHint="Opens the project. Long-press for actions."
+            >
+                <View style={[styles.avatar, { backgroundColor: item.color || colors.primary }]}>
+                    <Ionicons name="folder" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1, marginLeft: SPACING.md, marginRight: SPACING.sm }}>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.desc, { color: colors.textDim }]} numberOfLines={1}>
+                        {item.description || "No description provided"}
+                    </Text>
+                    {visibleManagers.length > 0 && (
+                        <View style={styles.avatarStack} accessibilityLabel={`${managers.length} project manager${managers.length === 1 ? "" : "s"}`}>
+                            {visibleManagers.map((m, idx) => (
+                                <View
+                                    key={m.id}
+                                    style={[
+                                        styles.stackAvatar,
+                                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.surfaceSolid, marginLeft: idx === 0 ? 0 : -8 },
+                                    ]}
+                                >
+                                    <Text style={[styles.stackAvatarText, { color: colors.text }]}>
+                                        {(m.surname?.[0] || m.name?.charAt(0) || "?").toUpperCase()}
+                                    </Text>
+                                </View>
+                            ))}
+                            {extraManagers > 0 && (
+                                <View style={[styles.stackAvatar, { backgroundColor: colors.surfaceHighlight, borderColor: colors.surfaceSolid, marginLeft: -8 }]}>
+                                    <Text style={[styles.stackAvatarText, { color: colors.textDim }]}>+{extraManagers}</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
+            </PressableScale>
+        );
+    };
 
     const renderSkeletonCard = (key: number) => (
-        <View key={key} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View key={key} style={[styles.card, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
             <Skeleton width={44} height={44} radius={12} />
             <View style={{ flex: 1, marginLeft: SPACING.md, gap: 8 }}>
                 <Skeleton width="55%" height={15} />
@@ -157,7 +185,7 @@ export default function ProjectsScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-            
+
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                 <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                     <Text style={[styles.title, { color: colors.text }]}>Projects</Text>
@@ -166,6 +194,7 @@ export default function ProjectsScreen() {
                             style={[styles.headerBtn, { backgroundColor: colors.surfaceHighlight }]}
                             onPress={() => (navigation as any).navigate("Notifications")}
                             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                            accessibilityRole="button"
                             hitSlop={8}
                         >
                             <Ionicons name="notifications-outline" size={22} color={colors.text} />
@@ -179,6 +208,7 @@ export default function ProjectsScreen() {
                             style={[styles.headerBtn, { backgroundColor: colors.surfaceHighlight }]}
                             onPress={() => setCreateProjectVisible(true)}
                             accessibilityLabel="Create project"
+                            accessibilityRole="button"
                             hitSlop={8}
                         >
                             <Ionicons name="add" size={22} color={colors.primary} />
@@ -187,7 +217,7 @@ export default function ProjectsScreen() {
                 </View>
 
                 <View style={[styles.searchBarContainer, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                    <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.searchBar, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
                         <Ionicons name="search" size={20} color={colors.textDim} />
                         <TextInput
                             style={[styles.input, { color: colors.text }]}
@@ -195,6 +225,7 @@ export default function ProjectsScreen() {
                             placeholderTextColor={colors.textDim}
                             value={search}
                             onChangeText={setSearch}
+                            accessibilityLabel="Search projects"
                         />
                     </View>
                 </View>
@@ -258,6 +289,18 @@ export default function ProjectsScreen() {
                 projectId={selectedProject?.id || ""}
                 projectName={selectedProject?.name || ""}
             />
+
+            <ConfirmationSheet
+                visible={!!deleteTarget}
+                title="Delete project"
+                description={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone and will delete all tasks within it.` : undefined}
+                tone="destructive"
+                confirmLabel="Delete"
+                cancelLabel="Cancel"
+                loading={deleting}
+                onConfirm={confirmDeleteProject}
+                onClose={() => { if (!deleting) setDeleteTarget(null); }}
+            />
         </SafeAreaView>
     );
 }
@@ -266,7 +309,14 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: SPACING.md },
     title: { fontSize: 24, fontWeight: "700" },
-    headerBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: "center", alignItems: "center", position: "relative" },
+    headerBtn: {
+        width: TOUCH_TARGET.min,
+        height: TOUCH_TARGET.min,
+        borderRadius: TOUCH_TARGET.min / 2,
+        justifyContent: "center",
+        alignItems: "center",
+        position: "relative",
+    },
     badge: { position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, borderRadius: 8, justifyContent: "center", alignItems: "center", paddingHorizontal: 4 },
     badgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
 
@@ -275,13 +325,11 @@ const styles = StyleSheet.create({
     input: { flex: 1, fontSize: 16, marginLeft: SPACING.sm },
 
     list: { paddingBottom: 20 },
-    card: { flexDirection: "row", alignItems: "center", padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md },
+    card: { flexDirection: "row", alignItems: "center", padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md, minHeight: TOUCH_TARGET.min + SPACING.md },
     avatar: { width: 44, height: 44, borderRadius: 12, justifyContent: "center", alignItems: "center" },
     name: { fontSize: 16, fontWeight: "600" },
     desc: { fontSize: 13, marginTop: 2 },
-
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    empty: { marginTop: 100, alignItems: "center", paddingHorizontal: SPACING.xl },
-    emptyTitle: { fontSize: 18, fontWeight: "600", marginTop: SPACING.md },
-    emptySub: { fontSize: 14, textAlign: "center", marginTop: SPACING.sm },
+    avatarStack: { flexDirection: "row", alignItems: "center", marginTop: SPACING.sm },
+    stackAvatar: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
+    stackAvatarText: { fontSize: 9, fontWeight: "700" },
 });

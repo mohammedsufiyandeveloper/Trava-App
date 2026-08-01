@@ -19,6 +19,8 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getLeaveRequestsPage, updateLeaveStatus } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import StatusChip, { StatusKind } from "../components/StatusChip";
+import ConfirmationSheet from "../components/ConfirmationSheet";
 
 export default function AdminLeaveScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -31,6 +33,8 @@ export default function AdminLeaveScreen({ navigation }: any) {
     const [hasMoreRequests, setHasMoreRequests] = useState(false);
     const [nextRequestCursor, setNextRequestCursor] = useState<string | null>(null);
     const [loadingMoreRequests, setLoadingMoreRequests] = useState(false);
+    const [actionSheet, setActionSheet] = useState<{ request: any; status: "APPROVED" | "REJECTED" } | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const loadRequests = useCallback(async () => {
         if (!activeWorkspace?.id) return;
@@ -93,27 +97,26 @@ export default function AdminLeaveScreen({ navigation }: any) {
         loadRequests();
     };
 
-    const handleAction = (request: any, status: "APPROVED" | "REJECTED") => {
-        Alert.alert(
-            `${status.charAt(0) + status.slice(1).toLowerCase()} Leave`,
-            `Are you sure you want to ${status.toLowerCase()} this leave request for ${request.WorkspaceMember.user.surname || request.WorkspaceMember.user.name}?`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: status === "APPROVED" ? "Approve" : "Reject",
-                    style: status === "APPROVED" ? "default" : "destructive",
-                    onPress: async () => {
-                        try {
-                            await updateLeaveStatus(activeWorkspace!.id, request.id, status);
-                            Alert.alert("Success", `Leave request ${status.toLowerCase()} successfully.`);
-                            loadRequests();
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message || "Failed to update status");
-                        }
-                    }
-                }
-            ]
-        );
+    const requestAction = (request: any, status: "APPROVED" | "REJECTED") => {
+        haptics.warning();
+        setActionSheet({ request, status });
+    };
+
+    const handleAction = async () => {
+        if (!actionSheet || !activeWorkspace?.id) return;
+        const { request, status } = actionSheet;
+        setActionLoading(true);
+        try {
+            await updateLeaveStatus(activeWorkspace.id, request.id, status);
+            haptics.success();
+            setActionSheet(null);
+            loadRequests();
+        } catch (error: any) {
+            haptics.error();
+            Alert.alert("Error", error.message || "Failed to update status");
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const getStatusColor = (status: string) => {
@@ -122,6 +125,15 @@ export default function AdminLeaveScreen({ navigation }: any) {
             case "REJECTED": return "#ef4444";
             case "PENDING": return "#f59e0b";
             default: return colors.textDim;
+        }
+    };
+
+    const getStatusKind = (status: string): StatusKind => {
+        switch (status) {
+            case "APPROVED": return "success";
+            case "REJECTED": return "error";
+            case "PENDING": return "warning";
+            default: return "neutral";
         }
     };
 
@@ -137,7 +149,7 @@ export default function AdminLeaveScreen({ navigation }: any) {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
             <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: colors.text }]}>Team Leaves</Text>
@@ -176,7 +188,7 @@ export default function AdminLeaveScreen({ navigation }: any) {
                                     <Text style={[styles.userName, { color: colors.text }]}>{req.WorkspaceMember.user.surname || req.WorkspaceMember.user.name}</Text>
                                     <Text style={[styles.userEmail, { color: colors.textDim }]}>{req.WorkspaceMember.user.email}</Text>
                                 </View>
-                                <Text style={[styles.statusBadge, { color: getStatusColor(req.status) }]}>{req.status}</Text>
+                                <StatusChip label={req.status} kind={getStatusKind(req.status)} size="sm" />
                             </View>
 
                             <View style={styles.infoRow}>
@@ -194,13 +206,17 @@ export default function AdminLeaveScreen({ navigation }: any) {
                                 <View style={styles.actionRow}>
                                     <TouchableOpacity
                                         style={[styles.actionBtn, styles.rejectBtn]}
-                                        onPress={() => handleAction(req, "REJECTED")}
+                                        onPress={() => requestAction(req, "REJECTED")}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Reject leave request from ${req.WorkspaceMember.user.surname || req.WorkspaceMember.user.name}`}
                                     >
                                         <Text style={styles.rejectBtnText}>Reject</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.actionBtn, styles.approveBtn, { backgroundColor: colors.primary }]}
-                                        onPress={() => handleAction(req, "APPROVED")}
+                                        onPress={() => requestAction(req, "APPROVED")}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Approve leave request from ${req.WorkspaceMember.user.surname || req.WorkspaceMember.user.name}`}
                                     >
                                         <Text style={styles.approveBtnText}>Approve</Text>
                                     </TouchableOpacity>
@@ -216,6 +232,22 @@ export default function AdminLeaveScreen({ navigation }: any) {
                     />
                 )}
             </ScrollView>
+
+            <ConfirmationSheet
+                visible={!!actionSheet}
+                title={actionSheet?.status === "APPROVED" ? "Approve this leave request?" : "Reject this leave request?"}
+                description={
+                    actionSheet
+                        ? `${actionSheet.status === "APPROVED" ? "Approve" : "Reject"} the leave request for ${actionSheet.request.WorkspaceMember.user.surname || actionSheet.request.WorkspaceMember.user.name}.`
+                        : undefined
+                }
+                tone={actionSheet?.status === "REJECTED" ? "destructive" : "default"}
+                confirmLabel={actionSheet?.status === "APPROVED" ? "Approve" : "Reject"}
+                cancelLabel="Cancel"
+                loading={actionLoading}
+                onConfirm={handleAction}
+                onClose={() => setActionSheet(null)}
+            />
             </View>
         </SafeAreaView>
     );

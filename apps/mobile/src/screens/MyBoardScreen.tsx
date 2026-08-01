@@ -12,13 +12,15 @@ import ProjectGanttView from "./project/ProjectGanttView";
 import CreateSubTaskModal from "../components/CreateSubTaskModal";
 import StatusPickerModal from "../components/StatusPickerModal";
 import ReviewCommentModal from "../components/ReviewCommentModal";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
 import { getTasks, getTasksCount, getKanbanBoard, getCachedSession, updateTask } from "../services/api";
 import { Task, User } from "../types";
 import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
 import { useResponsive } from "../hooks/useResponsive";
+import EmptyState from "../components/EmptyState";
+import PressableScale from "../components/PressableScale";
 
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -186,6 +188,58 @@ export default function MyBoardScreen() {
 
     const filters = globalFilters;
     const activeFilterCount = Object.values(filters).filter(v => Array.isArray(v) ? v.length > 0 : !!v).length;
+
+    // Removable filter-chip descriptors for the active-filters row. Kept local
+    // to this screen (does not mutate WorkspaceContext shape).
+    const activeFilterChips = useMemo(() => {
+        const chips: { key: string; label: string; onRemove: () => void }[] = [];
+        if (filters.search) {
+            chips.push({
+                key: "search",
+                label: `Search: ${filters.search}`,
+                onRemove: () => setGlobalFilters({ ...filters, search: "" }),
+            });
+        }
+        (filters.status || []).forEach((st: string) => {
+            chips.push({
+                key: `status-${st}`,
+                label: st.replace("_", " "),
+                onRemove: () => setGlobalFilters({ ...filters, status: filters.status.filter((s: string) => s !== st) }),
+            });
+        });
+        (filters.projectId || []).forEach((pid: string) => {
+            const proj = projects.find(p => p.id === pid);
+            chips.push({
+                key: `project-${pid}`,
+                label: proj?.name || "Project",
+                onRemove: () => setGlobalFilters({ ...filters, projectId: (filters.projectId || []).filter((p: string) => p !== pid) }),
+            });
+        });
+        (filters.tagId || []).forEach((tid: string) => {
+            const tag = tags.find((t: any) => t.id === tid);
+            chips.push({
+                key: `tag-${tid}`,
+                label: tag?.name || "Tag",
+                onRemove: () => setGlobalFilters({ ...filters, tagId: filters.tagId.filter((t: string) => t !== tid) }),
+            });
+        });
+        (filters.assigneeId || []).forEach((aid: string) => {
+            const isMe = currentUser?.id === aid;
+            chips.push({
+                key: `assignee-${aid}`,
+                label: isMe ? "Assignee: Me" : "Assignee",
+                onRemove: () => setGlobalFilters({ ...filters, assigneeId: filters.assigneeId.filter((a: string) => a !== aid) }),
+            });
+        });
+        if (filters.dueAfter || filters.dueBefore) {
+            chips.push({
+                key: "dateRange",
+                label: "Date range",
+                onRemove: () => setGlobalFilters({ ...filters, dueAfter: undefined, dueBefore: undefined }),
+            });
+        }
+        return chips;
+    }, [filters, projects, tags, currentUser, setGlobalFilters]);
 
     const managedProjectIds = useMemo(() => {
         if (!currentUser) return [];
@@ -1162,7 +1216,7 @@ export default function MyBoardScreen() {
                                 autoFocus
                                 onChangeText={(t) => setGlobalFilters({ ...filters, search: t })}
                             />
-                            <TouchableOpacity onPress={() => { setIsSearchMode(false); setGlobalFilters({ ...filters, search: "" }); }}>
+                            <TouchableOpacity onPress={() => { setIsSearchMode(false); setGlobalFilters({ ...filters, search: "" }); }} accessibilityRole="button" accessibilityLabel="Close search">
                                 <Ionicons name="close-circle" size={20} color={colors.textDim} />
                             </TouchableOpacity>
                         </View>
@@ -1205,6 +1259,8 @@ export default function MyBoardScreen() {
                             <TouchableOpacity
                                 style={[s.actionBtn, { backgroundColor: colors.surfaceHighlight }]}
                                 onPress={() => setIsSearchMode(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Search tasks"
                             >
                                 <Ionicons name="search" size={18} color={colors.textDim} />
                             </TouchableOpacity>
@@ -1212,6 +1268,8 @@ export default function MyBoardScreen() {
                         <TouchableOpacity
                             style={[s.actionBtn, { backgroundColor: colors.surfaceHighlight }, activeFilterCount > 0 && { backgroundColor: isDark ? colors.activeTab : "#e0e7ff" }]}
                             onPress={() => setFilterVisible(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : "Filters"}
                         >
                             <Ionicons
                                 name="filter"
@@ -1228,10 +1286,13 @@ export default function MyBoardScreen() {
                 </View>
             </View>
 
-            {/* View Mode Switcher Row */}
+            {/* View Mode Switcher Row — segmented-pill control */}
             <View style={[s.viewSwitcher, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                 <View style={{ maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center', height: '100%', justifyContent: 'center' }}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.viewSwitcherContent}>
+                    <View
+                        style={[s.segmentedControl, { backgroundColor: colors.surfaceHighlight }]}
+                        accessibilityRole="tablist"
+                    >
                         {[
                             { id: "List", label: "List", icon: "list" },
                             { id: "Kanban", label: "Kanban", icon: "apps" },
@@ -1239,20 +1300,21 @@ export default function MyBoardScreen() {
                         ].map((opt) => {
                             const active = viewMode === opt.id;
                             return (
-                                <TouchableOpacity
+                                <PressableScale
                                     key={opt.id}
+                                    haptic="selection"
                                     style={[
-                                        s.viewTab,
-                                        active && { borderBottomColor: colors.primary, borderBottomWidth: 2 }
+                                        s.segmentPill,
+                                        active && { backgroundColor: colors.surface, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 3, elevation: 2 }
                                     ]}
-                                    onPress={() => {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        setViewMode(opt.id as any);
-                                    }}
+                                    onPress={() => setViewMode(opt.id as any)}
+                                    accessibilityRole="tab"
+                                    accessibilityState={{ selected: active }}
+                                    accessibilityLabel={`${opt.label} view`}
                                 >
                                     <Ionicons
                                         name={opt.icon as any}
-                                        size={16}
+                                        size={15}
                                         color={active ? colors.primary : colors.textDim}
                                     />
                                     <Text style={[
@@ -1262,12 +1324,40 @@ export default function MyBoardScreen() {
                                     ]}>
                                         {opt.label}
                                     </Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             );
                         })}
-                    </ScrollView>
+                    </View>
                 </View>
             </View>
+
+            {/* Active filter chips — removable */}
+            {activeFilterChips.length > 0 && (
+                <View style={[s.activeFiltersBar, { backgroundColor: colors.background, borderBottomColor: colors.border, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ maxWidth: MAX_CONTENT_WIDTH, alignItems: "center", gap: 8 }}>
+                        {activeFilterChips.map(chip => (
+                            <TouchableOpacity
+                                key={chip.key}
+                                style={[s.removableChip, { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary + "30" }]}
+                                onPress={chip.onRemove}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove filter: ${chip.label}`}
+                            >
+                                <Text style={[s.removableChipText, { color: colors.primary }]} numberOfLines={1}>{chip.label}</Text>
+                                <Ionicons name="close-circle" size={14} color={colors.primary} />
+                            </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                            onPress={() => setGlobalFilters(DEFAULT_FILTERS)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Clear all filters"
+                            style={{ marginLeft: 4 }}
+                        >
+                            <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>Clear All</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            )}
 
             <TaskFilterSheet
                 visible={filterVisible}
@@ -1279,13 +1369,21 @@ export default function MyBoardScreen() {
                 loading && !refreshing ? (
                     renderSkeleton()
                 ) : tasks.length === 0 ? (
-                    <View style={s.center}>
-                        <Ionicons name="checkmark-done-circle-outline" size={52} color={colors.primary} />
-                        <Text style={[s.emptyT, { color: colors.text }]}>All caught up!</Text>
-                        <Text style={[{ color: colors.textDim, fontSize: 13, textAlign: "center" }]}>
-                            No projects or tasks found in this workspace.
-                        </Text>
-                    </View>
+                    activeFilterCount > 0 ? (
+                        <EmptyState
+                            icon="funnel-outline"
+                            title="No tasks match your filters"
+                            message="Try removing a filter or two to see more results."
+                            actionLabel="Clear filters"
+                            onAction={() => setGlobalFilters(DEFAULT_FILTERS)}
+                        />
+                    ) : (
+                        <EmptyState
+                            icon="checkmark-done-circle-outline"
+                            title="All caught up!"
+                            message="No projects or tasks found in this workspace."
+                        />
+                    )
                 ) : (
                     renderContent()
                 )
@@ -1425,7 +1523,7 @@ const s = StyleSheet.create({
     pTxt: { flex: 1, fontSize: 14, fontWeight: "500" },
 
     viewSwitcher: {
-        height: 44,
+        height: 56,
         borderBottomWidth: 1,
         justifyContent: "center",
     },
@@ -1433,6 +1531,21 @@ const s = StyleSheet.create({
         height: "100%",
         gap: 20,
         alignItems: "center",
+    },
+    segmentedControl: {
+        flexDirection: "row",
+        borderRadius: BORDER_RADIUS.md,
+        padding: 3,
+        alignSelf: "flex-start",
+    },
+    segmentPill: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: TOUCH_TARGET.min - 6, // 3px vertical padding on the pill container accounts for the remainder
+        paddingHorizontal: 14,
+        borderRadius: BORDER_RADIUS.sm,
+        gap: 6,
     },
     viewTab: {
         flexDirection: "row",
@@ -1445,6 +1558,25 @@ const s = StyleSheet.create({
     viewTabLabel: {
         fontSize: 13,
         fontWeight: "600",
+    },
+    activeFiltersBar: {
+        paddingVertical: SPACING.sm,
+        borderBottomWidth: 1,
+    },
+    removableChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        gap: 4,
+        borderWidth: 1,
+        maxWidth: 180,
+    },
+    removableChipText: {
+        fontSize: 11,
+        fontWeight: "600",
+        flexShrink: 1,
     },
 });
 
@@ -1586,7 +1718,7 @@ const BoardNameCol = React.memo(function BoardNameCol({
 
                         {/* Add task button */}
                         <View style={{ flex: 1, height: SEC_H, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingRight: SPACING.md }} pointerEvents="box-none">
-                            <TouchableOpacity onPress={onAddTask} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <TouchableOpacity onPress={onAddTask} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Add task">
                                 <Ionicons name="add" size={20} color={colors.primary} />
                             </TouchableOpacity>
                         </View>

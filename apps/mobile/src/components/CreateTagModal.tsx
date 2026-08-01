@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
         fontSize: 19,
         fontWeight: "700",
     },
-    closeBtn: { padding: 4 },
+    closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     content: { padding: SPACING.lg },
     description: {
         fontSize: 14,

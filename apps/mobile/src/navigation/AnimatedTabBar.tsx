@@ -1,14 +1,15 @@
 import React, { useCallback, useState } from "react";
-import { LayoutChangeEvent, Text, View } from "react-native";
+import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 
-import { MOTION, TOUCH_TARGET } from "../constants/theme";
+import { MOTION, SPACING, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import PressableScale from "../components/PressableScale";
+import GlassSurface from "../components/GlassSurface";
 
 interface TabMeta {
     iconActive: keyof typeof Ionicons.glyphMap;
@@ -112,9 +113,10 @@ export default function AnimatedTabBar({
         };
     });
 
-    const barBg = isDark ? "#121212" : "#FFFFFF";
-    const pillBg = isDark ? "#1a1a1a" : "#f3f4f6";
-    const indicatorBg = isDark ? "#262626" : "#FFFFFF";
+    const indicatorBg = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)";
+    // expo-blur on Android is more prone to jank/inconsistency behind fast-scrolling
+    // content; keep the tab bar's blur cheap and lean on the tint if it struggles.
+    const allowTabBarBlur = Platform.OS !== "android" || Platform.Version >= 28;
 
     const handlePress = (route: any, index: number) => {
         const isFocused = state.index === index;
@@ -129,87 +131,93 @@ export default function AnimatedTabBar({
         <View
             style={{
                 flexDirection: "row",
-                height: 65 + insets.bottom,
-                backgroundColor: barBg,
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
                 alignItems: "center",
-                paddingBottom: insets.bottom,
-                paddingHorizontal: 12,
+                backgroundColor: colors.background,
+                paddingHorizontal: SPACING.md,
+                paddingBottom: Math.max(insets.bottom, SPACING.sm),
+                paddingTop: SPACING.sm,
                 gap: 12,
             }}
         >
-            <View
-                onLayout={onPillLayout}
-                accessibilityRole="tablist"
-                style={{
-                    flex: 1,
-                    flexDirection: "row",
-                    backgroundColor: pillBg,
-                    height: 52,
-                    borderRadius: 26,
-                    padding: PILL_PADDING,
-                }}
+            <GlassSurface
+                level="elevated"
+                intensity="header"
+                radius="full"
+                elevation="md"
+                allowBlur={allowTabBarBlur}
+                style={{ flex: 1 }}
             >
-                {pillWidth > 0 && (
-                    <Animated.View
-                        pointerEvents="none"
-                        style={[
-                            {
-                                position: "absolute",
-                                top: PILL_PADDING,
-                                bottom: PILL_PADDING,
-                                borderRadius: 22,
-                                backgroundColor: indicatorBg,
-                                shadowColor: isDark ? "#000" : colors.primary,
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: isDark ? 0.4 : 0.15,
-                                shadowRadius: 8,
-                                elevation: 6,
-                            },
-                            indicatorStyle,
-                        ]}
-                    />
-                )}
-                {routes.map((route: any, index: number) => {
-                    const meta = TAB_META[route.name] ?? {
-                        iconActive: "ellipse",
-                        iconInactive: "ellipse-outline",
-                        label: route.name,
-                    };
-                    return (
-                        <TabButton
-                            key={route.key}
-                            focused={state.index === index}
-                            meta={meta}
-                            onPress={() => handlePress(route, index)}
-                            activeColor={colors.primary}
-                            inactiveColor={colors.textDim}
-                            reducedMotion={reducedMotion}
+                <View
+                    onLayout={onPillLayout}
+                    accessibilityRole="tablist"
+                    style={{
+                        flexDirection: "row",
+                        height: 56,
+                        padding: PILL_PADDING,
+                    }}
+                >
+                    {pillWidth > 0 && (
+                        <Animated.View
+                            pointerEvents="none"
+                            style={[
+                                {
+                                    position: "absolute",
+                                    top: PILL_PADDING,
+                                    bottom: PILL_PADDING,
+                                    borderRadius: 22,
+                                    backgroundColor: indicatorBg,
+                                    borderWidth: StyleSheet.hairlineWidth,
+                                    borderColor: colors.glassBorder,
+                                    shadowColor: isDark ? "#000" : colors.primary,
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: isDark ? 0.35 : 0.15,
+                                    shadowRadius: 8,
+                                    elevation: 6,
+                                },
+                                indicatorStyle,
+                            ]}
                         />
-                    );
-                })}
-            </View>
+                    )}
+                    {routes.map((route: any, index: number) => {
+                        const meta = TAB_META[route.name] ?? {
+                            iconActive: "ellipse",
+                            iconInactive: "ellipse-outline",
+                            label: route.name,
+                        };
+                        return (
+                            <TabButton
+                                key={route.key}
+                                focused={state.index === index}
+                                meta={meta}
+                                onPress={() => handlePress(route, index)}
+                                activeColor={colors.primary}
+                                inactiveColor={colors.textDim}
+                                reducedMotion={reducedMotion}
+                            />
+                        );
+                    })}
+                </View>
+            </GlassSurface>
 
-            <PressableScale
-                haptic="medium"
-                onPress={onOpenMenu}
-                accessibilityRole="button"
-                accessibilityLabel="Create"
-                accessibilityHint="Opens the create menu"
-                style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
-                    backgroundColor: pillBg,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: isDark ? "#262626" : "#e5e7eb",
-                }}
+            <GlassSurface
+                level="elevated"
+                intensity="header"
+                radius="full"
+                elevation="md"
+                allowBlur={allowTabBarBlur}
+                style={{ width: 56, height: 56 }}
             >
-                <Ionicons name="add" size={28} color={colors.primary} />
-            </PressableScale>
+                <PressableScale
+                    haptic="medium"
+                    onPress={onOpenMenu}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create"
+                    accessibilityHint="Opens the create menu"
+                    style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+                >
+                    <Ionicons name="add" size={28} color={colors.primary} />
+                </PressableScale>
+            </GlassSurface>
         </View>
     );
 }

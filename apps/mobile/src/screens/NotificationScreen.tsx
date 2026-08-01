@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
     View,
     Text,
@@ -15,11 +15,17 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNotifications, NotificationItem } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { RootStackParamList } from "../types";
-import { format } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { useResponsive } from "../hooks/useResponsive";
 import { getTaskById } from "../services/api";
+import PressableScale from "../components/PressableScale";
+import EmptyState from "../components/EmptyState";
+
+type NotifRow =
+    | { rowType: "header"; key: string; label: string }
+    | { rowType: "item"; key: string; data: NotificationItem };
 
 type Props = NativeStackScreenProps<RootStackParamList, "Notifications">;
 
@@ -27,6 +33,30 @@ export default function NotificationScreen({ navigation }: Props) {
     const { notifications, markAsRead, clearAll, markAllAsRead, refresh, loading } = useNotifications();
     const { colors, isDark } = useTheme();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+
+    // Display-only grouping into Today / Yesterday / Earlier sections. Purely
+    // derived from the existing `notifications` list — no change to fetch,
+    // pagination, or mark-read behavior.
+    const rows = useMemo<NotifRow[]>(() => {
+        const groups: { label: string; items: NotificationItem[] }[] = [
+            { label: "Today", items: [] },
+            { label: "Yesterday", items: [] },
+            { label: "Earlier", items: [] },
+        ];
+        notifications.forEach((n) => {
+            const d = new Date(n.receivedAt);
+            if (isToday(d)) groups[0].items.push(n);
+            else if (isYesterday(d)) groups[1].items.push(n);
+            else groups[2].items.push(n);
+        });
+        const result: NotifRow[] = [];
+        groups.forEach((group) => {
+            if (group.items.length === 0) return;
+            result.push({ rowType: "header", key: `header-${group.label}`, label: group.label });
+            group.items.forEach((item) => result.push({ rowType: "item", key: item.id, data: item }));
+        });
+        return result;
+    }, [notifications]);
 
     const handlePress = async (item: NotificationItem) => {
         markAsRead(item.id);
@@ -163,17 +193,18 @@ export default function NotificationScreen({ navigation }: Props) {
         }
     };
 
-    const renderItem = ({ item }: { item: NotificationItem }) => {
+    const renderNotification = (item: NotificationItem) => {
         const icon = getIcon(item.data?.action);
         return (
-            <TouchableOpacity
+            <PressableScale
+                haptic="selection"
                 style={[
                     styles.notifItem,
-                    { backgroundColor: item.isRead ? colors.surface : colors.surfaceHighlight, borderColor: colors.border },
-                    !item.isRead && { borderLeftColor: colors.primary, borderLeftWidth: 4 }
+                    { backgroundColor: item.isRead ? colors.surfaceSolid : colors.surfaceSolidRaised, borderColor: colors.border },
+                    !item.isRead && { borderLeftColor: colors.primary, borderLeftWidth: 3 }
                 ]}
                 onPress={() => handlePress(item)}
-                activeOpacity={0.8}
+                accessibilityLabel={`${item.isRead ? "" : "Unread. "}${item.title}`}
             >
                 <View style={[styles.iconContainer, { backgroundColor: icon.color + "15" }]}>
                     <Ionicons name={icon.name as any} size={22} color={icon.color} />
@@ -181,7 +212,10 @@ export default function NotificationScreen({ navigation }: Props) {
 
                 <View style={styles.notifContent}>
                     <View style={styles.notifHeader}>
-                        <Text style={[styles.notifTitle, { color: colors.text }]} numberOfLines={1}>
+                        <Text
+                            style={[styles.notifTitle, { color: colors.text, fontWeight: item.isRead ? "600" : "800" }]}
+                            numberOfLines={1}
+                        >
                             {item.title}
                         </Text>
                         <Text style={[styles.notifTime, { color: colors.textDim }]}>
@@ -194,8 +228,17 @@ export default function NotificationScreen({ navigation }: Props) {
                 </View>
 
                 {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
-            </TouchableOpacity>
+            </PressableScale>
         );
+    };
+
+    const renderRow = ({ item }: { item: NotifRow }) => {
+        if (item.rowType === "header") {
+            return (
+                <Text style={[styles.groupHeader, { color: colors.textDim }]}>{item.label.toUpperCase()}</Text>
+            );
+        }
+        return renderNotification(item.data);
     };
 
     return (
@@ -205,20 +248,20 @@ export default function NotificationScreen({ navigation }: Props) {
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                 {/* Header */}
                 <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <PressableScale onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
                         <Ionicons name="chevron-back" size={26} color={colors.text} />
-                    </TouchableOpacity>
+                    </PressableScale>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
-                    <TouchableOpacity onPress={clearAll}>
+                    <TouchableOpacity onPress={clearAll} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                         <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 15 }}>Clear all</Text>
                     </TouchableOpacity>
                 </View>
 
                 {notifications.length > 0 ? (
                     <FlatList
-                        data={notifications}
-                        renderItem={renderItem}
-                        keyExtractor={item => item.id}
+                        data={rows}
+                        renderItem={renderRow}
+                        keyExtractor={item => item.key}
                         contentContainerStyle={[styles.listContent, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}
                         refreshControl={
                             <RefreshControl
@@ -231,20 +274,18 @@ export default function NotificationScreen({ navigation }: Props) {
                         ListHeaderComponent={() => (
                             <View style={styles.listHeader}>
                                 <Text style={[styles.sectionTitle, { color: colors.textDim }]}>RECENT ACTIVITY</Text>
-                                <TouchableOpacity onPress={markAllAsRead}>
+                                <TouchableOpacity onPress={markAllAsRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Mark all as read</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
                     />
                 ) : (
-                    <View style={styles.emptyState}>
-                        <View style={[styles.emptyIconContainer, { backgroundColor: colors.surfaceHighlight }]}>
-                            <Ionicons name="notifications-off-outline" size={48} color={colors.textDim} />
-                        </View>
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>All Caught Up!</Text>
-                        <Text style={[styles.emptyText, { color: colors.textDim }]}>No new notifications at the moment.</Text>
-                    </View>
+                    <EmptyState
+                        icon="notifications-off-outline"
+                        title="All Caught Up!"
+                        message="No new notifications at the moment."
+                    />
                 )}
             </View>
         </SafeAreaView>
@@ -261,12 +302,13 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         borderBottomWidth: 1,
     },
-    backBtn: { width: 40, height: 40, justifyContent: "center", alignItems: "flex-start" },
+    backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center", alignItems: "flex-start" },
     headerTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5 },
 
     listContent: { padding: SPACING.md, paddingBottom: 40 },
     listHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SPACING.md, paddingHorizontal: 4 },
     sectionTitle: { fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
+    groupHeader: { fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: SPACING.sm, marginBottom: SPACING.xs, paddingHorizontal: 4 },
 
     notifItem: {
         flexDirection: "row",
@@ -290,10 +332,5 @@ const styles = StyleSheet.create({
     notifTime: { fontSize: 10, fontWeight: "500" },
     notifBody: { fontSize: 13, lineHeight: 18 },
     unreadDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
-
-    emptyState: { flex: 1, justifyContent: "center", alignItems: "center", paddingBottom: 100 },
-    emptyIconContainer: { width: 100, height: 100, borderRadius: 50, justifyContent: "center", alignItems: "center", marginBottom: SPACING.lg },
-    emptyTitle: { fontSize: 20, fontWeight: "800", marginBottom: 8 },
-    emptyText: { fontSize: 14, textAlign: "center", paddingHorizontal: 40 },
 });
 

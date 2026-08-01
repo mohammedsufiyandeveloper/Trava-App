@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     FlatList,
-    TouchableOpacity,
     ActivityIndicator,
     StatusBar,
     Image,
@@ -21,9 +20,12 @@ import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
 import { getWorkspaceMembers, getCachedSession, getConversations } from "../services/api";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { format, isToday } from "date-fns";
 import { useResponsive } from "../hooks/useResponsive";
+import PressableScale from "../components/PressableScale";
+import StatusChip from "../components/StatusChip";
+import EmptyState from "../components/EmptyState";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TeamList">;
 
@@ -135,18 +137,20 @@ export default function TeamListScreen({ navigation }: Props) {
         );
 
         const lastMessage = item.messages?.[0];
+        const otherRole = members.find(m => m.userId === otherParticipant.id)?.workspaceRole;
 
         return (
-            <TouchableOpacity
-                style={[styles.chatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            <PressableScale
+                haptic="selection"
+                style={[styles.chatCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
                 onPress={() => {
                     navigation.navigate("DirectChat", {
                         otherUserId: otherParticipant.id,
                         otherUserName: otherParticipant.surname || otherParticipant.name,
-                        otherUserRole: members.find(m => m.userId === otherParticipant.id)?.workspaceRole || "Member"
+                        otherUserRole: otherRole || "Member"
                     });
                 }}
-                activeOpacity={0.7}
+                accessibilityLabel={`Open conversation with ${participantName}`}
             >
                 <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                     {otherParticipant.image ? (
@@ -171,37 +175,50 @@ export default function TeamListScreen({ navigation }: Props) {
                             </Text>
                         )}
                     </View>
-                    {lastMessage && (
-                        <Text style={[styles.lastMessage, { color: hasUnread ? colors.primary : colors.textDim, fontWeight: hasUnread ? "600" : "400" }]} numberOfLines={1}>
-                            {lastMessage.sender?.name ? `${lastMessage.sender.name}: ` : ""}{lastMessage.content}
-                        </Text>
-                    )}
+                    <View style={styles.chatSubRow}>
+                        {otherRole && (
+                            <StatusChip
+                                label={otherRole}
+                                kind={otherRole.toLowerCase() === "owner" || otherRole.toLowerCase() === "admin" ? "info" : "neutral"}
+                                size="sm"
+                                style={styles.roleChip}
+                            />
+                        )}
+                        {lastMessage && (
+                            <Text style={[styles.lastMessage, { color: hasUnread ? colors.primary : colors.textDim, fontWeight: hasUnread ? "600" : "400" }]} numberOfLines={1}>
+                                {lastMessage.sender?.name ? `${lastMessage.sender.name}: ` : ""}{lastMessage.content}
+                            </Text>
+                        )}
+                    </View>
                 </View>
 
                 {hasUnread && (
                     <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
                 )}
-            </TouchableOpacity>
+            </PressableScale>
         );
     };
 
     const renderMember = ({ item }: { item: WorkspaceMember }) => {
         const isMe = item.userId === currentUser?.id || item.user.id === currentUser?.id;
 
+        const memberDisplayName = item.user.surname || item.user.name;
+
         return (
-            <TouchableOpacity
-                style={[styles.memberCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            <PressableScale
+                haptic={isMe ? null : "selection"}
+                style={[styles.memberCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
                 onPress={() => {
                     if (isMe) return;
                     setShowMembersModal(false);
                     navigation.navigate("DirectChat", {
                         otherUserId: item.userId,
-                        otherUserName: item.user.surname || item.user.name,
+                        otherUserName: memberDisplayName,
                         otherUserRole: item.workspaceRole
                     });
                 }}
                 disabled={isMe}
-                activeOpacity={0.7}
+                accessibilityLabel={isMe ? `${memberDisplayName} (you)` : `Start a chat with ${memberDisplayName}`}
             >
                 <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                     {item.user.image ? (
@@ -215,17 +232,20 @@ export default function TeamListScreen({ navigation }: Props) {
 
                 <View style={styles.memberInfo}>
                     <Text style={[styles.memberName, { color: colors.text }]}>
-                        {item.user.surname || item.user.name} {isMe ? "(You)" : ""}
+                        {memberDisplayName} {isMe ? "(You)" : ""}
                     </Text>
-                    <Text style={[styles.memberRole, { color: colors.textDim }]}>
-                        {item.workspaceRole}
-                    </Text>
+                    <StatusChip
+                        label={item.workspaceRole}
+                        kind={item.workspaceRole.toLowerCase() === "owner" || item.workspaceRole.toLowerCase() === "admin" ? "info" : "neutral"}
+                        size="sm"
+                        style={{ marginTop: 4 }}
+                    />
                 </View>
 
                 {!isMe && (
                     <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.primary} />
                 )}
-            </TouchableOpacity>
+            </PressableScale>
         );
     };
 
@@ -235,11 +255,15 @@ export default function TeamListScreen({ navigation }: Props) {
 
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
             <View style={[styles.header, { paddingHorizontal: value(16, SPACING.xl, SPACING.xxl) }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <PressableScale
+                    onPress={() => navigation.goBack()}
+                    style={styles.backBtn}
+                    accessibilityLabel="Go back"
+                >
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
-                </TouchableOpacity>
+                </PressableScale>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
-                <View style={{ width: 40 }} />
+                <View style={{ width: TOUCH_TARGET.min }} />
             </View>
 
             {loadingChats ? (
@@ -253,16 +277,16 @@ export default function TeamListScreen({ navigation }: Props) {
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={[styles.listContent, { paddingHorizontal: value(16, SPACING.xl, SPACING.xxl) }]}
                     ListEmptyComponent={
-                        <View style={styles.centerEmpty}>
-                            <Ionicons name="chatbubbles-outline" size={48} color={colors.border} style={{ marginBottom: 16 }} />
-                            <Text style={{ color: colors.textDim, fontSize: 16 }}>No recent chats.</Text>
-                            <Text style={{ color: colors.textDim, fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }}>Tap the Team button to start a conversation.</Text>
-                        </View>
+                        <EmptyState
+                            icon="chatbubbles-outline"
+                            title="No recent chats"
+                            message="Start a conversation with a team member using the button below."
+                        />
                     }
                 />
             )}
 
-            <TouchableOpacity
+            <PressableScale
                 style={[
                     styles.fab,
                     {
@@ -270,11 +294,14 @@ export default function TeamListScreen({ navigation }: Props) {
                         bottom: 20,
                     }
                 ]}
-                activeOpacity={0.8}
+                haptic="light"
                 onPress={() => setShowMembersModal(true)}
+                accessibilityLabel="Start a new chat"
+                accessibilityHint="Opens the team member list to start a conversation"
             >
-                <Ionicons name="people" size={26} color="#fff" />
-            </TouchableOpacity>
+                <Ionicons name="people" size={20} color="#fff" />
+                <Text style={styles.fabLabel}>New chat</Text>
+            </PressableScale>
 
             <Modal
                 visible={showMembersModal}
@@ -285,14 +312,18 @@ export default function TeamListScreen({ navigation }: Props) {
                 <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={["top"]}>
                     <View style={styles.modalHeader}>
                         <Text style={[styles.modalTitle, { color: colors.text }]}>Team Members</Text>
-                        <TouchableOpacity onPress={() => setShowMembersModal(false)} style={styles.closeBtn}>
+                        <PressableScale
+                            onPress={() => setShowMembersModal(false)}
+                            style={styles.closeBtn}
+                            accessibilityLabel="Close"
+                        >
                             <Ionicons name="close" size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
 
                     <View style={styles.searchContainer}>
-                        <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                            <Ionicons name="search" size={20} color={colors.textDim} />
+                        <View style={[styles.searchBox, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
+                            <Ionicons name="search" size={18} color={colors.textDim} />
                             <TextInput
                                 style={[styles.searchInput, { color: colors.text }]}
                                 placeholder="Search team members..."
@@ -302,6 +333,7 @@ export default function TeamListScreen({ navigation }: Props) {
                                 autoCapitalize="none"
                                 autoCorrect={false}
                                 clearButtonMode="while-editing"
+                                accessibilityLabel="Search team members"
                             />
                         </View>
                     </View>
@@ -317,9 +349,11 @@ export default function TeamListScreen({ navigation }: Props) {
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={styles.listContent}
                             ListEmptyComponent={
-                                <View style={styles.center}>
-                                    <Text style={{ color: colors.textDim }}>No members found.</Text>
-                                </View>
+                                <EmptyState
+                                    icon="people-outline"
+                                    title="No members found"
+                                    message="Try a different search term."
+                                />
                             }
                         />
                     )}
@@ -339,7 +373,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
-    backBtn: { width: 40, height: 40, justifyContent: "center" },
+    backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center" },
     headerTitle: { fontSize: 18, fontWeight: "700" },
 
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -391,7 +425,9 @@ const styles = StyleSheet.create({
     },
     chatName: { fontSize: 16, fontWeight: "700", flex: 1 },
     chatTime: { fontSize: 11, fontWeight: '400' },
-    lastMessage: { fontSize: 13, marginTop: 2 },
+    chatSubRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8 },
+    roleChip: { marginTop: 0 },
+    lastMessage: { fontSize: 13, flexShrink: 1 },
     unreadDot: {
         width: 10,
         height: 10,
@@ -407,17 +443,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     memberInfo: { flex: 1, marginLeft: 12 },
-    memberName: { fontSize: 15, fontWeight: "600" },
-    memberRole: { fontSize: 12, marginTop: 2, textTransform: "lowercase" },
+    memberName: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
 
     fab: {
         position: "absolute",
         right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        minHeight: 52,
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
+        gap: 8,
+        paddingHorizontal: 20,
+        borderRadius: BORDER_RADIUS.full,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
@@ -426,6 +463,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: "rgba(255,255,255,0.2)",
     },
+    fabLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
 
     modalContainer: { flex: 1 },
     modalHeader: {
@@ -439,6 +477,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     modalTitle: { fontSize: 18, fontWeight: "700" },
-    closeBtn: { width: 40, height: 40, alignItems: "flex-end", justifyContent: "center" },
+    closeBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
 });
 

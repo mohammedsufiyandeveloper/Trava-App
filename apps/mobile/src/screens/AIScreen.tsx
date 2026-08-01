@@ -30,6 +30,8 @@ import {
 } from "../services/ai";
 import { useResponsive } from "../hooks/useResponsive";
 import { SPACING } from "../constants/theme";
+import PressableScale from "../components/PressableScale";
+import StatusChip from "../components/StatusChip";
 
 // ---------------------------------------------------------------------------
 // Message model
@@ -367,27 +369,43 @@ export default function AIScreen() {
         </TouchableOpacity>
     );
 
+    // Write-confirmation requests must never be mistaken for an ordinary chat
+    // reply: no rounded chat-bubble shape, a bold left accent bar, an eyebrow
+    // label, and real buttons (not plain touchables) for the actions.
     const renderConfirmation = (msg: AssistantMsg) => {
         const c = msg.confirmation!;
         const state = msg.confirmationState ?? "pending";
-        const accent = c.destructive ? colors.error : colors.primary;
+        const accent = c.destructive ? colors.error : colors.warning;
         return (
-            <View style={[styles.confirmCard, { backgroundColor: colors.surface, borderColor: accent }]}>
+            <View
+                style={[
+                    styles.confirmCard,
+                    { backgroundColor: colors.surfaceSolidRaised, borderColor: accent + "55", borderLeftColor: accent },
+                ]}
+            >
+                <View style={styles.confirmEyebrowRow}>
+                    <Ionicons name={c.destructive ? "warning" : "shield-checkmark"} size={14} color={accent} />
+                    <Text style={[styles.confirmEyebrow, { color: accent }]}>
+                        {c.destructive ? "DESTRUCTIVE ACTION — CONFIRM TO PROCEED" : "CONFIRMATION REQUIRED"}
+                    </Text>
+                </View>
                 <View style={styles.confirmHeader}>
-                    <Ionicons
-                        name={c.destructive ? "warning-outline" : "create-outline"}
-                        size={18}
-                        color={accent}
-                    />
+                    <View style={[styles.confirmIconWrap, { backgroundColor: accent + "1E" }]}>
+                        <Ionicons
+                            name={c.destructive ? "trash-outline" : "create-outline"}
+                            size={18}
+                            color={accent}
+                        />
+                    </View>
                     <Text style={[styles.confirmTitle, { color: colors.text }]}>{c.title}</Text>
                 </View>
                 {c.destructive && (
                     <Text style={[styles.confirmWarn, { color: colors.error }]}>
-                        This is a destructive action{c.affectedEntity ? ` on “${c.affectedEntity.label}”` : ""}.
+                        This cannot be undone{c.affectedEntity ? ` — affects “${c.affectedEntity.label}”` : ""}.
                     </Text>
                 )}
                 {c.fields.map((f, i) => (
-                    <View key={i} style={styles.confirmRow}>
+                    <View key={i} style={[styles.confirmRow, { borderTopColor: colors.divider }]}>
                         <Text style={[styles.confirmLabel, { color: colors.textDim }]}>{f.label}</Text>
                         <Text style={[styles.confirmValue, { color: colors.text }]}>{f.value}</Text>
                     </View>
@@ -395,38 +413,53 @@ export default function AIScreen() {
 
                 {state === "pending" ? (
                     <View style={styles.confirmActions}>
-                        <TouchableOpacity
+                        <PressableScale
                             style={[styles.confirmBtn, { backgroundColor: accent }]}
                             onPress={() => handleConfirm(msg)}
                             disabled={loading}
+                            haptic="warning"
+                            accessibilityRole="button"
+                            accessibilityLabel={`Confirm: ${c.title}`}
                         >
                             <Text style={styles.confirmBtnText}>Confirm</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                        </PressableScale>
+                        <PressableScale
                             style={[styles.confirmBtnOutline, { borderColor: colors.border }]}
                             onPress={() => handleEdit(msg)}
                             disabled={loading}
+                            haptic="light"
+                            accessibilityRole="button"
+                            accessibilityLabel="Edit request before confirming"
                         >
                             <Text style={[styles.confirmBtnOutlineText, { color: colors.text }]}>Edit</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                        </PressableScale>
+                        <PressableScale
                             style={[styles.confirmBtnOutline, { borderColor: colors.border }]}
                             onPress={() => resolveConfirmation(msg.id, "cancelled")}
                             disabled={loading}
+                            haptic="light"
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel this action"
                         >
                             <Text style={[styles.confirmBtnOutlineText, { color: colors.textDim }]}>Cancel</Text>
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 ) : (
-                    <Text style={[styles.confirmResolved, { color: colors.textDim }]}>
-                        {state === "confirmed"
-                            ? "✓ Confirmed"
-                            : state === "processing"
-                            ? "Processing…"
-                            : state === "expired"
-                            ? "This confirmation expired — please ask again."
-                            : "Cancelled"}
-                    </Text>
+                    <View style={{ marginTop: 10 }}>
+                        <StatusChip
+                            label={
+                                state === "confirmed"
+                                    ? "Confirmed"
+                                    : state === "processing"
+                                    ? "Processing…"
+                                    : state === "expired"
+                                    ? "Expired — ask again"
+                                    : "Cancelled"
+                            }
+                            kind={state === "confirmed" ? "success" : state === "expired" ? "warning" : "neutral"}
+                            size="sm"
+                        />
+                    </View>
                 )}
             </View>
         );
@@ -663,9 +696,12 @@ const styles = StyleSheet.create({
     cardStatus: { fontSize: 10, fontWeight: "600", borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6 },
 
     // Confirmation card
-    confirmCard: { borderWidth: 1.5, borderRadius: 14, padding: 14, marginTop: 10 },
+    confirmCard: { borderWidth: 1.5, borderLeftWidth: 4, borderRadius: 14, padding: 14, marginTop: 10 },
+    confirmEyebrowRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+    confirmEyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4 },
     confirmHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-    confirmTitle: { fontSize: 15, fontWeight: "700" },
+    confirmIconWrap: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+    confirmTitle: { fontSize: 15, fontWeight: "700", flex: 1 },
     confirmWarn: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
     confirmRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, gap: 12 },
     confirmLabel: { fontSize: 13, flexShrink: 0 },

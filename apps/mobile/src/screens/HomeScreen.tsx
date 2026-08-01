@@ -9,6 +9,7 @@ import {
     RefreshControl,
     Pressable,
     Animated,
+    ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,17 +17,20 @@ import * as Haptics from "expo-haptics";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
-import { MainTabParamList, RootStackParamList } from "../types";
+import { MainTabParamList, RootStackParamList, Workspace } from "../types";
 import { format } from "date-fns";
 import WidgetPreviewModal from "../components/WidgetPreviewModal";
 import PressableScale from "../components/PressableScale";
 import { haptics } from "../services/haptics";
 import AttendanceWidget from "../components/AttendanceWidget";
 import { useResponsive } from "../hooks/useResponsive";
+import AmbientBackground from "../components/AmbientBackground";
+import GlassSurface from "../components/GlassSurface";
+import Sheet from "../components/Sheet";
 
 type Props = CompositeScreenProps<
     BottomTabScreenProps<MainTabParamList, "Home">,
@@ -35,10 +39,12 @@ type Props = CompositeScreenProps<
 
 export default function HomeScreen({ navigation }: Props) {
     const {
+        workspaces,
         activeWorkspace,
         stats,
         loading: wsLoading,
         refreshWorkspaces,
+        switchWorkspace,
     } = useWorkspace();
     const { colors, isDark, toggleTheme } = useTheme();
     const { unreadCount } = useNotifications();
@@ -46,6 +52,8 @@ export default function HomeScreen({ navigation }: Props) {
 
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+    const [wsSwitcherVisible, setWsSwitcherVisible] = useState<boolean>(false);
+    const [switchingId, setSwitchingId] = useState<string | null>(null);
     const [previewTarget, setPreviewTarget] = useState<"projects" | "teams" | "attendance" | null>(null);
     const [previewPos, setPreviewPos] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -108,9 +116,27 @@ export default function HomeScreen({ navigation }: Props) {
         }
     };
 
+    const handleSwitchWorkspace = async (workspace: Workspace) => {
+        if (workspace.id === activeWorkspace?.id) {
+            setWsSwitcherVisible(false);
+            return;
+        }
+        setSwitchingId(workspace.id);
+        try {
+            await switchWorkspace(workspace);
+            haptics.success();
+            setWsSwitcherVisible(false);
+        } catch {
+            haptics.error();
+        } finally {
+            setSwitchingId(null);
+        }
+    };
+
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+        <SafeAreaView style={styles.container} edges={["top"]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <AmbientBackground />
 
             {isMenuOpen && (
                 <Pressable
@@ -122,48 +148,64 @@ export default function HomeScreen({ navigation }: Props) {
             {/* Header */}
             <View style={[styles.header, { zIndex: 20, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                 <View style={[styles.headerContent, { maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }]}>
-                    {/* Left side: Workspace Title */}
-                    <View style={{ flex: 1, marginRight: SPACING.md }}>
+                    {/* Left side: Workspace switcher */}
+                    <PressableScale
+                        haptic="selection"
+                        onPress={() => setWsSwitcherVisible(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Switch workspace, current: ${activeWorkspace?.name ?? "Trava Tasks"}`}
+                        accessibilityHint="Opens the workspace switcher"
+                        style={{ flex: 1, marginRight: SPACING.md, minHeight: TOUCH_TARGET.min, justifyContent: "center" }}
+                    >
                         {wsLoading && !activeWorkspace ? (
                             <Animated.View style={{ width: 140, height: 24, borderRadius: 6, backgroundColor: colors.border + "50", marginVertical: 4, opacity: shimmerAnim }} />
                         ) : (
-                            <Text style={[styles.workspaceNameSimple, { color: colors.text }]} numberOfLines={1}>
-                                {activeWorkspace?.name ?? "Trava Tasks"}
-                            </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                <Text style={[styles.workspaceNameSimple, { color: colors.text }]} numberOfLines={1}>
+                                    {activeWorkspace?.name ?? "Trava Tasks"}
+                                </Text>
+                                {workspaces.length > 1 && (
+                                    <Ionicons name="chevron-down" size={16} color={colors.textDim} />
+                                )}
+                            </View>
                         )}
                         <Text style={{ color: colors.textDim, fontSize: 13, fontWeight: "500", marginTop: 2 }}>
                             {format(currentTime, 'EEEE, MMM d • h:mm a')}
                         </Text>
-                    </View>
+                    </PressableScale>
 
                     {/* Right side: Actions */}
                     <View style={{ flexDirection: "row", gap: SPACING.sm, position: 'relative' }}>
-                        <PressableScale
-                            style={[styles.notificationBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            onPress={() => (navigation as any)?.navigate("Notifications")}
-                            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-                        >
-                            <Ionicons name="notifications-outline" size={24} color={colors.text} />
-                            {unreadCount > 0 && (
-                                <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                                    <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-                                </View>
-                            )}
-                        </PressableScale>
+                        <GlassSurface level="surface" radius="full" elevation="none" style={styles.notificationBtn}>
+                            <PressableScale
+                                style={styles.notificationBtnInner}
+                                onPress={() => (navigation as any)?.navigate("Notifications")}
+                                accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                            >
+                                <Ionicons name="notifications-outline" size={24} color={colors.text} />
+                                {unreadCount > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                                        <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+                                    </View>
+                                )}
+                            </PressableScale>
+                        </GlassSurface>
 
-                        <PressableScale
-                            style={[styles.notificationBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            onPress={() => setIsMenuOpen(!isMenuOpen)}
-                            haptic="selection"
-                            accessibilityLabel="More options"
-                            accessibilityState={{ expanded: isMenuOpen }}
-                        >
-                            <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
-                        </PressableScale>
+                        <GlassSurface level="surface" radius="full" elevation="none" style={styles.notificationBtn}>
+                            <PressableScale
+                                style={styles.notificationBtnInner}
+                                onPress={() => setIsMenuOpen(!isMenuOpen)}
+                                haptic="selection"
+                                accessibilityLabel="More options"
+                                accessibilityState={{ expanded: isMenuOpen }}
+                            >
+                                <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
+                            </PressableScale>
+                        </GlassSurface>
 
                         {/* Dropdown Menu */}
                         {isMenuOpen && (
-                            <View style={[styles.dropdownMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <GlassSurface level="elevated" intensity="sheet" radius="md" elevation="md" style={styles.dropdownMenu}>
                                 <PressableScale
                                     haptic="selection"
                                     style={styles.dropdownItem}
@@ -224,7 +266,7 @@ export default function HomeScreen({ navigation }: Props) {
                                     <Text style={[styles.dropdownText, { color: colors.text }]}>Procurement</Text>
                                 </TouchableOpacity>
                                 */}
-                            </View>
+                            </GlassSurface>
                         )}
                     </View>
                 </View>
@@ -388,6 +430,42 @@ export default function HomeScreen({ navigation }: Props) {
                 position={previewPos}
                 onClose={() => setPreviewTarget(null)}
             />
+
+            <Sheet
+                visible={wsSwitcherVisible}
+                onClose={() => setWsSwitcherVisible(false)}
+                accessibilityLabel="Switch workspace"
+            >
+                <View style={styles.sheetContent}>
+                    <Text style={[styles.sheetTitle, { color: colors.text, marginBottom: SPACING.md }]}>
+                        Switch Workspace
+                    </Text>
+                    {workspaces.map((ws) => {
+                        const active = ws.id === activeWorkspace?.id;
+                        return (
+                            <PressableScale
+                                key={ws.id}
+                                haptic="selection"
+                                onPress={() => handleSwitchWorkspace(ws)}
+                                accessibilityRole="button"
+                                accessibilityLabel={ws.name}
+                                accessibilityState={{ selected: active, busy: switchingId === ws.id }}
+                                style={[styles.wsItem, { borderBottomColor: colors.divider }]}
+                            >
+                                <View style={[styles.wsAvatarSmall, { backgroundColor: colors.primary }]}>
+                                    <Text style={styles.avatarTextSmall}>{ws.name.charAt(0).toUpperCase()}</Text>
+                                </View>
+                                <Text style={[styles.wsNameSmall, { color: colors.text }]} numberOfLines={1}>{ws.name}</Text>
+                                {switchingId === ws.id ? (
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                ) : active ? (
+                                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                                ) : null}
+                            </PressableScale>
+                        );
+                    })}
+                </View>
+            </Sheet>
         </SafeAreaView>
     );
 }
@@ -398,13 +476,14 @@ const styles = StyleSheet.create({
 
     header: { paddingVertical: SPACING.sm, marginBottom: SPACING.sm },
     headerContent: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    notificationBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center", borderWidth: 1, position: "relative" },
+    notificationBtn: { width: 44, height: 44 },
+    notificationBtnInner: { flex: 1, justifyContent: "center", alignItems: "center", position: "relative" },
     badge: { position: "absolute", top: 8, right: 8, minWidth: 16, height: 16, borderRadius: 8, justifyContent: "center", alignItems: "center", paddingHorizontal: 4 },
     badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
 
     workspaceNameSimple: { fontSize: 24, fontWeight: "700", letterSpacing: 0.5 },
 
-    dropdownMenu: { position: 'absolute', top: 50, right: 0, width: 160, borderRadius: BORDER_RADIUS.md, borderWidth: 1, padding: SPACING.sm, zIndex: 100, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },
+    dropdownMenu: { position: 'absolute', top: 50, right: 0, width: 170, padding: SPACING.sm, zIndex: 100 },
     dropdownItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, paddingHorizontal: SPACING.sm, gap: SPACING.md },
     dropdownText: { fontSize: 14, fontWeight: '500' },
 

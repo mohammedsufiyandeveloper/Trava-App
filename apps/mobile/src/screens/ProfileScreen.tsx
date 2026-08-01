@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    TouchableOpacity,
     StatusBar,
     ScrollView,
     ActivityIndicator,
@@ -20,6 +19,9 @@ import { useNotifications } from "../context/NotificationContext";
 import { getCachedSession, signOut, getSession, getProfile } from "../services/api";
 import { MainTabParamList, User } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
+import AppCard from "../components/AppCard";
+import PressableScale from "../components/PressableScale";
+import ConfirmationSheet from "../components/ConfirmationSheet";
 
 type Props = BottomTabScreenProps<MainTabParamList, "Profile">;
 
@@ -40,11 +42,13 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress, color, isLast
     const itemColor = color || colors.text;
 
     return (
-        <TouchableOpacity
+        <PressableScale
             style={[styles.menuItem, { borderBottomColor: colors.border }, isLast && { borderBottomWidth: 0 }]}
             onPress={onPress}
-            activeOpacity={0.7}
             disabled={!onPress}
+            haptic="selection"
+            accessibilityLabel={label}
+            accessibilityRole="button"
         >
             <View style={styles.menuLeft}>
                 <View style={[styles.iconBox, { backgroundColor: icon.bg || colors.surface }]}>
@@ -53,7 +57,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress, color, isLast
                 <Text style={[styles.menuLabel, { color: itemColor }]}>{label}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
-        </TouchableOpacity>
+        </PressableScale>
     );
 };
 
@@ -92,6 +96,8 @@ export default function ProfileScreen({ navigation }: Props) {
     const [user, setUser] = useState<User | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [hapticsOn, setHapticsOn] = useState(getHapticsEnabled());
+    const [signOutVisible, setSignOutVisible] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const { colors, isDark, toggleTheme } = useTheme();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
 
@@ -130,8 +136,14 @@ export default function ProfileScreen({ navigation }: Props) {
     );
 
     const handleSignOut = async () => {
-        await signOut();
-        (navigation.getParent() as any)?.replace("SignIn");
+        setSigningOut(true);
+        try {
+            await signOut();
+            (navigation.getParent() as any)?.replace("SignIn");
+        } finally {
+            setSigningOut(false);
+            setSignOutVisible(false);
+        }
     };
 
     return (
@@ -144,10 +156,12 @@ export default function ProfileScreen({ navigation }: Props) {
                     contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(0, SPACING.xl, SPACING.xxl) }]}
                 >
                     {/* Profile Header */}
-                <TouchableOpacity
+                <PressableScale
                     style={styles.profileHeader}
                     onPress={() => (navigation as any)?.navigate("MyProfile")}
-                    activeOpacity={0.7}
+                    haptic="light"
+                    accessibilityLabel="Open my profile"
+                    accessibilityRole="button"
                 >
                     <View style={[styles.avatarLarge, { backgroundColor: colors.primary }]}>
                         <Text style={styles.avatarTextLarge}>
@@ -165,12 +179,12 @@ export default function ProfileScreen({ navigation }: Props) {
                             </Text>
                         )}
                     </View>
-                </TouchableOpacity>
+                </PressableScale>
 
                 {/* Account Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionLabel, { color: colors.textDim }]}>ACCOUNT</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard padded={false} style={styles.menuCard}>
                         <MenuItem
                             icon={{ name: "person-outline", color: "#3b82f6", bg: "#3b82f615" }}
                             label="My Profile"
@@ -182,13 +196,13 @@ export default function ProfileScreen({ navigation }: Props) {
                             onPress={() => (navigation as any)?.navigate("Notifications")}
                             isLast
                         />
-                    </View>
+                    </AppCard>
                 </View>
 
                 {/* Preferences */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionLabel, { color: colors.textDim }]}>PREFERENCES</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard padded={false} style={styles.menuCard}>
                         <MenuItem
                             icon={{ name: isDark ? "sunny-outline" : "moon-outline", color: "#8b5cf6", bg: "#8b5cf615" }}
                             label={`Appearance: ${isDark ? "Dark" : "Light"}`}
@@ -201,13 +215,13 @@ export default function ProfileScreen({ navigation }: Props) {
                             onValueChange={onToggleHaptics}
                             isLast
                         />
-                    </View>
+                    </AppCard>
                 </View>
 
                 {/* Workspace Settings */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionLabel, { color: colors.textDim }]}>WORKSPACE</Text>
-                    <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard padded={false} style={styles.menuCard}>
                         <MenuItem
                             icon={{ name: "people-outline", color: "#8b5cf6", bg: "#8b5cf615" }}
                             label="Teams"
@@ -234,24 +248,36 @@ export default function ProfileScreen({ navigation }: Props) {
                                 />
                             </>
                         ) : null}
-                    </View>
+                    </AppCard>
                 </View>
 
                 {/* Actions */}
                 <View style={[styles.section, { marginBottom: SPACING.xxl }]}>
-                    <View style={[styles.menuCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard padded={false} style={styles.menuCard}>
                         <MenuItem
                             icon={{ name: "log-out-outline", color: colors.error, bg: colors.error + "15" }}
                             label="Sign Out"
                             color={colors.error}
-                            onPress={handleSignOut}
+                            onPress={() => setSignOutVisible(true)}
                             isLast
                         />
-                    </View>
+                    </AppCard>
                     <Text style={[styles.versionText, { color: colors.textDim }]}>Trava Mobile v1.0.0</Text>
                 </View>
             </ScrollView>
             </View>
+
+            <ConfirmationSheet
+                visible={signOutVisible}
+                title="Sign out?"
+                description="You'll need to sign in again to access your workspaces."
+                tone="warning"
+                confirmLabel="Sign Out"
+                cancelLabel="Cancel"
+                loading={signingOut}
+                onConfirm={handleSignOut}
+                onClose={() => setSignOutVisible(false)}
+            />
         </SafeAreaView>
     );
 }

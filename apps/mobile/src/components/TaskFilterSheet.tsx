@@ -16,6 +16,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
 import { getWorkspaceMembers, getTags, getProjectMembers, getTasks } from "../services/api";
 import CalendarPicker from "./CalendarPicker";
+import AppButton from "./AppButton";
 import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
 import { format, startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isBefore } from "date-fns";
 
@@ -466,9 +467,7 @@ export default function TaskFilterSheet({
                     </Modal>
 
                     <View style={[styles.footer, { borderTopColor: colors.border }]}>
-                        <TouchableOpacity style={[styles.applyBtn, { backgroundColor: colors.primary }]} onPress={handleApply}>
-                            <Text style={styles.applyBtnText}>Apply Filters</Text>
-                        </TouchableOpacity>
+                        <AppButton label="Apply Filters" onPress={handleApply} fullWidth size="lg" haptic="medium" />
                     </View>
                 </View>
 

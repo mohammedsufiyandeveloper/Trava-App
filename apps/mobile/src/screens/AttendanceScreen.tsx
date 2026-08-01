@@ -21,7 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { format, addDays } from "date-fns";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
@@ -35,6 +35,10 @@ import {
     getWorkspaceAttendanceLogs,
 } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import StatusChip, { StatusKind } from "../components/StatusChip";
+import ConfirmationSheet from "../components/ConfirmationSheet";
+import AppCard from "../components/AppCard";
+import PressableScale from "../components/PressableScale";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE" | "LATE" | "OUT";
 
@@ -85,6 +89,8 @@ export default function AttendanceScreen() {
     // Status Data
     const [myAttendance, setMyAttendance] = useState<AttendanceRecord | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [locationStage, setLocationStage] = useState<"idle" | "requesting" | "locating" | "denied">("idle");
+    const [checkOutSheetVisible, setCheckOutSheetVisible] = useState(false);
 
     // Register Data
     const [teamRegister, setTeamRegister] = useState<any[]>([]);
@@ -203,13 +209,17 @@ export default function AttendanceScreen() {
 
     // --- CHECK IN / OUT ---
     const handleCheckIn = async () => {
+        if (actionLoading) return;
         setActionLoading(true);
+        setLocationStage("requesting");
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== "granted") {
-                Alert.alert("Permission Denied", "Location permission is required to check in.");
+                setLocationStage("denied");
+                haptics.error();
                 return;
             }
+            setLocationStage("locating");
             const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
             const lat = loc.coords.latitude;
             const lng = loc.coords.longitude;
@@ -233,73 +243,90 @@ export default function AttendanceScreen() {
                 clientDateString
             );
             setMyAttendance(result);
-            Alert.alert("Checked In! 🎉", `Recorded at ${formatTime(result?.checkIn)}`);
+            setLocationStage("idle");
+            haptics.success();
+            Alert.alert("Checked In", `Recorded at ${formatTime(result?.checkIn)}`);
         } catch (e: any) {
+            haptics.error();
             Alert.alert("Error", e.message || "Failed to check in");
         } finally {
             setActionLoading(false);
+            setLocationStage((s) => (s === "denied" ? s : "idle"));
         }
     };
 
+    const requestCheckOut = () => {
+        haptics.warning();
+        setCheckOutSheetVisible(true);
+    };
+
     const handleCheckOut = async () => {
-        Alert.alert("Check Out", "Are you sure you want to check out?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Check Out",
-                style: "destructive",
-                onPress: async () => {
-                    setActionLoading(true);
-                    try {
-                        const { status } = await Location.requestForegroundPermissionsAsync();
-                        if (status !== "granted") {
-                            Alert.alert("Permission Denied", "Location permission is required.");
-                            return;
-                        }
-                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                        const lat = loc.coords.latitude;
-                        const lng = loc.coords.longitude;
+        setActionLoading(true);
+        setLocationStage("requesting");
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== "granted") {
+                setLocationStage("denied");
+                setCheckOutSheetVisible(false);
+                haptics.error();
+                return;
+            }
+            setLocationStage("locating");
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const lat = loc.coords.latitude;
+            const lng = loc.coords.longitude;
 
-                        let addr = "";
-                        try {
-                            const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-                            if (geo && geo.length > 0) {
-                                const p = geo[0];
-                                addr = [p.name || p.streetNumber, p.street, p.city || p.subregion, p.region].filter(Boolean).join(", ");
-                            }
-                        } catch (e) {
-                            console.warn("Reverse geocode failed", e);
-                        }
+            let addr = "";
+            try {
+                const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                if (geo && geo.length > 0) {
+                    const p = geo[0];
+                    addr = [p.name || p.streetNumber, p.street, p.city || p.subregion, p.region].filter(Boolean).join(", ");
+                }
+            } catch (e) {
+                console.warn("Reverse geocode failed", e);
+            }
 
-                        const result = await submitCheckOut(
-                            activeWorkspace!.id,
-                            lat,
-                            lng,
-                            addr,
-                            clientDateString
-                        );
-                        setMyAttendance(result);
-                        Alert.alert("Checked Out!", `Duration: ${calcDuration(result?.checkIn, result?.checkOut)}`);
-                    } catch (e: any) {
-                        Alert.alert("Error", e.message || "Failed to check out");
-                    } finally {
-                        setActionLoading(false);
-                    }
-                },
-            },
-        ]);
+            const result = await submitCheckOut(
+                activeWorkspace!.id,
+                lat,
+                lng,
+                addr,
+                clientDateString
+            );
+            setMyAttendance(result);
+            setLocationStage("idle");
+            setCheckOutSheetVisible(false);
+            haptics.success();
+            Alert.alert("Checked Out", `Duration: ${calcDuration(result?.checkIn, result?.checkOut)}`);
+        } catch (e: any) {
+            haptics.error();
+            Alert.alert("Error", e.message || "Failed to check out");
+        } finally {
+            setActionLoading(false);
+            setLocationStage((s) => (s === "denied" ? s : "idle"));
+        }
+    };
+
+    const openLocationSettings = () => {
+        if (Platform.OS === "ios") {
+            Linking.openURL("app-settings:");
+        } else {
+            Linking.openSettings();
+        }
     };
 
     const isCheckedIn = !!myAttendance?.checkIn;
     const isCheckedOut = !!myAttendance?.checkOut;
 
-    const statusConfig: Record<AttendanceStatus | "NOT_CHECKED_IN" | "OUT", { label: string; color: string; bg: string }> = {
-        PRESENT: { label: "Present", color: "#10b981", bg: "#10b98115" },
-        ABSENT: { label: "Absent", color: "#ef4444", bg: "#ef444415" },
-        LATE: { label: "Late", color: "#f59e0b", bg: "#f59e0b15" },
-        OUT: { label: "Logged Out", color: "#6b7280", bg: "#6b728015" },
-        HALF_DAY: { label: "Half Day", color: "#f59e0b", bg: "#f59e0b15" },
-        ON_LEAVE: { label: "On Leave", color: "#3b82f6", bg: "#3b82f615" },
-        NOT_CHECKED_IN: { label: "No check-in", color: "#6b7280", bg: "#6b728015" },
+    const statusConfig: Record<AttendanceStatus | "NOT_CHECKED_IN" | "OUT", { label: string; color: string; bg: string; kind: StatusKind }> = {
+        PRESENT: { label: "Present", color: "#10b981", bg: "#10b98115", kind: "success" },
+        ABSENT: { label: "Absent", color: "#ef4444", bg: "#ef444415", kind: "error" },
+        LATE: { label: "Late", color: "#f59e0b", bg: "#f59e0b15", kind: "warning" },
+        OUT: { label: "Logged Out", color: "#6b7280", bg: "#6b728015", kind: "neutral" },
+        HALF_DAY: { label: "Half Day", color: "#f59e0b", bg: "#f59e0b15", kind: "warning" },
+        ON_LEAVE: { label: "On Leave", color: "#3b82f6", bg: "#3b82f615", kind: "info" },
+        NOT_CHECKED_IN: { label: "No check-in", color: "#6b7280", bg: "#6b728015", kind: "neutral" },
     };
 
     const renderMyStatus = () => {
@@ -331,10 +358,7 @@ export default function AttendanceScreen() {
                             <View style={{ flex: 1, marginLeft: SPACING.md }}>
                                 <Text style={[styles.cardTitle, { color: colors.text }]}>Daily Check-In</Text>
                                 {statusInfo ? (
-                                    <View style={[styles.statusPill, { backgroundColor: statusInfo.bg }]}>
-                                        <View style={[styles.statusDot, { backgroundColor: statusInfo.color }]} />
-                                        <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
-                                    </View>
+                                    <StatusChip label={statusInfo.label} kind={statusInfo.kind} style={{ marginTop: 6 }} />
                                 ) : (
                                     <Text style={[styles.notChecked, { color: colors.textDim }]}>Waiting for check-in</Text>
                                 )}
@@ -382,15 +406,51 @@ export default function AttendanceScreen() {
                     </View>
                 )}
 
+                {/* Location acquisition progress */}
+                {actionLoading && (locationStage === "requesting" || locationStage === "locating") && (
+                    <View style={[styles.tipCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={[styles.tipText, { color: colors.textDim }]}>
+                            {locationStage === "requesting" ? "Requesting location permission…" : "Getting your current location…"}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Location permission denied explanation */}
+                {locationStage === "denied" && (
+                    <View style={[styles.tipCard, { backgroundColor: "#ef444412", borderColor: "#ef444440" }]}>
+                        <Ionicons name="location-outline" size={18} color="#ef4444" />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.tipText, { color: colors.text, fontWeight: "700" }]}>
+                                Location access is off
+                            </Text>
+                            <Text style={[styles.tipText, { color: colors.textDim, marginTop: 2 }]}>
+                                Trava needs your location to record attendance. Enable location access for this app in your device settings, then try again.
+                            </Text>
+                            <PressableScale
+                                onPress={openLocationSettings}
+                                accessibilityLabel="Open device settings to enable location access"
+                                haptic="light"
+                                style={styles.enableLocationBtn}
+                            >
+                                <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 12 }}>Open Settings</Text>
+                            </PressableScale>
+                        </View>
+                    </View>
+                )}
+
                 {/* Action Button - Only show if current date is TODAY */}
                 {isToday ? (
                     <View style={styles.actionContainer}>
                         {(!isCheckedIn || isCheckedOut) && (
                             <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                                style={[styles.actionBtn, { backgroundColor: colors.primary }, actionLoading && { opacity: 0.6 }]}
                                 onPress={handleCheckIn}
                                 disabled={actionLoading}
                                 activeOpacity={0.85}
+                                accessibilityRole="button"
+                                accessibilityLabel="Check in now"
+                                accessibilityState={{ disabled: actionLoading, busy: actionLoading }}
                             >
                                 {actionLoading ? (
                                     <ActivityIndicator color="#fff" />
@@ -405,10 +465,13 @@ export default function AttendanceScreen() {
 
                         {isCheckedIn && !isCheckedOut && (
                             <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: "#ef4444" }]}
-                                onPress={handleCheckOut}
+                                style={[styles.actionBtn, { backgroundColor: "#ef4444" }, actionLoading && { opacity: 0.6 }]}
+                                onPress={requestCheckOut}
                                 disabled={actionLoading}
                                 activeOpacity={0.85}
+                                accessibilityRole="button"
+                                accessibilityLabel="Check out"
+                                accessibilityState={{ disabled: actionLoading, busy: actionLoading }}
                             >
                                 {actionLoading ? (
                                     <ActivityIndicator color="#fff" />
@@ -555,9 +618,7 @@ export default function AttendanceScreen() {
                                             <Text style={[styles.registerName, { color: colors.text }]} numberOfLines={1}>{memberName}</Text>
                                             <Text style={[styles.registerEmail, { color: colors.textDim }]} numberOfLines={1}>{row.member.user.email}</Text>
                                         </View>
-                                        <View style={[styles.miniStatus, { backgroundColor: sInfo.bg }]}>
-                                            <Text style={[styles.miniStatusText, { color: sInfo.color }]}>{sInfo.label}</Text>
-                                        </View>
+                                        <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
                                     </View>
 
                                     <View style={styles.registerTimes}>
@@ -630,7 +691,12 @@ export default function AttendanceScreen() {
 
                 {/* Date Navigator */}
                 <View style={styles.dateNav}>
-                    <TouchableOpacity onPress={() => handleDateChange(-1)} style={styles.dateNavBtn}>
+                    <TouchableOpacity
+                        onPress={() => handleDateChange(-1)}
+                        style={styles.dateNavBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel="Previous day"
+                    >
                         <Ionicons name="chevron-back" size={20} color={colors.text} />
                     </TouchableOpacity>
 
@@ -641,7 +707,14 @@ export default function AttendanceScreen() {
                         </Text>
                     </View>
 
-                    <TouchableOpacity onPress={() => handleDateChange(1)} style={styles.dateNavBtn} disabled={isToday}>
+                    <TouchableOpacity
+                        onPress={() => handleDateChange(1)}
+                        style={styles.dateNavBtn}
+                        disabled={isToday}
+                        accessibilityRole="button"
+                        accessibilityLabel="Next day"
+                        accessibilityState={{ disabled: isToday }}
+                    >
                         <Ionicons name="chevron-forward" size={20} color={isToday ? colors.border : colors.text} />
                     </TouchableOpacity>
                 </View>
@@ -711,9 +784,7 @@ export default function AttendanceScreen() {
                                                             </TouchableOpacity>
                                                         )}
 
-                                                        <View style={[styles.logStatus, { backgroundColor: sInfo.bg }]}>
-                                                            <Text style={[styles.logStatusText, { color: sInfo.color }]}>{sInfo.label}</Text>
-                                                        </View>
+                                                        <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
                                                     </View>
                                                 </View>
                                             </View>
@@ -742,7 +813,12 @@ export default function AttendanceScreen() {
                     <Pressable style={[styles.modalContent, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 20 }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>{modalTitle}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                            <TouchableOpacity
+                                onPress={() => setModalVisible(false)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close"
+                                hitSlop={8}
+                            >
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
@@ -780,7 +856,13 @@ export default function AttendanceScreen() {
             >
                 <Pressable style={styles.modalOverlay} onPress={() => setStatsModalVisible(false)}>
                     <Pressable style={[styles.statsModalCard, { backgroundColor: colors.surface }]}>
-                        <TouchableOpacity style={styles.closeBtn} onPress={() => setStatsModalVisible(false)}>
+                        <TouchableOpacity
+                            style={styles.closeBtn}
+                            onPress={() => setStatsModalVisible(false)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Close"
+                            hitSlop={8}
+                        >
                             <Ionicons name="close" size={24} color={colors.textDim} />
                         </TouchableOpacity>
 
@@ -825,6 +907,18 @@ export default function AttendanceScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            <ConfirmationSheet
+                visible={checkOutSheetVisible}
+                title="Check out for the day?"
+                description="This will end your shift for today. You can't check in again until tomorrow."
+                tone="warning"
+                confirmLabel="Check Out"
+                cancelLabel="Cancel"
+                loading={actionLoading}
+                onConfirm={handleCheckOut}
+                onClose={() => setCheckOutSheetVisible(false)}
+            />
             </View>
         </SafeAreaView>
     );
@@ -879,6 +973,7 @@ const styles = StyleSheet.create({
 
     tipCard: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md },
     tipText: { fontSize: 12, lineHeight: 18, flex: 1 },
+    enableLocationBtn: { marginTop: 10, alignSelf: "flex-start", minHeight: TOUCH_TARGET.min, justifyContent: "center", paddingVertical: 4 },
 
     // Register UI
     empty: { marginTop: 60, alignItems: "center" },

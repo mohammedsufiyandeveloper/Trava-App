@@ -3,10 +3,8 @@ import {
     View,
     Text,
     TextInput,
-    TouchableOpacity,
     StyleSheet,
     StatusBar,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -15,82 +13,104 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { requestEmailOtp } from "../services/api";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
 import { isValidEmail } from "../utils/validation";
+import AmbientBackground from "../components/AmbientBackground";
+import AppButton from "../components/AppButton";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
 export default function SignUpScreen({ navigation }: Props) {
     const { colors, isDark } = useTheme();
     const { FORM_MAX_WIDTH, value } = useResponsive();
-    
+
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
+    const [fieldError, setFieldError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
 
     async function handleContinue() {
-        if (!firstName || !lastName || !email) {
-            Alert.alert("Error", "Please fill in all fields.");
+        if (loading) return;
+        setFormError(null);
+        if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+            setFieldError("Please fill in all fields.");
             return;
         }
         if (!isValidEmail(email)) {
-            Alert.alert("Invalid email", "Please enter a valid email address (e.g. name@company.com).");
+            setFieldError("Please enter a valid email address (e.g. name@company.com).");
             return;
         }
+        setFieldError(null);
         setLoading(true);
         try {
             await requestEmailOtp(email.trim());
             Alert.alert(
-                "Verify your email ✉️",
+                "Verify your email",
                 `We've sent a verification link to ${email}. Please check your inbox and verify your email, then return to Sign In.`,
                 [{ text: "Okay, go to Login", onPress: () => navigation.replace("SignIn") }]
             );
         } catch (err: any) {
-            Alert.alert("Sign Up Error", err.message || "Could not start sign up process.");
+            setFormError(err?.message || "Could not start sign up process.");
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["top"]}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+        <SafeAreaView style={styles.safe} edges={["top"]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+            <AmbientBackground />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
                 <ScrollView
                     contentContainerStyle={[
-                        styles.scroll, 
-                        { 
-                            backgroundColor: colors.background,
-                            paddingHorizontal: value(SPACING.lg * 1.1, SPACING.xl, SPACING.xxl)
-                        }
+                        styles.scroll,
+                        { paddingHorizontal: value(SPACING.lg * 1.1, SPACING.xl, SPACING.xxl) }
                     ]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={[styles.contentWrapper, { maxWidth: FORM_MAX_WIDTH }]}>
                         {/* Back */}
-                        <TouchableOpacity style={[styles.backBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                        <PressableScale
+                            haptic="light"
+                            style={[styles.backBtn, { borderColor: colors.border, backgroundColor: colors.surfaceSolid }]}
+                            onPress={() => navigation.goBack()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Go back"
+                        >
                             <Ionicons name="arrow-back" size={18} color={colors.text} style={{ marginRight: 6 }} />
                             <Text style={[styles.backText, { color: colors.text }]}>Back</Text>
-                        </TouchableOpacity>
+                        </PressableScale>
 
                         {/* Branding */}
                         <View style={styles.logoRow}>
                             <Text style={[styles.logoText, { color: colors.primary }]}>TRAVA</Text>
                         </View>
 
-                        {/* Sign Up Card */}
-                        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        {/* Sign Up Card — solid surface for form readability */}
+                        <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
                             <Text style={[styles.cardTitle, { color: colors.text }]}>Create Account</Text>
                             <Text style={[styles.cardDesc, { color: colors.textDim }]}>Sign up with your work email</Text>
+
+                            {formError && (
+                                <View
+                                    accessibilityRole="alert"
+                                    style={[styles.errorBanner, { backgroundColor: isDark ? "rgba(248,113,113,0.12)" : "rgba(220,38,38,0.08)", borderColor: colors.validationError }]}
+                                >
+                                    <Ionicons name="alert-circle" size={16} color={colors.validationError} />
+                                    <Text style={[styles.errorBannerText, { color: colors.validationError }]}>{formError}</Text>
+                                </View>
+                            )}
 
                             {/* Name Input Row */}
                             <View style={styles.nameRow}>
@@ -102,7 +122,8 @@ export default function SignUpScreen({ navigation }: Props) {
                                         placeholderTextColor={colors.textDim}
                                         autoCapitalize="words"
                                         value={firstName}
-                                        onChangeText={setFirstName}
+                                        onChangeText={(t) => { setFirstName(t); setFieldError(null); }}
+                                        accessibilityLabel="First name"
                                     />
                                 </View>
                                 <View style={styles.nameField}>
@@ -113,7 +134,8 @@ export default function SignUpScreen({ navigation }: Props) {
                                         placeholderTextColor={colors.textDim}
                                         autoCapitalize="words"
                                         value={lastName}
-                                        onChangeText={setLastName}
+                                        onChangeText={(t) => { setLastName(t); setFieldError(null); }}
+                                        accessibilityLabel="Last name"
                                     />
                                 </View>
                             </View>
@@ -127,29 +149,34 @@ export default function SignUpScreen({ navigation }: Props) {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoCorrect={false}
+                                autoComplete="email"
+                                textContentType="emailAddress"
                                 value={email}
-                                onChangeText={setEmail}
+                                onChangeText={(t) => { setEmail(t); setFieldError(null); }}
+                                accessibilityLabel="Email address"
                             />
 
+                            {fieldError && (
+                                <Text style={[styles.fieldErrorText, { color: colors.validationError }]}>{fieldError}</Text>
+                            )}
+
                             {/* Submit Button */}
-                            <TouchableOpacity
-                                style={[styles.primaryBtn, { backgroundColor: colors.primary }, (!firstName || !lastName || !email || loading) && styles.disabled]}
+                            <AppButton
+                                label="Continue to Email Verify"
                                 onPress={handleContinue}
-                                disabled={!firstName || !lastName || !email || loading}
-                                activeOpacity={0.85}
-                            >
-                                {loading
-                                    ? <ActivityIndicator color="#fff" size="small" />
-                                    : <Text style={styles.primaryText}>Continue to Email Verify</Text>
-                                }
-                            </TouchableOpacity>
+                                loading={loading}
+                                fullWidth
+                                size="lg"
+                                haptic="medium"
+                                style={styles.primaryBtn}
+                            />
 
                             {/* Footer */}
                             <View style={styles.footerRow}>
                                 <Text style={[styles.footerText, { color: colors.textDim }]}>Already have an account? </Text>
-                                <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
+                                <PressableScale haptic="light" onPress={() => navigation.navigate("SignIn")}>
                                     <Text style={[styles.footerLink, { color: colors.text }]}>Log In</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
                         </View>
 
@@ -165,17 +192,17 @@ export default function SignUpScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
     safe: { flex: 1 },
-    scroll: { 
-        flexGrow: 1, 
+    scroll: {
+        flexGrow: 1,
         paddingVertical: SPACING.xl,
         alignItems: "center",
-        justifyContent: "center", 
+        justifyContent: "center",
     },
     contentWrapper: {
         width: "100%",
         alignItems: "center",
     },
-    backBtn: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 32 },
+    backBtn: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, minHeight: TOUCH_TARGET.min, marginBottom: 32 },
     backText: { fontSize: 14, fontWeight: "500" },
 
     logoRow: { marginBottom: 24, alignItems: "center" },
@@ -185,15 +212,25 @@ const styles = StyleSheet.create({
     cardTitle: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
     cardDesc: { fontSize: 14, marginBottom: 24 },
 
+    errorBanner: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        borderWidth: 1,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.sm,
+        marginBottom: 16,
+    },
+    errorBannerText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
+    fieldErrorText: { fontSize: 13, fontWeight: "600", marginBottom: 16, marginTop: -8 },
+
     nameRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
     nameField: { flex: 1 },
     label: { fontSize: 13, marginBottom: 8, fontWeight: "600" },
     input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, marginBottom: 16 },
     inputFull: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, marginBottom: 24, width: "100%" },
 
-    primaryBtn: { paddingVertical: 15, borderRadius: 8, alignItems: "center", marginBottom: 20 },
-    disabled: { opacity: 0.5 },
-    primaryText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    primaryBtn: { marginBottom: 20 },
 
     footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
     footerText: { fontSize: 14 },

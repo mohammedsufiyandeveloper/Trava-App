@@ -10,7 +10,6 @@ import {
     TextInput,
     Alert,
     RefreshControl,
-    Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,8 +28,9 @@ import {
     deleteIndent,
 } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
-
-const { width } = Dimensions.get("window");
+import StatusChip, { StatusKind } from "../components/StatusChip";
+import ConfirmationSheet from "../components/ConfirmationSheet";
+import PressableScale from "../components/PressableScale";
 
 export default function IndentDetailScreen({ route, navigation }: any) {
     const { indentId } = route.params;
@@ -60,6 +60,10 @@ export default function IndentDetailScreen({ route, navigation }: any) {
     const [rejectReason, setRejectReason] = useState("");
     const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
+    // Destructive delete confirmation
+    const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
     const loadData = useCallback(async () => {
         if (!activeWorkspace?.id || !indentId) return;
         try {
@@ -88,27 +92,23 @@ export default function IndentDetailScreen({ route, navigation }: any) {
     };
 
     const handleDeleteIndent = () => {
-        Alert.alert(
-            "Delete Request",
-            "Are you sure you want to delete this indent request permanently?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        if (!activeWorkspace?.id) return;
-                        try {
-                            await deleteIndent(activeWorkspace.id, indentId);
-                            Alert.alert("Success", "Indent deleted successfully.");
-                            navigation.goBack();
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message || "Failed to delete indent.");
-                        }
-                    }
-                }
-            ]
-        );
+        setDeleteConfirmVisible(true);
+    };
+
+    const confirmDeleteIndent = async () => {
+        if (!activeWorkspace?.id) return;
+        setDeleting(true);
+        try {
+            await deleteIndent(activeWorkspace.id, indentId);
+            haptics.success();
+            setDeleteConfirmVisible(false);
+            navigation.goBack();
+        } catch (error: any) {
+            haptics.error();
+            Alert.alert("Error", error.message || "Failed to delete indent.");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const handleApproveQuantity = async (itemId: string) => {
@@ -199,6 +199,28 @@ export default function IndentDetailScreen({ route, navigation }: any) {
         }
     };
 
+    const statusChipKind = (status: string): StatusKind => {
+        switch (status) {
+            case "APPROVED":
+                return "success";
+            case "REJECTED":
+            case "CANCELLED":
+                return "error";
+            case "PENDING":
+            case "DRAFT":
+                return "neutral";
+            case "RFQ_SENT":
+                return "info";
+            case "QUOTES_RECEIVED":
+            case "SUBMITTED":
+                return "warning";
+            case "ASSIGNED":
+                return "info";
+            default:
+                return "neutral";
+        }
+    };
+
     const getItemStatusStyles = (status: string) => {
         switch (status) {
             case "APPROVED":
@@ -213,21 +235,6 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                 return { bg: "#fef3c7", text: "#92400e", label: "Quotes Ready" };
             default:
                 return { bg: "#f3f4f6", text: "#374151", label: status };
-        }
-    };
-
-    const getIndentStatusStyles = (status: string) => {
-        switch (status) {
-            case "APPROVED":
-                return { bg: "#dcfce7", text: "#166534" };
-            case "CANCELLED":
-                return { bg: "#fee2e2", text: "#991b1b" };
-            case "SUBMITTED":
-                return { bg: "#fef3c7", text: "#92400e" };
-            case "ASSIGNED":
-                return { bg: "#dbeafe", text: "#1e40af" };
-            default:
-                return { bg: "#f3f4f6", text: "#374151" };
         }
     };
 
@@ -248,8 +255,6 @@ export default function IndentDetailScreen({ route, navigation }: any) {
         );
     }
 
-    const overallStatusStyle = getIndentStatusStyles(indent.status);
-
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
@@ -266,9 +271,15 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                     
                     {/* Delete button for drafts or admins */}
                     {(indent.status === "DRAFT" || isAdmin) && (
-                        <TouchableOpacity onPress={handleDeleteIndent} style={styles.deleteBtn}>
-                            <Ionicons name="trash-outline" size={22} color="#ef4444" />
-                        </TouchableOpacity>
+                        <PressableScale
+                            haptic="light"
+                            onPress={handleDeleteIndent}
+                            style={styles.deleteBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete indent request"
+                        >
+                            <Ionicons name="trash-outline" size={22} color={colors.error} />
+                        </PressableScale>
                     )}
                 </View>
 
@@ -277,13 +288,11 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* General Specs */}
-                    <View style={[styles.mainCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {/* General Specs — solid surface: financial/status data must stay high-contrast */}
+                    <View style={[styles.mainCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
                         <View style={styles.cardHeader}>
                             <Text style={[styles.indentName, { color: colors.text }]}>{indent.name}</Text>
-                            <View style={[styles.statusPill, { backgroundColor: overallStatusStyle.bg }]}>
-                                <Text style={[styles.statusText, { color: overallStatusStyle.text }]}>{indent.status}</Text>
-                            </View>
+                            <StatusChip label={indent.status} kind={statusChipKind(indent.status)} size="sm" />
                         </View>
 
                         {indent.description ? (
@@ -331,7 +340,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                         return (
                             <View
                                 key={item.id}
-                                style={[styles.itemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                style={[styles.itemCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
                             >
                                 <View style={styles.itemHeader}>
                                     <View style={{ flex: 1 }}>
@@ -340,10 +349,8 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                             Requested: {item.quantity} {item.unit} {item.estimatedUnitPrice ? `• Est: ₹${item.estimatedUnitPrice}/unit` : ""}
                                         </Text>
                                     </View>
-                                    
-                                    <View style={[styles.itemStatusBadge, { backgroundColor: itemStyle.bg }]}>
-                                        <Text style={[styles.itemStatusText, { color: itemStyle.text }]}>{itemStyle.label}</Text>
-                                    </View>
+
+                                    <StatusChip label={itemStyle.label} kind={statusChipKind(item.status)} size="sm" />
                                 </View>
 
                                 {item.specifications ? (
@@ -353,7 +360,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                 ) : null}
 
                                 {item.rejectionReason ? (
-                                    <Text style={[styles.itemRejectionText, { color: "#ef4444" }]}>
+                                    <Text style={[styles.itemRejectionText, { color: colors.error }]}>
                                         Rejection Reason: "{item.rejectionReason}"
                                     </Text>
                                 ) : null}
@@ -361,35 +368,44 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                 {/* Admin Action: Approve Qty / Reject */}
                                 {isAdmin && item.status === "PENDING" && (
                                     <View style={styles.actionRow}>
-                                        <TouchableOpacity
-                                            style={[styles.actionBtn, { backgroundColor: "#dcfce7" }]}
+                                        <PressableScale
+                                            haptic="light"
+                                            style={[styles.actionBtn, { backgroundColor: isDark ? "rgba(52,211,153,0.16)" : "#dcfce7" }]}
                                             onPress={() => handleApproveQuantity(item.id)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Approve quantity for ${item.materialName}`}
                                         >
-                                            <Ionicons name="checkmark-circle-outline" size={16} color="#166534" />
-                                            <Text style={[styles.actionBtnText, { color: "#166534" }]}>Approve Qty</Text>
-                                        </TouchableOpacity>
-                                        
-                                        <TouchableOpacity
-                                            style={[styles.actionBtn, { backgroundColor: "#fee2e2" }]}
+                                            <Ionicons name="checkmark-circle-outline" size={16} color={colors.validationSuccess} />
+                                            <Text style={[styles.actionBtnText, { color: colors.validationSuccess }]}>Approve Qty</Text>
+                                        </PressableScale>
+
+                                        <PressableScale
+                                            haptic="warning"
+                                            style={[styles.actionBtn, { backgroundColor: isDark ? "rgba(248,113,113,0.16)" : "#fee2e2" }]}
                                             onPress={() => handleOpenRejectModal(item.id)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Reject request for ${item.materialName}`}
                                         >
-                                            <Ionicons name="close-circle-outline" size={16} color="#991b1b" />
-                                            <Text style={[styles.actionBtnText, { color: "#991b1b" }]}>Reject</Text>
-                                        </TouchableOpacity>
+                                            <Ionicons name="close-circle-outline" size={16} color={colors.error} />
+                                            <Text style={[styles.actionBtnText, { color: colors.error }]}>Reject</Text>
+                                        </PressableScale>
                                     </View>
                                 )}
 
                                 {/* Leads Quote Upload Option */}
-                                {(isAdmin || activeWorkspace?.workspaceRole === "MANAGER" || activeWorkspace?.workspaceRole === "PROCUREMENT") && 
+                                {(isAdmin || activeWorkspace?.workspaceRole === "MANAGER" || activeWorkspace?.workspaceRole === "PROCUREMENT") &&
                                  (item.status === "RFQ_SENT" || item.status === "QUOTES_RECEIVED") && (
                                     <View style={styles.actionRow}>
-                                        <TouchableOpacity
+                                        <PressableScale
+                                            haptic="light"
                                             style={[styles.actionBtn, { borderColor: colors.primary, borderWidth: 1 }]}
                                             onPress={() => handleOpenQuoteModal(item.id, item.quantity)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Add vendor quote for ${item.materialName}`}
                                         >
                                             <Ionicons name="document-text-outline" size={16} color={colors.primary} />
                                             <Text style={[styles.actionBtnText, { color: colors.primary }]}>Add Vendor Quote</Text>
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                     </View>
                                 )}
 
@@ -423,12 +439,15 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                                     </View>
 
                                                     {isAdmin && item.status === "QUOTES_RECEIVED" && (
-                                                        <TouchableOpacity
+                                                        <PressableScale
+                                                            haptic="light"
                                                             style={[styles.miniApproveBtn, { backgroundColor: colors.primary }]}
                                                             onPress={() => handleApproveQuote(item.id, quote.id)}
+                                                            accessibilityRole="button"
+                                                            accessibilityLabel={`Approve quote from ${quote.vendor?.name || "supplier"}`}
                                                         >
                                                             <Text style={styles.miniApproveBtnText}>Approve</Text>
-                                                        </TouchableOpacity>
+                                                        </PressableScale>
                                                     )}
 
                                                     {isQuoteApproved && (
@@ -579,6 +598,17 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                         </View>
                     </View>
                 </Modal>
+
+                <ConfirmationSheet
+                    visible={deleteConfirmVisible}
+                    title="Delete indent request?"
+                    description="This will permanently delete this indent request and its line items. This cannot be undone."
+                    tone="destructive"
+                    confirmLabel="Delete Request"
+                    loading={deleting}
+                    onConfirm={confirmDeleteIndent}
+                    onClose={() => setDeleteConfirmVisible(false)}
+                />
 
             </View>
         </SafeAreaView>

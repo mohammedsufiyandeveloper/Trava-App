@@ -29,7 +29,40 @@ export type ThemeColors = {
     statusHold: string;
     statusCompleted: string;
     statusCancelled: string;
+
+    // --- Trava Liquid Glass tokens ---
+    // Background layers (ambient wash behind everything, deepest to shallowest).
+    backgroundElevated: string;
+    // Solid, ~opaque content surfaces — forms, tables, dense lists, chat bubbles.
+    surfaceSolid: string;
+    surfaceSolidRaised: string;
+    // Glass surfaces — meant to sit over BlurView, not stand alone.
+    glassSurface: string;
+    glassSurfaceElevated: string;
+    glassBorder: string;
+    glassHighlight: string; // inner top hairline highlight on glass
+    // Text inverse (on top of primary-colored / filled surfaces).
+    textInverse: string;
+    // Icons default color (distinct from text so icon-only controls stay legible).
+    icon: string;
+    iconMuted: string;
+    // Scrims behind sheets/modals/menus.
+    scrim: string;
+    scrimStrong: string;
+    // Urgency (task due-date pressure) — distinct hue family from status.
+    urgencyOverdue: string;
+    urgencyDueSoon: string;
+    urgencyOnTrack: string;
+    // Disabled / focus / validation.
+    disabled: string;
+    disabledText: string;
+    focusRing: string;
+    validationError: string;
+    validationSuccess: string;
 };
+
+/** Ambient gradient stops — low-opacity brand washes, never behind dense content. */
+export type AmbientGradient = readonly [string, string, ...string[]];
 
 export const DARK_COLORS: ThemeColors = {
     // Backgrounds
@@ -65,6 +98,27 @@ export const DARK_COLORS: ThemeColors = {
     statusHold: "#F59E0B",
     statusCompleted: "#22C55E",
     statusCancelled: "#EF4444",
+
+    backgroundElevated: "#141416",
+    surfaceSolid: "#171719",
+    surfaceSolidRaised: "#1e1e21",
+    glassSurface: "rgba(255,255,255,0.06)",
+    glassSurfaceElevated: "rgba(255,255,255,0.10)",
+    glassBorder: "rgba(255,255,255,0.14)",
+    glassHighlight: "rgba(255,255,255,0.16)",
+    textInverse: "#1a1a1a",
+    icon: "#e5e7eb",
+    iconMuted: "#9ca3af",
+    scrim: "rgba(8,8,10,0.55)",
+    scrimStrong: "rgba(8,8,10,0.78)",
+    urgencyOverdue: "#f87171",
+    urgencyDueSoon: "#fbbf24",
+    urgencyOnTrack: "#34d399",
+    disabled: "rgba(255,255,255,0.08)",
+    disabledText: "#6b7280",
+    focusRing: "#fbb54a",
+    validationError: "#f87171",
+    validationSuccess: "#34d399",
 };
 
 export const LIGHT_COLORS: ThemeColors = {
@@ -101,9 +155,59 @@ export const LIGHT_COLORS: ThemeColors = {
     statusHold: "#F59E0B",
     statusCompleted: "#22C55E",
     statusCancelled: "#EF4444",
+
+    backgroundElevated: "#f3f1ec",
+    surfaceSolid: "#ffffff",
+    surfaceSolidRaised: "#ffffff",
+    glassSurface: "rgba(255,255,255,0.55)",
+    glassSurfaceElevated: "rgba(255,255,255,0.72)",
+    glassBorder: "rgba(17,24,39,0.08)",
+    glassHighlight: "rgba(255,255,255,0.9)",
+    textInverse: "#1a1a1a",
+    icon: "#374151",
+    iconMuted: "#6b7280",
+    scrim: "rgba(17,24,39,0.28)",
+    scrimStrong: "rgba(17,24,39,0.5)",
+    urgencyOverdue: "#dc2626",
+    urgencyDueSoon: "#d97706",
+    urgencyOnTrack: "#059669",
+    disabled: "rgba(17,24,39,0.06)",
+    disabledText: "#9ca3af",
+    focusRing: "#d97706",
+    validationError: "#dc2626",
+    validationSuccess: "#059669",
 };
 
 export const COLORS = DARK_COLORS;
+
+/**
+ * Ambient gradient washes, keyed by theme — used only behind hero/auth/AI
+ * surfaces and selected empty states, always at low opacity, never behind
+ * dense content (forms, lists, tables).
+ */
+export const AMBIENT_GRADIENTS: Record<"dark" | "light", AmbientGradient> = {
+    dark: ["#221a0d", "#0f0f0f", "#0a1420"],
+    light: ["#fff3dd", "#f9fafb", "#eef4fb"],
+};
+
+/** Blur intensity presets (expo-blur `intensity`, 0-100) per elevation. */
+export const BLUR_INTENSITY = {
+    subtle: 20,
+    header: 32,
+    sheet: 40,
+    overlay: 50,
+} as const;
+
+/**
+ * Android + low-end fallback: real-time blur is expensive/inconsistent on
+ * some Android GPUs, so glass surfaces there lean on a more opaque tinted
+ * surface instead of a heavier blur radius. Also used when the caller wants
+ * a cheaper glass surface behind long lists.
+ */
+export const GLASS_FALLBACK_OPACITY = {
+    ios: 1,
+    android: 0.92,
+} as const;
 
 export const SPACING = {
     xs: 4,

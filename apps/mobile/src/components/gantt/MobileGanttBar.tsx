@@ -4,6 +4,15 @@ import { useTheme } from "../../context/ThemeContext";
 import { Task } from "../../types";
 import { getStatusHex } from "../../utils/taskColors";
 
+const STATUS_LABELS: Record<string, string> = {
+    TO_DO: "To Do",
+    IN_PROGRESS: "In Progress",
+    REVIEW: "Review",
+    HOLD: "Hold",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+};
+
 interface MobileGanttBarProps {
     task: Task;
     leftPercent: number;   // 0-100
@@ -45,12 +54,16 @@ export default function MobileGanttBar({
     };
 
     const showLabel = widthPx > 50;
+    const statusLabel = STATUS_LABELS[statusKey] ?? statusKey;
 
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.75}
             style={[styles.bar, barStyle]}
+            accessibilityRole="button"
+            accessibilityLabel={`${task.name}, ${statusLabel}`}
+            hitSlop={{ top: 12, bottom: 12, left: 4, right: 4 }}
         >
             {/* Glassy shimmer stripe on top */}
             <View style={styles.glassHighlight} pointerEvents="none" />

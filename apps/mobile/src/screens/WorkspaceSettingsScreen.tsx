@@ -4,10 +4,8 @@ import {
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     TextInput,
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
 } from "react-native";
@@ -18,15 +16,28 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getWorkspaceSettings, updateWorkspaceSettings } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import AppCard from "../components/AppCard";
+import AppButton from "../components/AppButton";
+import PressableScale from "../components/PressableScale";
+import { useToast } from "../context/ToastContext";
+
+const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+type FieldErrors = Partial<Record<
+    "name" | "lateThreshold" | "overtimeThreshold" | "halfDayThreshold" | "shiftStartTime" | "shiftEndTime" | "sickLeaveLimit" | "casualLeaveAccrualDays",
+    string
+>>;
 
 export default function WorkspaceSettingsScreen({ navigation }: any) {
     const { colors } = useTheme();
     const { activeWorkspace } = useWorkspace();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+    const toast = useToast();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState<any>(null);
+    const [errors, setErrors] = useState<FieldErrors>({});
 
     // Form state
     const [name, setName] = useState("");
@@ -65,8 +76,38 @@ export default function WorkspaceSettingsScreen({ navigation }: any) {
         loadSettings();
     }, [loadSettings]);
 
+    const validate = (): FieldErrors => {
+        const next: FieldErrors = {};
+        if (!name.trim()) next.name = "Workspace name is required.";
+
+        const timeFields: Array<[string, keyof FieldErrors, string]> = [
+            [lateThreshold, "lateThreshold", "Use HH:mm, e.g. 09:40"],
+            [overtimeThreshold, "overtimeThreshold", "Use HH:mm, e.g. 07:00"],
+            [halfDayThreshold, "halfDayThreshold", "Use HH:mm, e.g. 23:00"],
+            [shiftStartTime, "shiftStartTime", "Use HH:mm, e.g. 09:30"],
+            [shiftEndTime, "shiftEndTime", "Use HH:mm, e.g. 18:30"],
+        ];
+        for (const [val, key, msg] of timeFields) {
+            if (val && !HHMM_RE.test(val)) next[key] = msg;
+        }
+
+        if (sickLeaveLimit && (isNaN(Number(sickLeaveLimit)) || Number(sickLeaveLimit) < 0)) {
+            next.sickLeaveLimit = "Enter a valid non-negative number.";
+        }
+        if (casualLeaveAccrualDays && (isNaN(Number(casualLeaveAccrualDays)) || Number(casualLeaveAccrualDays) < 0)) {
+            next.casualLeaveAccrualDays = "Enter a valid non-negative number.";
+        }
+        return next;
+    };
+
     const handleSave = async () => {
         if (!activeWorkspace?.id) return;
+        const nextErrors = validate();
+        setErrors(nextErrors);
+        if (Object.keys(nextErrors).length > 0) {
+            toast.error("Please fix the highlighted fields.");
+            return;
+        }
         setSaving(true);
         try {
             await updateWorkspaceSettings(activeWorkspace.id, {
@@ -79,10 +120,11 @@ export default function WorkspaceSettingsScreen({ navigation }: any) {
                 sickLeaveLimit: parseInt(sickLeaveLimit, 10),
                 casualLeaveAccrualDays: parseInt(casualLeaveAccrualDays, 10),
             });
-            Alert.alert("Success", "Workspace settings updated successfully.");
+            toast.success("Workspace settings updated.");
             navigation.goBack();
         } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to update settings");
+            // Entered values are preserved (still in local state) so the user can retry.
+            toast.error(error.message || "Failed to update settings");
         } finally {
             setSaving(false);
         }
@@ -100,121 +142,148 @@ export default function WorkspaceSettingsScreen({ navigation }: any) {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                 <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <PressableScale
+                        onPress={() => navigation.goBack()}
+                        style={styles.backBtn}
+                        haptic="light"
+                        accessibilityLabel="Go back"
+                        accessibilityRole="button"
+                    >
                         <Ionicons name="chevron-back" size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </PressableScale>
                     <Text style={[styles.title, { color: colors.text }]}>Workspace Settings</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
-                <KeyboardAvoidingView 
+                <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={{ flex: 1 }}
                 >
                     <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>General</Text>
-                    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard style={styles.card}>
                         <Text style={[styles.label, { color: colors.textDim }]}>Workspace Name</Text>
-                        <TextInput 
-                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.name ? colors.error : colors.border }]}
                             value={name}
-                            onChangeText={setName}
+                            onChangeText={(t) => { setName(t); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
+                            accessibilityLabel="Workspace name"
                         />
-                    </View>
+                        {!!errors.name && <Text style={[styles.errorText, { color: colors.error }]}>{errors.name}</Text>}
+                    </AppCard>
 
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Attendance Thresholds</Text>
-                    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard style={styles.card}>
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Late Threshold (HH:mm)</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.lateThreshold ? colors.error : colors.border }]}
                                     value={lateThreshold}
-                                    onChangeText={setLateThreshold}
+                                    onChangeText={(t) => { setLateThreshold(t); if (errors.lateThreshold) setErrors((e) => ({ ...e, lateThreshold: undefined })); }}
                                     placeholder="09:40"
+                                    placeholderTextColor={colors.textDim}
+                                    accessibilityLabel="Late threshold"
                                 />
+                                {!!errors.lateThreshold && <Text style={[styles.errorText, { color: colors.error }]}>{errors.lateThreshold}</Text>}
                             </View>
                             <View style={{ width: SPACING.md }} />
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Overtime (HH:mm)</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.overtimeThreshold ? colors.error : colors.border }]}
                                     value={overtimeThreshold}
-                                    onChangeText={setOvertimeThreshold}
+                                    onChangeText={(t) => { setOvertimeThreshold(t); if (errors.overtimeThreshold) setErrors((e) => ({ ...e, overtimeThreshold: undefined })); }}
                                     placeholder="07:00"
+                                    placeholderTextColor={colors.textDim}
+                                    accessibilityLabel="Overtime threshold"
                                 />
+                                {!!errors.overtimeThreshold && <Text style={[styles.errorText, { color: colors.error }]}>{errors.overtimeThreshold}</Text>}
                             </View>
                         </View>
 
                         <View style={[styles.row, { marginTop: SPACING.md }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Half Day (HH:mm)</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.halfDayThreshold ? colors.error : colors.border }]}
                                     value={halfDayThreshold}
-                                    onChangeText={setHalfDayThreshold}
+                                    onChangeText={(t) => { setHalfDayThreshold(t); if (errors.halfDayThreshold) setErrors((e) => ({ ...e, halfDayThreshold: undefined })); }}
                                     placeholder="23:00"
+                                    placeholderTextColor={colors.textDim}
+                                    accessibilityLabel="Half day threshold"
                                 />
+                                {!!errors.halfDayThreshold && <Text style={[styles.errorText, { color: colors.error }]}>{errors.halfDayThreshold}</Text>}
                             </View>
                             <View style={{ flex: 1 }} />
                         </View>
-                    </View>
+                    </AppCard>
 
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Shift Timing</Text>
-                    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard style={styles.card}>
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Start Time</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.shiftStartTime ? colors.error : colors.border }]}
                                     value={shiftStartTime}
-                                    onChangeText={setShiftStartTime}
+                                    onChangeText={(t) => { setShiftStartTime(t); if (errors.shiftStartTime) setErrors((e) => ({ ...e, shiftStartTime: undefined })); }}
+                                    accessibilityLabel="Shift start time"
                                 />
+                                {!!errors.shiftStartTime && <Text style={[styles.errorText, { color: colors.error }]}>{errors.shiftStartTime}</Text>}
                             </View>
                             <View style={{ width: SPACING.md }} />
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>End Time</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.shiftEndTime ? colors.error : colors.border }]}
                                     value={shiftEndTime}
-                                    onChangeText={setShiftEndTime}
+                                    onChangeText={(t) => { setShiftEndTime(t); if (errors.shiftEndTime) setErrors((e) => ({ ...e, shiftEndTime: undefined })); }}
+                                    accessibilityLabel="Shift end time"
                                 />
+                                {!!errors.shiftEndTime && <Text style={[styles.errorText, { color: colors.error }]}>{errors.shiftEndTime}</Text>}
                             </View>
                         </View>
-                    </View>
+                    </AppCard>
 
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Leave Policies</Text>
-                    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <AppCard style={styles.card}>
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Sick Leave Limit</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.sickLeaveLimit ? colors.error : colors.border }]}
                                     value={sickLeaveLimit}
-                                    onChangeText={setSickLeaveLimit}
+                                    onChangeText={(t) => { setSickLeaveLimit(t); if (errors.sickLeaveLimit) setErrors((e) => ({ ...e, sickLeaveLimit: undefined })); }}
                                     keyboardType="numeric"
+                                    accessibilityLabel="Sick leave limit"
                                 />
+                                {!!errors.sickLeaveLimit && <Text style={[styles.errorText, { color: colors.error }]}>{errors.sickLeaveLimit}</Text>}
                             </View>
                             <View style={{ width: SPACING.md }} />
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.label, { color: colors.textDim }]}>Casual Accrual (Days)</Text>
-                                <TextInput 
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: errors.casualLeaveAccrualDays ? colors.error : colors.border }]}
                                     value={casualLeaveAccrualDays}
-                                    onChangeText={setCasualLeaveAccrualDays}
+                                    onChangeText={(t) => { setCasualLeaveAccrualDays(t); if (errors.casualLeaveAccrualDays) setErrors((e) => ({ ...e, casualLeaveAccrualDays: undefined })); }}
                                     keyboardType="numeric"
+                                    accessibilityLabel="Casual leave accrual days"
                                 />
+                                {!!errors.casualLeaveAccrualDays && <Text style={[styles.errorText, { color: colors.error }]}>{errors.casualLeaveAccrualDays}</Text>}
                             </View>
                         </View>
-                    </View>
+                    </AppCard>
 
-                    <TouchableOpacity 
-                        style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                    <AppButton
+                        label="Save Changes"
                         onPress={handleSave}
-                        disabled={saving}
-                    >
-                        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-                    </TouchableOpacity>
+                        loading={saving}
+                        haptic="medium"
+                        fullWidth
+                        size="lg"
+                        style={{ marginTop: SPACING.xxl }}
+                    />
                     </ScrollView>
                 </KeyboardAvoidingView>
             </View>
@@ -234,6 +303,5 @@ const styles = StyleSheet.create({
     label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
     input: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 16 },
     row: { flexDirection: "row" },
-    saveBtn: { marginTop: SPACING.xxl, height: 52, borderRadius: BORDER_RADIUS.lg, justifyContent: "center", alignItems: "center" },
-    saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    errorText: { fontSize: 12, fontWeight: "600", marginTop: 6 },
 });

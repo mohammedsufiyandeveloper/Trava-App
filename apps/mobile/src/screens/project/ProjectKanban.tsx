@@ -4,24 +4,22 @@ import {
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     ActivityIndicator,
     Dimensions,
     RefreshControl,
     Alert
 } from "react-native";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, ThemeColors } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, ThemeColors } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { updateTask, getTasks, deleteTask, getProject } from "../../services/api";
 import { Task, TaskStatus } from "../../types";
-import { getStatusHex, getStatusBgColor } from "../../utils/taskColors";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import StatusPickerModal from "../../components/StatusPickerModal";
 import ReviewCommentModal from "../../components/ReviewCommentModal";
 import CreateSubTaskModal from "../../components/CreateSubTaskModal";
+import PressableScale from "../../components/PressableScale";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const COLUMN_WIDTH = SCREEN_WIDTH * 0.82;
@@ -34,6 +32,12 @@ const STATUS_COLOR_MAP: Record<string, keyof ThemeColors> = {
     COMPLETED: "statusCompleted",
     CANCELLED: "statusCancelled",
 };
+
+/** Resolve a task/column status to its themed hex color, reusing the shared map above. */
+function statusThemeColor(status: string | undefined, colors: ThemeColors): string {
+    const key = STATUS_COLOR_MAP[status ?? "TO_DO"] ?? "statusTodo";
+    return colors[key];
+}
 
 interface ProjectKanbanProps {
     projectId: string;
@@ -75,7 +79,7 @@ const resolveProjectManager = (managersList?: any[] | null) => {
 };
 
 export default function ProjectKanban({ projectId, navigation, refreshData, parentId, tasks }: ProjectKanbanProps) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const { activeWorkspace, projects, refreshData: refreshWorkspaceData } = useWorkspace();
 
     // Removed redundant refreshWorkspaceData loop that caused infinite refreshes
@@ -284,30 +288,47 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
     ];
 
     const renderTaskCard = (task: Task) => {
-        const statusColor = getStatusHex(task.status);
+        const statusColor = statusThemeColor(task.status, colors);
 
-        const isOverdue = task.dueDate && new Date() > new Date(task.dueDate);
+        // Due-urgency: distinct hue family from status, per design tokens.
+        const isDoneOrClosed = task.status === "COMPLETED" || task.status === "CANCELLED";
+        let urgencyColor = colors.textDim;
+        let isOverdue = false;
+        if (task.dueDate && !isDoneOrClosed) {
+            const diffDays = Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) {
+                urgencyColor = colors.urgencyOverdue;
+                isOverdue = true;
+            } else if (diffDays <= 2) {
+                urgencyColor = colors.urgencyDueSoon;
+            } else {
+                urgencyColor = colors.urgencyOnTrack;
+            }
+        }
 
         // Subtasks show the parent task context in the breadcrumb
         return (
-            <TouchableOpacity
+            <PressableScale
                 key={task.id}
+                haptic="light"
                 style={[
                     styles.taskCard,
                     {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
+                        borderLeftColor: statusColor,
                     }
                 ]}
-                activeOpacity={0.7}
                 onPress={() => navigation.navigate("TaskDetail", {
                     taskId: task.id,
                     taskName: task.name
                 })}
                 onLongPress={() => handleLongPress(task)}
                 delayLongPress={300}
+                accessibilityRole="button"
+                accessibilityLabel={`${task.name}, ${task.status?.replace("_", " ") ?? "To Do"}${isOverdue ? ", overdue" : ""}`}
             >
-                {/* Card Header: Breadcrumb style + Project Manager at top right */}
+                {/* Card Header: Breadcrumb style + Project Manager / actions at top right */}
                 <View style={styles.cardHeader}>
                     <View style={styles.headerLeft}>
                         <Text style={[styles.projectText, { color: colors.textDim }]}>
@@ -322,6 +343,18 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                             </>
                         )}
                     </View>
+
+                    {/* Explicit status-change entry point (drag is not the only way to move a card) */}
+                    <PressableScale
+                        haptic="selection"
+                        style={styles.cardMenuBtn}
+                        onPress={() => handleLongPress(task)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Task options"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Ionicons name="ellipsis-horizontal" size={16} color={colors.textDim} />
+                    </PressableScale>
 
                     {/* Project Manager attribution */}
                     {(() => {
@@ -380,11 +413,11 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                             <Ionicons
                                 name="calendar-outline"
                                 size={12}
-                                color={isOverdue ? colors.error : colors.textDim}
+                                color={task.dueDate && !isDoneOrClosed ? urgencyColor : colors.textDim}
                             />
                             <Text style={[
                                 styles.footerIconText,
-                                { color: isOverdue ? colors.error : colors.textDim }
+                                { color: task.dueDate && !isDoneOrClosed ? urgencyColor : colors.textDim }
                             ]}>
                                 {task.dueDate ? new Date(task.dueDate).toLocaleDateString([], { month: "short", day: "numeric" }) : "No date"}
                             </Text>
@@ -410,7 +443,7 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                         </View>
                     </View>
                 </View>
-            </TouchableOpacity>
+            </PressableScale>
         );
     };
 
@@ -419,8 +452,8 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
         const columnTasks = localTasks
             .filter(t => !t.isParent && t.status === column.status)
             .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        const statusColor = getStatusHex(column.status);
-        const statusBg = getStatusBgColor(column.status);
+        const statusColor = statusThemeColor(column.status, colors);
+        const statusBg = `${statusColor}1E`;
 
         return (
             <View
@@ -428,47 +461,42 @@ export default function ProjectKanban({ projectId, navigation, refreshData, pare
                 style={[
                     styles.column,
                     {
-                        backgroundColor: isDark ? "rgba(26, 26, 26, 0.4)" : "rgba(255, 255, 255, 0.6)",
+                        // Dense, data-heavy content: keep the column solid, not glass.
+                        backgroundColor: colors.surfaceSolid,
                         borderColor: colors.borderLight
                     }
                 ]}
             >
-                <BlurView
-                    intensity={isDark ? 20 : 40}
-                    tint={isDark ? "dark" : "light"}
-                    style={styles.columnBlur}
-                >
-                    <View style={styles.columnHeader}>
-                        <View style={[styles.headerIconBox, { backgroundColor: statusBg }]}>
-                            <Ionicons name={column.icon} size={14} color={statusColor} />
-                        </View>
-                        <Text style={[styles.columnTitle, { color: colors.text }]}>{column.title}</Text>
-                        <View style={[styles.countBadge, { backgroundColor: statusBg }]}>
-                            <Text style={[styles.countText, { color: statusColor }]}>{columnTasks.length}</Text>
-                        </View>
+                <View style={styles.columnHeader}>
+                    <View style={[styles.headerIconBox, { backgroundColor: statusBg }]}>
+                        <Ionicons name={column.icon} size={14} color={statusColor} />
                     </View>
+                    <Text style={[styles.columnTitle, { color: colors.text }]} numberOfLines={1}>{column.title}</Text>
+                    <View style={[styles.countBadge, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.countText, { color: statusColor }]}>{columnTasks.length}</Text>
+                    </View>
+                </View>
 
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.columnScrollContent}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchKanbanTasks(true); }}
-                                tintColor={colors.primary}
-                            />
-                        }
-                    >
-                        {columnTasks.map(renderTaskCard)}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.columnScrollContent}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fetchKanbanTasks(true); }}
+                            tintColor={colors.primary}
+                        />
+                    }
+                >
+                    {columnTasks.map(renderTaskCard)}
 
-                        {columnTasks.length === 0 && (
-                            <View style={[styles.emptyColumn, { borderColor: colors.divider }]}>
-                                <Ionicons name="document-text-outline" size={24} color={colors.textDim} style={{ marginBottom: 8 }} />
-                                <Text style={[styles.emptyText, { color: colors.textDim }]}>No tasks</Text>
-                            </View>
-                        )}
-                    </ScrollView>
-                </BlurView>
+                    {columnTasks.length === 0 && (
+                        <View style={[styles.emptyColumn, { borderColor: colors.divider }]}>
+                            <Ionicons name="document-text-outline" size={24} color={colors.textDim} style={{ marginBottom: 8 }} />
+                            <Text style={[styles.emptyText, { color: colors.textDim }]}>No tasks</Text>
+                        </View>
+                    )}
+                </ScrollView>
             </View>
         );
     };
@@ -531,7 +559,6 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { padding: SPACING.md, gap: SPACING.md },
     column: { width: COLUMN_WIDTH, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, overflow: "hidden", maxHeight: "100%" },
-    columnBlur: { flex: 1 },
     columnHeader: { flexDirection: "row", alignItems: "center", padding: SPACING.md, gap: SPACING.sm },
     headerIconBox: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
     columnTitle: { fontSize: 16, fontWeight: "700", flex: 1 },
@@ -553,6 +580,13 @@ const styles = StyleSheet.create({
     },
     cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
     headerLeft: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" },
+    cardMenuBtn: {
+        width: TOUCH_TARGET.min - 12,
+        height: TOUCH_TARGET.min - 12,
+        alignItems: "center",
+        justifyContent: "center",
+        marginLeft: 4,
+    },
     projectDot: { width: 8, height: 8, borderRadius: 4 },
     projectText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
     separator: { fontSize: 10, opacity: 0.3 },

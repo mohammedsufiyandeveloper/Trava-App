@@ -1,22 +1,20 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    FlatList,
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
-    ListRenderItemInfo,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { format, isToday, startOfDay } from "date-fns";
-import { SPACING } from "../../constants/theme";
+import { format, startOfDay } from "date-fns";
+import { SPACING, TOUCH_TARGET } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { Task } from "../../types";
-import { getStatusHex, getStatusBgColor, STATUS_COLORS } from "../../utils/taskColors";
+import StatusChip, { StatusKind } from "../../components/StatusChip";
 import {
     calculateTimelineRange,
     getDaysBetween,
@@ -30,15 +28,32 @@ import MobileGanttBar from "../../components/gantt/MobileGanttBar";
 // ─── Layout constants ─────────────────────────────────────────────────────────
 const ROW_H = 52;
 const NAME_W = 180;
+const STATUS_W = 92;
 const ASSIGNEE_W = 100;
 const DAYS_W = 60;
 const DATES_W = 130;
-const TOTAL_TABLE_W = NAME_W + ASSIGNEE_W + DAYS_W + DATES_W;
+const TOTAL_TABLE_W = NAME_W + STATUS_W + ASSIGNEE_W + DAYS_W + DATES_W;
 const HEADER_H = 44;
+// Width, in px, of a single day column in the timeline pane.
+const DAY_W = 34;
 
-
-// ─── Status colours map ───────────────────────────────────────────────────────
-// STATUS_LABEL is replaced by taskColors utility
+// ─── Status label/kind maps (semantic, theme-driven via StatusChip) ──────────
+const STATUS_LABELS: Record<string, string> = {
+    TO_DO: "To Do",
+    IN_PROGRESS: "In Progress",
+    REVIEW: "Review",
+    HOLD: "Hold",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+};
+const STATUS_KINDS: Record<string, StatusKind> = {
+    TO_DO: "todo",
+    IN_PROGRESS: "inProgress",
+    REVIEW: "review",
+    HOLD: "hold",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FlatItem {
@@ -203,16 +218,39 @@ export default function ProjectGanttView({
         return getDaysBetween(dates.start, dates.end) + 1;
     }, [allRelevantTasks]);
 
+    // ── 5. Timeline geometry (today marker + bar positions) ─────────────────
+    const timelineRange = useMemo(() => calculateTimelineRange(allRelevantTasks), [allRelevantTasks]);
+    const totalDays = useMemo(
+        () => Math.max(1, getDaysBetween(timelineRange.start, timelineRange.end) + 1),
+        [timelineRange]
+    );
+    const timelineWidth = totalDays * DAY_W;
+    const monthGroups = useMemo(
+        () => buildMonthGroups(timelineRange.start, totalDays),
+        [timelineRange, totalDays]
+    );
+    const todayOffset = useMemo(() => {
+        const today = startOfDay(new Date());
+        if (today < timelineRange.start || today > timelineRange.end) return null;
+        return getDaysBetween(timelineRange.start, today) * DAY_W;
+    }, [timelineRange]);
+
 
     // ── 6. Render helpers ───────────────────────────────────────────────────
     const renderRow = (item: FlatItem) => {
         const { task, indentLevel, hasSubtasks, isExpanded } = item;
         const isSubtask = indentLevel > 0;
-        const sColor = getStatusHex(task.status);
-        const sBg = getStatusBgColor(task.status);
+        const status = task.status ?? "TO_DO";
+        const statusLabel = STATUS_LABELS[status] ?? status;
+        const statusKind = STATUS_KINDS[status] ?? "todo";
         const datesText = formatTaskDates(task);
         const duration = getDuration(task);
         const assigneeName = task.assignee?.surname || task.assignee?.name || "-";
+
+        const dates = computeTaskDates(task, allRelevantTasks);
+        const barPos = dates.start && dates.end
+            ? calculateBarPosition(dates.start, dates.end, timelineRange.start, totalDays)
+            : null;
 
         return (
             <View
@@ -279,7 +317,12 @@ export default function ProjectGanttView({
                     </Text>
                 </TouchableOpacity>
 
-                {/* 2. ASSIGNEE */}
+                {/* 2. STATUS */}
+                <View style={[s.cell, { width: STATUS_W, justifyContent: "center", paddingHorizontal: 4 }]}>
+                    <StatusChip label={statusLabel} kind={statusKind} size="sm" />
+                </View>
+
+                {/* 3. ASSIGNEE */}
                 <View style={[s.cell, { width: ASSIGNEE_W, justifyContent: "center" }]}>
                     <Text numberOfLines={1} style={[s.cellText, { color: colors.textDim, fontSize: 11 }]}>
                         {assigneeName}
@@ -302,6 +345,20 @@ export default function ProjectGanttView({
                         <Text numberOfLines={1} style={[s.cellText, { color: colors.textDim, fontSize: 11 }]}>
                             {datesText}
                         </Text>
+                    )}
+                </View>
+
+                {/* 6. TIMELINE (bar + today marker share the same horizontal scroll) */}
+                <View style={{ width: timelineWidth, height: ROW_H, position: "relative" }}>
+                    {barPos && (
+                        <MobileGanttBar
+                            task={task}
+                            leftPercent={barPos.left}
+                            widthPercent={barPos.width}
+                            totalWidth={timelineWidth}
+                            isSubtask={isSubtask}
+                            onPress={() => navigation.navigate("TaskDetail", { taskId: task.id, taskName: task.name })}
+                        />
                     )}
                 </View>
             </View>
@@ -339,11 +396,14 @@ export default function ProjectGanttView({
                 nestedScrollEnabled={true}
                 overScrollMode="never"
             >
-                <View style={{ width: TOTAL_TABLE_W }}>
+                <View style={{ width: TOTAL_TABLE_W + timelineWidth }}>
                     {/* Header */}
                     <View style={[s.headerRow, { height: HEADER_H, borderBottomColor: colors.border, backgroundColor: isDark ? "#111" : colors.surface }]}>
                         <View style={[s.cell, { width: NAME_W, paddingLeft: 12 }]}>
                             <Text style={[s.headerText, { color: colors.primary }]}>TASK NAME</Text>
+                        </View>
+                        <View style={[s.cell, { width: STATUS_W, justifyContent: "center" }]}>
+                            <Text style={[s.headerText, { color: colors.textDim }]}>STATUS</Text>
                         </View>
                         <View style={[s.cell, { width: ASSIGNEE_W, justifyContent: "center" }]}>
                             <Text style={[s.headerText, { color: colors.textDim }]}>ASSIGNEE</Text>
@@ -353,6 +413,32 @@ export default function ProjectGanttView({
                         </View>
                         <View style={[s.cell, { width: DATES_W, justifyContent: "center" }]}>
                             <Text style={[s.headerText, { color: colors.textDim }]}>DATES</Text>
+                        </View>
+
+                        {/* Timeline header: month ruler + "Today" marker */}
+                        <View style={{ width: timelineWidth, height: "100%", position: "relative" }}>
+                            <View style={{ flexDirection: "row", height: "100%" }}>
+                                {monthGroups.map((group, i) => (
+                                    <View
+                                        key={`${group.label}-${i}`}
+                                        style={[
+                                            s.monthCell,
+                                            { width: group.days * DAY_W, borderLeftColor: colors.border + "55" }
+                                        ]}
+                                    >
+                                        <Text numberOfLines={1} style={[s.headerText, { color: colors.textDim }]}>
+                                            {group.label}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                            {todayOffset !== null && (
+                                <View pointerEvents="none" style={[s.todayBadgeWrap, { left: todayOffset }]}>
+                                    <View style={[s.todayBadge, { backgroundColor: colors.primary }]}>
+                                        <Text style={s.todayBadgeText}>Today</Text>
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     </View>
 
@@ -364,7 +450,19 @@ export default function ProjectGanttView({
                             <RefreshControl refreshing={false} onRefresh={() => { haptics.light(); refreshData(); }} tintColor={colors.primary} />
                         }
                     >
-                        {flatItems.map(renderRow)}
+                        <View style={{ position: "relative" }}>
+                            {/* "Today" vertical line — spans every row so it's unmistakable in both themes */}
+                            {todayOffset !== null && (
+                                <View
+                                    pointerEvents="none"
+                                    style={[
+                                        s.todayLine,
+                                        { left: TOTAL_TABLE_W + todayOffset, backgroundColor: colors.primary }
+                                    ]}
+                                />
+                            )}
+                            {flatItems.map(renderRow)}
+                        </View>
                     </ScrollView>
                 </View>
             </ScrollView>
@@ -399,36 +497,41 @@ const s = StyleSheet.create({
     },
     cellText: { fontSize: 12, lineHeight: 16 },
 
-    statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6, flexShrink: 0 },
-
-    statusPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 4,
-        alignItems: "center",
+    // Timeline header (month ruler)
+    monthCell: {
         justifyContent: "center",
+        paddingLeft: 8,
+        borderLeftWidth: StyleSheet.hairlineWidth,
     },
-    statusText: {
+
+    // "Today" marker — line spans the full body height; badge sits in the header.
+    todayLine: {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        width: 2,
+        zIndex: 5,
+    },
+    todayBadgeWrap: {
+        position: "absolute",
+        top: 2,
+        alignItems: "center",
+        transform: [{ translateX: -18 }],
+    },
+    todayBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    todayBadgeText: {
+        color: "#fff",
         fontSize: 8,
         fontWeight: "800",
-        letterSpacing: 0.2,
+        letterSpacing: 0.3,
     },
 
     // Empty state
     emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: 16, textAlign: "center" },
     emptySub: { fontSize: 13, textAlign: "center", marginTop: 8, lineHeight: 20 },
-
-    // Legend
-    legend: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 12,
-        borderTopWidth: StyleSheet.hairlineWidth,
-    },
-    legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-    legendDot: { width: 9, height: 9, borderRadius: 3 },
-    legendLabel: { fontSize: 9, fontWeight: "600" },
 });
 

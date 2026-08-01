@@ -412,7 +412,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                 <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
                     <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                         <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
-                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                                 <Ionicons name="arrow-back" size={24} color={colors.text} />
                             </TouchableOpacity>
                             <View style={styles.titleContainer}>
@@ -477,7 +477,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                         
                         {/* Header with breadcrumbs matching the project */}
                         <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
-                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                                 <Ionicons name="arrow-back" size={24} color={colors.text} />
                             </TouchableOpacity>
                             <View style={styles.titleContainer}>
@@ -620,7 +620,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
                 <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                     <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                             <Ionicons name="arrow-back" size={24} color={colors.text} />
                         </TouchableOpacity>
                         <View style={styles.titleContainer}>
@@ -663,7 +663,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                 <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                     {/* Header */}
                     <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                             <Ionicons name="arrow-back" size={24} color={colors.text} />
                         </TouchableOpacity>
                         <View style={styles.titleContainer}>

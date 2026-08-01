@@ -20,6 +20,7 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { getIndentRequestsPage, getVendors } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import StatusChip, { StatusKind } from "../components/StatusChip";
 
 const { width } = Dimensions.get("window");
 
@@ -148,6 +149,16 @@ export default function ProcurementScreen({ navigation }: any) {
         }
     };
 
+    const getIndentStatusKind = (status: string): StatusKind => {
+        switch (status) {
+            case "APPROVED": return "success";
+            case "CANCELLED": return "error";
+            case "SUBMITTED": return "warning";
+            case "ASSIGNED": return "info";
+            default: return "neutral"; // DRAFT
+        }
+    };
+
     if (loading) {
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -162,7 +173,7 @@ export default function ProcurementScreen({ navigation }: any) {
                 
                 {/* Header */}
                 <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                         <Ionicons name="chevron-back" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <View style={{ flex: 1, marginLeft: SPACING.sm }}>
@@ -179,6 +190,8 @@ export default function ProcurementScreen({ navigation }: any) {
                             style={[styles.addButton, { backgroundColor: colors.primary }]}
                             onPress={() => navigation.navigate("CreateIndent")}
                             activeOpacity={0.8}
+                            accessibilityRole="button"
+                            accessibilityLabel="Create new indent"
                         >
                             <Ionicons name="add" size={24} color="#fff" />
                         </TouchableOpacity>
@@ -237,7 +250,7 @@ export default function ProcurementScreen({ navigation }: any) {
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery("")}>
+                        <TouchableOpacity onPress={() => setSearchQuery("")} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
                             <Ionicons name="close-circle" size={18} color={colors.textDim} />
                         </TouchableOpacity>
                     )}
@@ -265,13 +278,14 @@ export default function ProcurementScreen({ navigation }: any) {
                             </View>
                         ) : (
                             filteredIndents.map((item) => {
-                                const statusStyle = getIndentStatusStyles(item.status);
                                 return (
                                     <TouchableOpacity
                                         key={item.id}
                                         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                         onPress={() => navigation.navigate("IndentDetail", { indentId: item.id })}
                                         activeOpacity={0.7}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Indent ${item.indentId || "IND-RAW"}, ${item.name}, status ${item.status}`}
                                     >
                                         <View style={styles.cardHeader}>
                                             <View style={styles.badgeRow}>
@@ -286,12 +300,8 @@ export default function ProcurementScreen({ navigation }: any) {
                                                     </View>
                                                 )}
                                             </View>
-                                            
-                                            <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-                                                <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                                                    {item.status}
-                                                </Text>
-                                            </View>
+
+                                            <StatusChip label={item.status} kind={getIndentStatusKind(item.status)} size="sm" />
                                         </View>
 
                                         <Text style={[styles.indentName, { color: colors.text }]} numberOfLines={1}>
@@ -346,17 +356,19 @@ export default function ProcurementScreen({ navigation }: any) {
                                         ]}
                                         onPress={() => setExpandedVendorId(isExpanded ? null : vendor.id)}
                                         activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`${vendor.name}, ${isExpanded ? "collapse" : "expand"} capabilities`}
                                     >
                                         <View style={styles.cardHeader}>
                                             <Text style={[styles.vendorName, { color: colors.text }]} numberOfLines={1}>
                                                 {vendor.name}
                                             </Text>
                                             
-                                            <View style={[styles.statusPill, { backgroundColor: vendor.isActive ? "#dcfce7" : "#fee2e2" }]}>
-                                                <Text style={[styles.statusText, { color: vendor.isActive ? "#166534" : "#991b1b" }]}>
-                                                    {vendor.status || (vendor.isActive ? "ACTIVE" : "INACTIVE")}
-                                                </Text>
-                                            </View>
+                                            <StatusChip
+                                                label={vendor.status || (vendor.isActive ? "ACTIVE" : "INACTIVE")}
+                                                kind={vendor.isActive ? "success" : "neutral"}
+                                                size="sm"
+                                            />
                                         </View>
 
                                         {vendor.companyName ? (

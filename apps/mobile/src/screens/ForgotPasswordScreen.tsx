@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -9,18 +8,20 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BORDER_RADIUS, SPACING } from "../constants/theme";
+import { BORDER_RADIUS, SPACING, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { requestPasswordResetOtp, resetPasswordWithOtp } from "../services/api";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
 import { isValidEmail } from "../utils/validation";
+import AmbientBackground from "../components/AmbientBackground";
+import AppButton from "../components/AppButton";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ForgotPassword">;
 
@@ -33,11 +34,14 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [codeSent, setCodeSent] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const sendCode = async () => {
+        if (loading) return;
+        setError(null);
         const normalizedEmail = email.trim().toLowerCase();
         if (!isValidEmail(normalizedEmail)) {
-            Alert.alert("Invalid Email", "Enter the email address used for your Trava account.");
+            setError("Enter the email address used for your Trava account.");
             return;
         }
 
@@ -46,25 +50,26 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
             await requestPasswordResetOtp(normalizedEmail);
             setEmail(normalizedEmail);
             setCodeSent(true);
-            Alert.alert("Code Sent", "Check your email for the password reset code.");
         } catch (error: any) {
-            Alert.alert("Could Not Send Code", error.message || "Please try again.");
+            setError(error.message || "Could not send the reset code. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     const resetPassword = async () => {
+        if (loading) return;
+        setError(null);
         if (otp.trim().length < 4) {
-            Alert.alert("Invalid Code", "Enter the complete code from your email.");
+            setError("Enter the complete code from your email.");
             return;
         }
         if (password.length < 8) {
-            Alert.alert("Weak Password", "Your new password must contain at least 8 characters.");
+            setError("Your new password must contain at least 8 characters.");
             return;
         }
         if (password !== confirmPassword) {
-            Alert.alert("Passwords Do Not Match", "Re-enter the same password in both fields.");
+            setError("Passwords do not match. Re-enter the same password in both fields.");
             return;
         }
 
@@ -75,18 +80,20 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                 { text: "Sign In", onPress: () => navigation.replace("SignIn") },
             ]);
         } catch (error: any) {
-            Alert.alert("Reset Failed", error.message || "The code may be invalid or expired.");
+            setError(error.message || "The code may be invalid or expired.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+        <SafeAreaView style={styles.safe} edges={["top"]}>
             <StatusBar
                 barStyle={isDark ? "light-content" : "dark-content"}
-                backgroundColor={colors.background}
+                translucent
+                backgroundColor="transparent"
             />
+            <AmbientBackground />
             <KeyboardAvoidingView
                 style={styles.flex}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -99,17 +106,18 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={[styles.content, { maxWidth: FORM_MAX_WIDTH }]}>
-                        <TouchableOpacity
+                        <PressableScale
+                            haptic="light"
                             accessibilityRole="button"
                             accessibilityLabel="Back to sign in"
                             onPress={() => navigation.goBack()}
-                            style={[styles.backButton, { borderColor: colors.border }]}
+                            style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surfaceSolid }]}
                         >
                             <Ionicons name="arrow-back" size={18} color={colors.text} />
                             <Text style={[styles.backText, { color: colors.text }]}>Sign In</Text>
-                        </TouchableOpacity>
+                        </PressableScale>
 
-                        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={[styles.card, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
                             <View style={[styles.icon, { backgroundColor: `${colors.primary}18` }]}>
                                 <Ionicons name="key-outline" size={26} color={colors.primary} />
                             </View>
@@ -120,12 +128,23 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                                     : "Enter your account email and we will send you a secure reset code."}
                             </Text>
 
+                            {error && (
+                                <View
+                                    accessibilityRole="alert"
+                                    style={[styles.errorBanner, { backgroundColor: isDark ? "rgba(248,113,113,0.12)" : "rgba(220,38,38,0.08)", borderColor: colors.validationError }]}
+                                >
+                                    <Ionicons name="alert-circle" size={16} color={colors.validationError} />
+                                    <Text style={[styles.errorBannerText, { color: colors.validationError }]}>{error}</Text>
+                                </View>
+                            )}
+
                             <Text style={[styles.label, { color: colors.textMuted }]}>Email Address</Text>
                             <TextInput
                                 style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                                 value={email}
-                                onChangeText={setEmail}
+                                onChangeText={(t) => { setEmail(t); setError(null); }}
                                 editable={!codeSent && !loading}
+                                accessibilityLabel="Email address"
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoCorrect={false}
@@ -139,68 +158,71 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                                     <TextInput
                                         style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                                         value={otp}
-                                        onChangeText={setOtp}
+                                        onChangeText={(t) => { setOtp(t); setError(null); }}
                                         keyboardType="number-pad"
                                         autoComplete="one-time-code"
                                         maxLength={8}
                                         placeholder="Enter code"
                                         placeholderTextColor={colors.textDim}
+                                        accessibilityLabel="Reset code"
                                     />
 
                                     <Text style={[styles.label, { color: colors.textMuted }]}>New Password</Text>
                                     <TextInput
                                         style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                                         value={password}
-                                        onChangeText={setPassword}
+                                        onChangeText={(t) => { setPassword(t); setError(null); }}
                                         secureTextEntry
                                         autoCapitalize="none"
                                         placeholder="At least 8 characters"
                                         placeholderTextColor={colors.textDim}
+                                        accessibilityLabel="New password"
                                     />
 
                                     <Text style={[styles.label, { color: colors.textMuted }]}>Confirm Password</Text>
                                     <TextInput
                                         style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
                                         value={confirmPassword}
-                                        onChangeText={setConfirmPassword}
+                                        onChangeText={(t) => { setConfirmPassword(t); setError(null); }}
                                         secureTextEntry
                                         autoCapitalize="none"
                                         placeholder="Repeat new password"
                                         placeholderTextColor={colors.textDim}
+                                        accessibilityLabel="Confirm new password"
                                     />
                                 </>
                             )}
 
-                            <TouchableOpacity
-                                style={[styles.primaryButton, { backgroundColor: colors.primary }, loading && styles.disabled]}
+                            <AppButton
+                                label={codeSent ? "Update Password" : "Send Reset Code"}
                                 onPress={codeSent ? resetPassword : sendCode}
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" size="small" />
-                                ) : (
-                                    <Text style={styles.primaryText}>
-                                        {codeSent ? "Update Password" : "Send Reset Code"}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
+                                loading={loading}
+                                fullWidth
+                                size="lg"
+                                haptic="medium"
+                                style={styles.primaryButton}
+                            />
 
                             {codeSent && (
                                 <View style={styles.actions}>
-                                    <TouchableOpacity onPress={sendCode} disabled={loading}>
+                                    <PressableScale haptic="light" onPress={sendCode} disabled={loading} accessibilityRole="button" accessibilityLabel="Resend code">
                                         <Text style={[styles.actionText, { color: colors.primary }]}>Resend code</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
+                                    </PressableScale>
+                                    <PressableScale
+                                        haptic="light"
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Change email"
                                         onPress={() => {
                                             setCodeSent(false);
                                             setOtp("");
                                             setPassword("");
                                             setConfirmPassword("");
+                                            setError(null);
                                         }}
                                         disabled={loading}
                                     >
                                         <Text style={[styles.actionText, { color: colors.textDim }]}>Change email</Text>
-                                    </TouchableOpacity>
+                                    </PressableScale>
                                 </View>
                             )}
                         </View>
@@ -224,9 +246,19 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: BORDER_RADIUS.md,
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        minHeight: TOUCH_TARGET.min,
         marginBottom: SPACING.lg,
     },
+    errorBanner: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        borderWidth: 1,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.sm,
+        marginBottom: 16,
+    },
+    errorBannerText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
     backText: { fontSize: 14, fontWeight: "600" },
     card: { width: "100%", borderWidth: 1, borderRadius: BORDER_RADIUS.lg, padding: SPACING.lg },
     icon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 18 },
@@ -241,9 +273,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         marginBottom: 18,
     },
-    primaryButton: { minHeight: 48, borderRadius: BORDER_RADIUS.md, alignItems: "center", justifyContent: "center", marginTop: 4 },
-    primaryText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-    disabled: { opacity: 0.55 },
+    primaryButton: { marginTop: 4 },
     actions: { flexDirection: "row", justifyContent: "space-between", marginTop: 18 },
     actionText: { fontSize: 13, fontWeight: "600" },
 });

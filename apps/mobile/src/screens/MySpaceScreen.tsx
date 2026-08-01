@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TextInput,
-    TouchableOpacity,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform
@@ -16,8 +15,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { getMySpaceTodos, createMySpaceTodo, toggleMySpaceTodo, deleteMySpaceTodo, syncMySpaceTodos } from "../services/api";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
+import PressableScale from "../components/PressableScale";
+import AppButton from "../components/AppButton";
 
 export default function MySpaceScreen({ navigation }: any) {
     const { colors } = useTheme();
@@ -195,9 +196,9 @@ export default function MySpaceScreen({ navigation }: any) {
             {/* Header */}
             <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                 <View style={[styles.headerContent, { maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }]}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+                    <PressableScale style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Go back">
                         <Ionicons name="arrow-back" size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </PressableScale>
                     <View style={styles.headerTitleContainer}>
                         <Text style={[styles.headerSubtitle, { color: colors.textDim }]}>
                             Workspace &gt; {activeWorkspace?.name || "Tusker"}
@@ -238,13 +239,14 @@ export default function MySpaceScreen({ navigation }: any) {
                                     onSubmitEditing={handleAddTodo}
                                     returnKeyType="done"
                                 />
-                                <TouchableOpacity
+                                <PressableScale
                                     style={[styles.addButton, { backgroundColor: colors.primary }]}
                                     onPress={handleAddTodo}
-                                    activeOpacity={0.8}
+                                    disabled={!newTodoText.trim()}
+                                    accessibilityLabel="Add task"
                                 >
-                                    <Ionicons name="add" size={24} color="#fff" />
-                                </TouchableOpacity>
+                                    <Ionicons name="add" size={24} color={colors.textInverse} />
+                                </PressableScale>
                             </View>
 
                             {/* Section Header */}
@@ -265,15 +267,18 @@ export default function MySpaceScreen({ navigation }: any) {
                     renderItem={({ item, drag, isActive }) => {
                         return (
                             <ScaleDecorator>
-                                <TouchableOpacity
+                                <PressableScale
                                     onPress={() => handleTodoPress(item)}
                                     onLongPress={drag}
                                     disabled={isActive}
                                     delayLongPress={300}
+                                    haptic="selection"
+                                    accessibilityLabel={item.text}
+                                    accessibilityHint="Double tap to edit. Long-press to reorder."
                                     style={[
-                                        styles.todoItem, 
-                                        { 
-                                            backgroundColor: colors.surface, 
+                                        styles.todoItem,
+                                        {
+                                            backgroundColor: colors.surfaceSolid,
                                             borderColor: colors.border,
                                             maxWidth: MAX_CONTENT_WIDTH,
                                             width: '100%',
@@ -282,16 +287,18 @@ export default function MySpaceScreen({ navigation }: any) {
                                         },
                                         isActive && { backgroundColor: colors.border, opacity: 0.9 }
                                     ]}
-                                    activeOpacity={0.9}
                                 >
-                                    <TouchableOpacity
+                                    <PressableScale
                                         style={styles.checkbox}
                                         onPress={() => handleToggleTodo(item.id)}
+                                        haptic="light"
+                                        accessibilityLabel="Mark task complete"
+                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                     >
                                         <View style={[styles.checkboxOutline, { borderColor: colors.textDim }]}>
                                             <View style={styles.checkboxInner} />
                                         </View>
-                                    </TouchableOpacity>
+                                    </PressableScale>
                                     {editingTodoId === item.id ? (
                                         <TextInput
                                             style={[styles.todoText, { color: colors.text, borderBottomWidth: 1, borderBottomColor: colors.primary, paddingVertical: 2 }]}
@@ -307,13 +314,16 @@ export default function MySpaceScreen({ navigation }: any) {
                                             {item.text}
                                         </Text>
                                     )}
-                                    <TouchableOpacity
+                                    <PressableScale
                                         style={styles.deleteButton}
                                         onPress={() => handleDeleteTodo(item.id)}
+                                        haptic="warning"
+                                        accessibilityLabel="Delete task"
+                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                     >
-                                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                                    </TouchableOpacity>
-                                </TouchableOpacity>
+                                        <Ionicons name="trash-outline" size={18} color={colors.error} />
+                                    </PressableScale>
+                                </PressableScale>
                             </ScaleDecorator>
                         );
                     }}
@@ -324,20 +334,25 @@ export default function MySpaceScreen({ navigation }: any) {
                                     COMPLETED ({completedTodos.length})
                                 </Text>
                                 {completedTodos.map((todo) => (
-                                    <TouchableOpacity
+                                    <PressableScale
                                         key={todo.id}
-                                        style={[styles.todoItem, { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.6 }]}
+                                        style={[styles.todoItem, { backgroundColor: colors.surfaceSolid, borderColor: colors.border, opacity: 0.6 }]}
                                         onPress={() => handleTodoPress(todo)}
-                                        activeOpacity={0.9}
+                                        haptic="selection"
+                                        accessibilityLabel={`${todo.text}, completed`}
+                                        accessibilityHint="Double tap to edit"
                                     >
-                                        <TouchableOpacity
+                                        <PressableScale
                                             style={styles.checkbox}
                                             onPress={() => handleToggleTodo(todo.id)}
+                                            haptic="light"
+                                            accessibilityLabel="Mark task incomplete"
+                                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                         >
                                             <View style={[styles.checkboxChecked, { backgroundColor: colors.primary }]}>
-                                                <Ionicons name="checkmark" size={14} color="#fff" />
+                                                <Ionicons name="checkmark" size={14} color={colors.textInverse} />
                                             </View>
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                         {editingTodoId === todo.id ? (
                                             <TextInput
                                                 style={[styles.todoText, styles.completedText, { color: colors.textDim, borderBottomWidth: 1, borderBottomColor: colors.primary, paddingVertical: 2 }]}
@@ -353,13 +368,15 @@ export default function MySpaceScreen({ navigation }: any) {
                                                 {todo.text}
                                             </Text>
                                         )}
-                                        <TouchableOpacity
+                                        <PressableScale
                                             style={styles.deleteButton}
                                             onPress={() => handleDeleteTodo(todo.id)}
+                                            haptic="warning"
+                                            accessibilityLabel="Delete task"
                                         >
-                                            <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                                        </TouchableOpacity>
-                                    </TouchableOpacity>
+                                            <Ionicons name="trash-outline" size={18} color={colors.error} />
+                                        </PressableScale>
+                                    </PressableScale>
                                 ))}
                             </View>
                         ) : null

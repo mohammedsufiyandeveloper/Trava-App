@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    TouchableOpacity,
     TextInput,
     ScrollView,
     ActivityIndicator,
@@ -15,13 +14,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList, UserProfile } from "../types";
 import { useTheme } from "../context/ThemeContext";
 import { getProfile, updateProfile } from "../services/api";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
+import AppCard from "../components/AppCard";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MyProfile">;
 
@@ -97,9 +97,15 @@ export default function MyProfileScreen({ navigation }: Props) {
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                 {/* Header */}
                 <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(16, SPACING.xl, SPACING.xxl) }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <PressableScale
+                        onPress={() => navigation.goBack()}
+                        style={styles.backBtn}
+                        haptic="light"
+                        accessibilityLabel="Go back"
+                        accessibilityRole="button"
+                    >
                         <Ionicons name="chevron-back" size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </PressableScale>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>My Profile</Text>
                     <View style={{ width: 40 }} />
                 </View>
@@ -131,7 +137,7 @@ export default function MyProfileScreen({ navigation }: Props) {
                     <View style={styles.formContainer}>
                         <Text style={[styles.sectionTitle, { color: colors.textDim }]}>PERSONAL IDENTITY</Text>
 
-                        <View style={[styles.formGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <AppCard padded={false} style={styles.formGroup}>
                             <View style={styles.inputItem}>
                                 <Text style={[styles.inputLabel, { color: colors.textDim }]}>First Name</Text>
                                 <TextInput
@@ -151,10 +157,10 @@ export default function MyProfileScreen({ navigation }: Props) {
                                 />
                                 <Ionicons name="lock-closed" size={14} color={colors.textDim} style={{ position: "absolute", right: 16, bottom: 12 }} />
                             </View>
-                        </View>
+                        </AppCard>
 
                         <Text style={[styles.sectionTitle, { color: colors.textDim, marginTop: 24 }]}>CONTACT INFORMATION</Text>
-                        <View style={[styles.formGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <AppCard padded={false} style={styles.formGroup}>
                             <View style={styles.inputItem}>
                                 <Text style={[styles.inputLabel, { color: colors.textDim }]}>Email Address</Text>
                                 <TextInput
@@ -177,14 +183,16 @@ export default function MyProfileScreen({ navigation }: Props) {
                                 />
                                 <Ionicons name="lock-closed" size={14} color={colors.textDim} style={{ position: "absolute", right: 16, bottom: 12 }} />
                             </View>
-                        </View>
+                        </AppCard>
 
                         <Text style={[styles.sectionTitle, { color: colors.textDim, marginTop: 24 }]}>SECURITY</Text>
-                        <View style={[styles.formGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                            <TouchableOpacity
+                        <AppCard padded={false} style={styles.formGroup}>
+                            <PressableScale
                                 style={styles.menuItem}
                                 onPress={() => navigation.navigate("ChangePassword")}
-                                activeOpacity={0.7}
+                                haptic="selection"
+                                accessibilityLabel="Change password"
+                                accessibilityRole="button"
                             >
                                 <View style={styles.menuLeft}>
                                     <View style={[styles.iconBox, { backgroundColor: "#8b5cf615" }]}>
@@ -193,8 +201,8 @@ export default function MyProfileScreen({ navigation }: Props) {
                                     <Text style={[styles.menuLabel, { color: colors.text }]}>Change Password</Text>
                                 </View>
                                 <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
-                            </TouchableOpacity>
-                        </View>
+                            </PressableScale>
+                        </AppCard>
 
                     </View>
 

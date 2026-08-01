@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, DeviceEventEmitter } from "react-native";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, DeviceEventEmitter } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getActivities, getCachedSession, getTaskById } from "../../services/api";
 import { Task } from "../../types";
 import { format } from "date-fns";
+import AppCard from "../../components/AppCard";
+import PressableScale from "../../components/PressableScale";
 
 interface ProjectDashboardProps {
     projectId: string;
@@ -222,22 +224,25 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
                 style={styles.statsScrollWrapper}
             >
                 {stats.map((stat, i) => (
-                    <TouchableOpacity
+                    <AppCard
                         key={i}
-                        style={[styles.statCard, { backgroundColor: colors.surfaceHighlight, borderColor: colors.border }]}
-                        activeOpacity={0.7}
                         onPress={() => onStatPress?.(stat.label)}
+                        elevation="sm"
+                        style={styles.statCard}
+                        accessibilityLabel={`${stat.label}: ${stat.value}`}
                     >
-                        <View style={[styles.iconBox, { backgroundColor: stat.color + "20" }]}>
-                            <Ionicons name={stat.icon} size={20} color={stat.color} />
+                        <View style={styles.statCardInner}>
+                            <View style={[styles.iconBox, { backgroundColor: stat.color + "20" }]}>
+                                <Ionicons name={stat.icon} size={20} color={stat.color} />
+                            </View>
+                            <View style={styles.textContainer}>
+                                <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
+                                <Text style={[styles.statLabel, { color: colors.textDim }]} numberOfLines={1}>
+                                    {stat.label.split(" ")[0]}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.textContainer}>
-                            <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
-                            <Text style={[styles.statLabel, { color: colors.textDim }]} numberOfLines={1}>
-                                {stat.label.split(" ")[0]}
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
+                    </AppCard>
                 ))}
             </ScrollView>
 
@@ -248,7 +253,7 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
                     <ActivityIndicator color={colors.primary} />
                 </View>
             ) : activities.length === 0 ? (
-                <View style={[styles.activityCard, { backgroundColor: colors.surface, borderColor: colors.border, justifyContent: "center", borderStyle: "dashed" }]}>
+                <View style={[styles.activityCard, { backgroundColor: colors.surfaceSolid, borderColor: colors.border, justifyContent: "center", borderStyle: "dashed" }]}>
                     <Text style={[styles.activityText, { color: colors.textDim, textAlign: "center" }]}>
                         {isFullView ? "No workspace activity found." : "No recent activity found for your tasks."}
                     </Text>
@@ -257,11 +262,13 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
                 <>
                     <View style={styles.activityList}>
                         {activities.slice(0, 5).map((act) => (
-                            <TouchableOpacity
+                            <AppCard
                                 key={act.id}
-                                style={[styles.activityItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                 onPress={() => handleActivityPress(act)}
-                                activeOpacity={0.7}
+                                elevation="none"
+                                padded={false}
+                                style={styles.activityItem}
+                                accessibilityLabel={act.text}
                             >
                                 <View style={[styles.activityIconBox, { backgroundColor: colors.primary + "10" }]}>
                                     <Ionicons name="chatbubble-outline" size={16} color={colors.primary} />
@@ -277,18 +284,21 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
                                     </View>
                                     {/* Entity sub-line removed per user request */}
                                 </View>
-                            </TouchableOpacity>
+                            </AppCard>
                         ))}
                     </View>
                     {activities.length > 5 && (
-                        <TouchableOpacity
-                            style={{ padding: SPACING.md, alignItems: "center", marginTop: SPACING.sm }}
+                        <PressableScale
+                            style={styles.viewAllBtn}
+                            haptic="selection"
                             onPress={() => navigation?.navigate("ProjectActivity", { projectId, projectName: tasks[0]?.project?.name || "Project" })}
+                            accessibilityRole="button"
+                            accessibilityLabel="View all activity"
                         >
                             <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>
                                 View All Activity
                             </Text>
-                        </TouchableOpacity>
+                        </PressableScale>
                     )}
                 </>
             )}
@@ -305,12 +315,11 @@ const styles = StyleSheet.create({
     statsScrollWrapper: { marginVertical: 0 },
     statsScroll: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.lg },
     statCard: {
+        width: 150,
+    },
+    statCardInner: {
         flexDirection: "row",
         alignItems: "center",
-        width: 150,
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
         gap: 12,
     },
     iconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
@@ -324,9 +333,14 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         padding: 10,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
         gap: 12,
+    },
+    viewAllBtn: {
+        padding: SPACING.md,
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: SPACING.sm,
+        minHeight: TOUCH_TARGET.min,
     },
     activityIconBox: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
     activityAuthor: { fontSize: 13, fontWeight: "700" },

@@ -21,6 +21,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createSubTask, getWorkspaceMembers, getProjectMembers, getTags, getTasks, updateTask } from "../services/api";
 import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
+import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -345,7 +346,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                     </View>
                                     <Text style={[styles.title, { color: colors.text }]}>{isEditing ? "Edit Sub Task" : "Create Sub Task"}</Text>
                                 </View>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
                                     <Ionicons name="close" size={22} color={colors.textDim} />
                                 </TouchableOpacity>
                             </View>
@@ -588,21 +589,15 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
 
                         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
                             {error && <Text style={[styles.errorText, { marginBottom: 12, marginTop: 0 }]}>{error}</Text>}
-                            <TouchableOpacity
-                                style={[
-                                    styles.createBtn,
-                                    { backgroundColor: colors.primary },
-                                    loading && styles.createBtnDisabled
-                                ]}
+                            <AppButton
+                                label={isEditing ? "Save Changes" : "Create Sub Task"}
+                                icon="save-outline"
                                 onPress={handleSubmit}
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <><Ionicons name="save-outline" size={18} color="#fff" /><Text style={styles.createBtnText}>{isEditing ? "Save Changes" : "Create Sub Task"}</Text></>
-                                )}
-                            </TouchableOpacity>
+                                loading={loading}
+                                fullWidth
+                                size="lg"
+                                haptic="medium"
+                            />
                         </View>
                     </View>
                 </KeyboardAvoidingView>

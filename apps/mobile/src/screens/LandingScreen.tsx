@@ -1,34 +1,32 @@
 import React from "react";
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    StatusBar,
-} from "react-native";
+import { View, Text, StyleSheet, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
+import AmbientBackground from "../components/AmbientBackground";
+import GlassSurface from "../components/GlassSurface";
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Landing">;
 
 export default function LandingScreen({ navigation }: Props) {
     const { colors, isDark } = useTheme();
     const { FORM_MAX_WIDTH, value } = useResponsive();
-    
+
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-            <View style={[styles.container, { backgroundColor: colors.background, paddingHorizontal: value(SPACING.lg * 1.2, SPACING.xl, SPACING.xxl) }]}>
-                
+        <SafeAreaView style={styles.safe}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+            <AmbientBackground decoration />
+            <View style={[styles.container, { paddingHorizontal: value(SPACING.lg * 1.2, SPACING.xl, SPACING.xxl) }]}>
+
                 <View style={[styles.contentWrapper, { maxWidth: FORM_MAX_WIDTH }]}>
                     {/* Badge */}
-                    <View style={[styles.badge, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <GlassSurface level="surface" radius="full" elevation="none" style={styles.badge}>
                         <Text style={[styles.badgeText, { color: colors.textMuted }]}>Welcome to Trava Management</Text>
-                    </View>
+                    </GlassSurface>
 
                     {/* Headline */}
                     <Text style={[styles.title, { color: colors.text }]}>Elevate your Experience</Text>
@@ -40,22 +38,24 @@ export default function LandingScreen({ navigation }: Props) {
                     </Text>
 
                     {/* Primary CTA */}
-                    <TouchableOpacity
-                        style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-                        activeOpacity={0.85}
+                    <AppButton
+                        label="Explore Workspace"
                         onPress={() => navigation.navigate("SignUp")}
-                    >
-                        <Text style={styles.primaryText}>Explore Workspace</Text>
-                    </TouchableOpacity>
+                        fullWidth
+                        size="lg"
+                        haptic="medium"
+                        style={styles.primaryBtn}
+                    />
 
                     {/* Secondary CTA */}
-                    <TouchableOpacity
-                        style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                        activeOpacity={0.85}
+                    <AppButton
+                        label="Log In"
+                        variant="secondary"
                         onPress={() => navigation.navigate("SignIn")}
-                    >
-                        <Text style={[styles.secondaryText, { color: colors.text }]}>Log In</Text>
-                    </TouchableOpacity>
+                        fullWidth
+                        size="lg"
+                        haptic="light"
+                    />
                 </View>
             </View>
         </SafeAreaView>
@@ -77,10 +77,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     badge: {
-        borderWidth: 1,
-        borderRadius: BORDER_RADIUS.full,
         paddingHorizontal: 14,
-        paddingVertical: 5,
+        paddingVertical: 6,
         marginBottom: 28,
     },
     badgeText: {
@@ -103,29 +101,6 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     primaryBtn: {
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: BORDER_RADIUS.md,
-        width: "100%",
-        alignItems: "center",
         marginBottom: 12,
-    },
-    primaryText: {
-        color: "#ffffff",
-        fontWeight: "600",
-        fontSize: 16,
-        letterSpacing: 0.2,
-    },
-    secondaryBtn: {
-        borderWidth: 1,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: BORDER_RADIUS.md,
-        width: "100%",
-        alignItems: "center",
-    },
-    secondaryText: {
-        fontWeight: "500",
-        fontSize: 16,
     },
 });

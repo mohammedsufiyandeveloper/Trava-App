@@ -16,6 +16,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { deleteTask } from "../../services/api";
 import { Task } from "../../types";
+import ConfirmationSheet from "../../components/ConfirmationSheet";
 
 interface ProjectTaskListProps {
     projectId: string;
@@ -37,6 +38,9 @@ export default function ProjectTaskList({
     const { colors } = useTheme();
     const { activeWorkspace, projects } = useWorkspace();
 
+    const [deleteTarget, setDeleteTarget] = React.useState<Task | null>(null);
+    const [deleting, setDeleting] = React.useState(false);
+
     const handleLongPress = (item: Task) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Alert.alert(
@@ -51,33 +55,25 @@ export default function ProjectTaskList({
                 {
                     text: "Delete",
                     style: "destructive",
-                    onPress: () => confirmDelete(item)
+                    onPress: () => setDeleteTarget(item)
                 }
             ]
         );
     };
 
-    const confirmDelete = (item: Task) => {
-        Alert.alert(
-            "Delete Task",
-            `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await deleteTask(item.id);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            refreshData();
-                        } catch (error: any) {
-                            Alert.alert("Error", error.message || "Failed to delete task");
-                        }
-                    }
-                }
-            ]
-        );
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            await deleteTask(deleteTarget.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setDeleteTarget(null);
+            refreshData();
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to delete task");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
@@ -128,6 +124,9 @@ export default function ProjectTaskList({
                 }}
                 onLongPress={() => handleLongPress(item)}
                 delayLongPress={500}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name}, ${totalSubCount} deliverable${totalSubCount === 1 ? "" : "s"}`}
+                accessibilityHint="Opens deliverables. Long press for edit or delete options."
             >
                 <View style={styles.taskHeader}>
                     <Text style={[styles.taskName, { color: colors.text }]} numberOfLines={1}>
@@ -138,6 +137,7 @@ export default function ProjectTaskList({
                             <Text style={[styles.subtaskText, { color: colors.primary }]}>{totalSubCount}</Text>
                         </View>
                     )}
+                    <Ionicons name="chevron-forward" size={16} color={colors.textDim} style={{ marginLeft: 6 }} />
                 </View>
             </TouchableOpacity>
         );
@@ -152,20 +152,32 @@ export default function ProjectTaskList({
     }
 
     return (
-        <FlatList
-            data={parentTasks}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={false} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshData(); }} tintColor={colors.primary} />}
-            ListEmptyComponent={
-                <View style={styles.empty}>
-                    <Ionicons name="list-outline" size={48} color={colors.textDim} />
-                    <Text style={[styles.emptyText, { color: colors.textDim }]}>No main tasks in this project yet.</Text>
-                </View>
-            }
-        />
+        <>
+            <FlatList
+                data={parentTasks}
+                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={false} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshData(); }} tintColor={colors.primary} />}
+                ListEmptyComponent={
+                    <View style={styles.empty}>
+                        <Ionicons name="list-outline" size={48} color={colors.textDim} />
+                        <Text style={[styles.emptyText, { color: colors.textDim }]}>No main tasks in this project yet.</Text>
+                    </View>
+                }
+            />
+            <ConfirmationSheet
+                visible={!!deleteTarget}
+                title="Delete task?"
+                description={deleteTarget ? `"${deleteTarget.name}" and its subtasks will be permanently deleted. This action cannot be undone.` : undefined}
+                tone="destructive"
+                confirmLabel="Delete"
+                loading={deleting}
+                onConfirm={handleConfirmDelete}
+                onClose={() => setDeleteTarget(null)}
+            />
+        </>
     );
 }
 

@@ -5,7 +5,6 @@ import {
     StyleSheet,
     Modal,
     TextInput,
-    TouchableOpacity,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
@@ -13,11 +12,13 @@ import {
     Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { updateProject, getProject, getWorkspaceMembers } from "../services/api";
 import { WorkspaceMember, Project } from "../types";
+import PressableScale from "./PressableScale";
+import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -159,7 +160,7 @@ export default function EditProjectModal({ visible, onClose, projectId }: EditPr
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={styles.container}
                 >
-                    <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+                    <View style={[styles.sheet, { backgroundColor: colors.surfaceSolid }]}>
                         {/* Header */}
                         <View style={styles.header}>
                             <View style={[styles.handle, { backgroundColor: colors.border }]} />
@@ -170,9 +171,15 @@ export default function EditProjectModal({ visible, onClose, projectId }: EditPr
                                     </View>
                                     <Text style={[styles.title, { color: colors.text }]}>Edit Project</Text>
                                 </View>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <PressableScale
+                                    onPress={onClose}
+                                    style={styles.closeBtn}
+                                    accessibilityLabel="Close"
+                                    accessibilityRole="button"
+                                    hitSlop={8}
+                                >
                                     <Ionicons name="close" size={22} color={colors.textDim} />
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
                         </View>
 
@@ -184,7 +191,10 @@ export default function EditProjectModal({ visible, onClose, projectId }: EditPr
                         ) : (
                             <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
                                 {/* Project Name */}
-                                <Text style={[styles.label, { marginTop: 8, color: colors.textDim }]}>Project Name</Text>
+                                <View style={styles.row}>
+                                    <Text style={[styles.label, { marginTop: 8, color: colors.textDim }]}>Project Name</Text>
+                                    <Text style={[styles.label, { marginTop: 8, color: colors.primary, marginLeft: 4 }]}>*</Text>
+                                </View>
                                 <TextInput
                                     style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                                     placeholder="Enter project name"
@@ -296,9 +306,13 @@ export default function EditProjectModal({ visible, onClose, projectId }: EditPr
                                 <Text style={[styles.label, { color: colors.textDim }]}>Project Color</Text>
                                 <View style={styles.colorGrid}>
                                     {PROJECT_COLORS.map((c) => (
-                                        <TouchableOpacity
+                                        <PressableScale
                                             key={c}
                                             onPress={() => setSelectedColor(c)}
+                                            haptic="selection"
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Color ${c}`}
+                                            accessibilityState={{ selected: selectedColor === c }}
                                             style={[
                                                 styles.colorSwatch,
                                                 { backgroundColor: c },
@@ -308,35 +322,32 @@ export default function EditProjectModal({ visible, onClose, projectId }: EditPr
                                             {selectedColor === c && (
                                                 <Ionicons name="checkmark" size={14} color="#fff" />
                                             )}
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                     ))}
                                 </View>
 
-                                {error && <Text style={styles.errorText}>{error}</Text>}
+                                {error && (
+                                    <Text style={[styles.errorText, { color: colors.validationError }]} accessibilityRole="alert">
+                                        {error}
+                                    </Text>
+                                )}
                                 <View style={{ height: 40 }} />
                             </ScrollView>
                         )}
 
                         {/* Footer */}
-                        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveBtn,
-                                    { backgroundColor: selectedColor },
-                                    (!name.trim() || loading || fetching) && styles.saveBtnDisabled
-                                ]}
+                        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surfaceSolid }]}>
+                            <AppButton
+                                label="Save Changes"
                                 onPress={handleUpdate}
-                                disabled={!name.trim() || loading || fetching}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="save-outline" size={18} color="#fff" />
-                                        <Text style={styles.saveBtnText}>Save Changes</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                loading={loading}
+                                disabled={!name.trim() || fetching}
+                                icon="save-outline"
+                                haptic="medium"
+                                fullWidth
+                                style={{ backgroundColor: selectedColor, height: 52 }}
+                                textStyle={{ color: "#fff" }}
+                            />
                         </View>
                     </View>
                 </KeyboardAvoidingView>
@@ -391,7 +402,7 @@ const styles = StyleSheet.create({
         fontSize: 19,
         fontWeight: "700",
     },
-    closeBtn: { padding: 4 },
+    closeBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
     content: { padding: SPACING.lg },
     loadingContainer: {
         height: 300,

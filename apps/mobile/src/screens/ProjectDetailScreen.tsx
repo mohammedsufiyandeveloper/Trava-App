@@ -3,18 +3,15 @@ import {
     View,
     Text,
     StyleSheet,
-    TouchableOpacity,
     StatusBar,
     Dimensions,
     ScrollView,
-    ActivityIndicator,
-    Platform,
     DeviceEventEmitter,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
 import { getTasks, getCachedSession } from "../services/api";
@@ -28,6 +25,8 @@ import ProjectGanttView from "./project/ProjectGanttView";
 import TaskFilterSheet from "../components/TaskFilterSheet";
 import CreateTaskModal from "../components/CreateTaskModal";
 import { useResponsive } from "../hooks/useResponsive";
+import GlassSurface from "../components/GlassSurface";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ProjectDetail">;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -169,12 +168,24 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
             {/* Custom Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
+            <GlassSurface
+                level="elevated"
+                intensity="header"
+                radius="lg"
+                elevation="sm"
+                style={[styles.header, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}
+            >
                 <View style={{ maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <PressableScale
+                            onPress={() => navigation.goBack()}
+                            style={styles.backBtn}
+                            accessibilityLabel="Go back"
+                            accessibilityRole="button"
+                            hitSlop={8}
+                        >
                             <Ionicons name="arrow-back" size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </PressableScale>
                         <View style={styles.titleContainer}>
                             <View style={[styles.colorDot, { backgroundColor: projectColor || colors.primary }]} />
                             <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{projectName}</Text>
@@ -182,38 +193,47 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
                     </View>
                     <View style={styles.headerActions}>
                         {activeTab === "Tasks" && (
-                            <TouchableOpacity
+                            <PressableScale
                                 style={[styles.filterBtn, { backgroundColor: colors.surfaceHighlight }]}
                                 onPress={() => setCreateTaskVisible(true)}
+                                accessibilityLabel="Create task"
+                                accessibilityRole="button"
                             >
                                 <Ionicons name="add" size={22} color={colors.primary} />
-                            </TouchableOpacity>
+                            </PressableScale>
                         )}
                     </View>
                 </View>
-            </View>
+            </GlassSurface>
 
-            {/* Sub-navigation Tabs */}
+            {/* Sub-navigation Tabs (segmented control) */}
             <View style={[styles.tabBarContainer, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
                 <View style={{ maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
-                    <View style={[styles.tabBar, { backgroundColor: colors.surface }]}>
+                    <View
+                        style={[styles.tabBar, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
+                        accessibilityRole="tablist"
+                    >
                         {tabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             return (
-                                <TouchableOpacity
+                                <PressableScale
                                     key={tab.id}
                                     onPress={() => setActiveTab(tab.id)}
-                                    style={[styles.tabItem, isActive && { backgroundColor: isDark ? colors.primary + "25" : colors.primary + "15" }]}
+                                    haptic="selection"
+                                    style={[styles.tabItem, isActive && { backgroundColor: colors.primary }]}
+                                    accessibilityRole="tab"
+                                    accessibilityLabel={tab.label}
+                                    accessibilityState={{ selected: isActive }}
                                 >
                                     <Ionicons
                                         name={tab.icon}
                                         size={18}
-                                        color={isActive ? colors.primary : colors.textDim}
+                                        color={isActive ? colors.textInverse : colors.textDim}
                                     />
-                                    <Text style={[styles.tabLabel, { color: colors.textDim }, isActive && { color: colors.primary }]}>
+                                    <Text style={[styles.tabLabel, { color: colors.textDim }, isActive && { color: colors.textInverse }]}>
                                         {tab.label}
                                     </Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             );
                         })}
                     </View>
@@ -266,20 +286,20 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { justifyContent: "center", height: 60, borderBottomWidth: 1 },
-    backBtn: { padding: 4 },
-    titleContainer: { flex: 1, flexDirection: "row", alignItems: "center", marginLeft: SPACING.md },
+    header: { justifyContent: "center", height: 60, borderRadius: 0, borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0 },
+    backBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, justifyContent: "center", alignItems: "flex-start" },
+    titleContainer: { flex: 1, flexDirection: "row", alignItems: "center", marginLeft: SPACING.sm },
     colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
     title: { fontSize: 18, fontWeight: "700" },
     headerActions: { flexDirection: "row", alignItems: "center", gap: 12 },
-    filterBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
+    filterBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, borderRadius: TOUCH_TARGET.min / 2, justifyContent: "center", alignItems: "center" },
     filterBadge: { position: "absolute", top: -2, right: -2, width: 14, height: 14, borderRadius: 7, justifyContent: "center", alignItems: "center", borderWidth: 1 },
     filterBadgeText: { color: "#fff", fontSize: 8, fontWeight: "800" },
     moreBtn: { padding: 4 },
 
     tabBarContainer: { paddingVertical: SPACING.sm, borderBottomWidth: 1 },
-    tabBar: { flexDirection: "row", borderRadius: BORDER_RADIUS.md, padding: 4, height: 44, justifyContent: "space-between" },
-    tabItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: BORDER_RADIUS.sm, gap: 6 },
+    tabBar: { flexDirection: "row", borderRadius: BORDER_RADIUS.md, padding: 4, height: 48, justifyContent: "space-between", borderWidth: 1 },
+    tabItem: { flex: 1, minHeight: TOUCH_TARGET.min - 8, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: BORDER_RADIUS.sm, gap: 6 },
     tabLabel: { fontSize: 12, fontWeight: "600" },
 
     activeFiltersBar: { paddingVertical: SPACING.sm, borderBottomWidth: 1 },

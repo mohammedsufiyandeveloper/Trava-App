@@ -5,7 +5,6 @@ import {
     StyleSheet,
     Modal,
     TextInput,
-    TouchableOpacity,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
@@ -13,11 +12,13 @@ import {
     Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createProject, getWorkspaceMembers } from "../services/api";
 import { WorkspaceMember } from "../types";
+import PressableScale from "./PressableScale";
+import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -201,7 +202,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={styles.container}
                 >
-                    <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+                    <View style={[styles.sheet, { backgroundColor: colors.surfaceSolid }]}>
                         {/* Header */}
                         <View style={styles.header}>
                             <View style={[styles.handle, { backgroundColor: colors.border }]} />
@@ -212,9 +213,15 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                     </View>
                                     <Text style={[styles.title, { color: colors.text }]}>Create Project</Text>
                                 </View>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <PressableScale
+                                    onPress={onClose}
+                                    style={styles.closeBtn}
+                                    accessibilityLabel="Close"
+                                    accessibilityRole="button"
+                                    hitSlop={8}
+                                >
                                     <Ionicons name="close" size={22} color={colors.textDim} />
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
                         </View>
 
@@ -230,23 +237,31 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                     <Text style={[styles.workspaceChipText, { color: colors.textDim }]}>{activeWorkspace.name}</Text>
                                 </View>
                             )}
-                            
+
                             {/* Project Type Toggle */}
                             <View style={[styles.typeSelector, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                                <TouchableOpacity 
-                                    style={[styles.typeBtn, !isInternal && { backgroundColor: selectedColor }]} 
+                                <PressableScale
+                                    style={[styles.typeBtn, !isInternal && { backgroundColor: selectedColor }]}
                                     onPress={() => setIsInternal(false)}
+                                    haptic="selection"
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Client project"
+                                    accessibilityState={{ selected: !isInternal }}
                                 >
                                     <Ionicons name="people-outline" size={16} color={!isInternal ? "#fff" : colors.textDim} />
                                     <Text style={[styles.typeBtnText, { color: !isInternal ? "#fff" : colors.textDim }]}>Client Project</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.typeBtn, isInternal && { backgroundColor: selectedColor }]} 
+                                </PressableScale>
+                                <PressableScale
+                                    style={[styles.typeBtn, isInternal && { backgroundColor: selectedColor }]}
                                     onPress={() => setIsInternal(true)}
+                                    haptic="selection"
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Internal project"
+                                    accessibilityState={{ selected: isInternal }}
                                 >
                                     <Ionicons name="business-outline" size={16} color={isInternal ? "#fff" : colors.textDim} />
                                     <Text style={[styles.typeBtnText, { color: isInternal ? "#fff" : colors.textDim }]}>Internal Project</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
 
                             {/* Project Name */}
@@ -381,9 +396,13 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                             ) : (
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                                     {members.map((member) => (
-                                        <TouchableOpacity
+                                        <PressableScale
                                             key={member.userId}
                                             onPress={() => setSelectedManagerId(member.userId)}
+                                            haptic="selection"
+                                            accessibilityRole="button"
+                                            accessibilityLabel={member.user.surname || member.user.name}
+                                            accessibilityState={{ selected: selectedManagerId === member.userId }}
                                             style={[
                                                 styles.memberItem,
                                                 selectedManagerId === member.userId && { borderColor: selectedColor, backgroundColor: selectedColor + "10" }
@@ -409,7 +428,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                                     <Ionicons name="checkmark" size={10} color="#fff" />
                                                 </View>
                                             )}
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                     ))}
                                 </ScrollView>
                             )}
@@ -425,26 +444,22 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                         </ScrollView>
 
                         {/* Footer */}
-                        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
-                            {error && <Text style={[styles.errorText, { marginBottom: 12, marginTop: 0 }]}>{error}</Text>}
-                            <TouchableOpacity
-                                style={[
-                                    styles.createBtn,
-                                    { backgroundColor: selectedColor },
-                                    loading && styles.createBtnDisabled
-                                ]}
+                        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surfaceSolid }]}>
+                            {error && (
+                                <Text style={[styles.errorText, { color: colors.validationError, marginBottom: 12, marginTop: 0 }]} accessibilityRole="alert">
+                                    {error}
+                                </Text>
+                            )}
+                            <AppButton
+                                label="Create Project"
                                 onPress={handleCreate}
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="layers-outline" size={18} color="#fff" />
-                                        <Text style={styles.createBtnText}>Create Project</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                loading={loading}
+                                icon="layers-outline"
+                                haptic="medium"
+                                fullWidth
+                                style={{ backgroundColor: selectedColor, height: 52 }}
+                                textStyle={{ color: "#fff" }}
+                            />
                         </View>
                     </View>
                 </KeyboardAvoidingView>
@@ -499,7 +514,7 @@ const styles = StyleSheet.create({
         fontSize: SCREEN_WIDTH < 380 ? 17 : 19,
         fontWeight: "700",
     },
-    closeBtn: { padding: 4 },
+    closeBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
     content: { padding: SPACING.lg },
 
     workspaceChip: {

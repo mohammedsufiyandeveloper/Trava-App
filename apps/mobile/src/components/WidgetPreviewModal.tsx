@@ -187,6 +187,8 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                         style={[styles.cardHeader, { borderBottomColor: colors.border }]}
                         onPress={() => setSelectedFilter(null)}
                         activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Back to team attendance summary from ${config.label} list`}
                     >
                         <Ionicons name="chevron-back" size={18} color={colors.textDim} />
                         <Ionicons name={config.icon} size={18} color={config.color} style={{ marginLeft: 4 }} />
@@ -243,17 +245,17 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                 ) : attendanceStats ? (
                     <View>
                         <View style={styles.statRow}>
-                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#10b98118' }]} onPress={() => setSelectedFilter('present')} activeOpacity={0.7}>
+                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#10b98118' }]} onPress={() => setSelectedFilter('present')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${attendanceStats.present} members present, view list`}>
                                 <Ionicons name="checkmark-circle" size={22} color="#10b981" />
                                 <Text style={[styles.statNum, { color: '#10b981' }]}>{attendanceStats.present}</Text>
                                 <Text style={[styles.statLabel, { color: colors.textDim }]}>Present</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#ef444418' }]} onPress={() => setSelectedFilter('absent')} activeOpacity={0.7}>
+                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#ef444418' }]} onPress={() => setSelectedFilter('absent')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${attendanceStats.absent} members absent, view list`}>
                                 <Ionicons name="close-circle" size={22} color="#ef4444" />
                                 <Text style={[styles.statNum, { color: '#ef4444' }]}>{attendanceStats.absent}</Text>
                                 <Text style={[styles.statLabel, { color: colors.textDim }]}>Absent</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#f59e0b18' }]} onPress={() => setSelectedFilter('late')} activeOpacity={0.7}>
+                            <TouchableOpacity style={[styles.statBubble, { backgroundColor: '#f59e0b18' }]} onPress={() => setSelectedFilter('late')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${attendanceStats.late} members late, view list`}>
                                 <Ionicons name="time" size={22} color="#f59e0b" />
                                 <Text style={[styles.statNum, { color: '#f59e0b' }]}>{attendanceStats.late}</Text>
                                 <Text style={[styles.statLabel, { color: colors.textDim }]}>Late</Text>

@@ -5,7 +5,6 @@ import {
     StyleSheet,
     FlatList,
     TextInput,
-    TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
@@ -28,8 +27,11 @@ import {
     getCachedSession,
     sendTypingIndicator
 } from "../services/api";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
+import { isToday, isYesterday, isSameDay, format as formatDate } from "date-fns";
+import GlassSurface from "../components/GlassSurface";
+import PressableScale from "../components/PressableScale";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DirectChat">;
 
@@ -54,6 +56,9 @@ export default function DirectChatScreen({ route, navigation }: Props) {
     const [hasOlderMessages, setHasOlderMessages] = useState(false);
     const [nextMessageCursor, setNextMessageCursor] = useState<string | null>(null);
     const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+    // Visual-only: surfaces a "failed to send, tap to retry" affordance. Does not
+    // change the underlying send call, dedup, or realtime delivery mechanism.
+    const [failedMessage, setFailedMessage] = useState<string | null>(null);
 
     const flatListRef = useRef<FlatList>(null);
 
@@ -222,6 +227,7 @@ export default function DirectChatScreen({ route, navigation }: Props) {
         const content = inputText.trim();
         setInputText("");
         setSending(true);
+        setFailedMessage(null);
 
         // Stop typing indicator
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -233,26 +239,77 @@ export default function DirectChatScreen({ route, navigation }: Props) {
             await sendDirectMessage(conversationId, content);
         } catch (error) {
             console.error("Failed to send message:", error);
+            setFailedMessage(content);
         } finally {
             setSending(false);
         }
     };
 
-    const renderMessage = ({ item }: { item: DirectMessage }) => {
+    const handleRetrySend = () => {
+        if (!failedMessage) return;
+        setInputText(failedMessage);
+        setFailedMessage(null);
+    };
+
+    const formatDaySeparator = (date: Date) => {
+        if (isToday(date)) return "Today";
+        if (isYesterday(date)) return "Yesterday";
+        return formatDate(date, "MMMM d, yyyy");
+    };
+
+    // `messages` is newest-first (index 0 = newest) to match the inverted FlatList.
+    const renderMessage = ({ item, index }: { item: DirectMessage; index: number }) => {
         const isMe = item.userId === currentUser?.id;
+        const olderNeighbor = messages[index + 1]; // rendered above (chronologically earlier)
+        const newerNeighbor = messages[index - 1]; // rendered below (chronologically later)
+
+        const isFirstOfGroup = !olderNeighbor || olderNeighbor.userId !== item.userId;
+        const isLastOfGroup = !newerNeighbor || newerNeighbor.userId !== item.userId;
+        const showDaySeparator = !olderNeighbor || !isSameDay(new Date(olderNeighbor.createdAt), new Date(item.createdAt));
 
         return (
-            <View style={[styles.messageRow, isMe ? styles.myMessageRow : styles.otherMessageRow]}>
-                <View style={[
-                    styles.messageBubble,
-                    isMe ? [styles.myBubble, { backgroundColor: colors.primary }] : [styles.otherBubble, { backgroundColor: colors.surfaceHighlight }]
-                ]}>
-                    <Text style={[styles.messageText, { color: isMe ? "#fff" : colors.text }]}>
-                        {item.content}
-                    </Text>
-                    <Text style={[styles.messageTime, { color: isMe ? "rgba(255,255,255,0.7)" : colors.textDim }]}>
-                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+            <View>
+                {showDaySeparator && (
+                    <View style={styles.daySeparatorRow}>
+                        <Text style={[styles.daySeparatorText, { color: colors.textDim, backgroundColor: colors.surfaceSolid }]}>
+                            {formatDaySeparator(new Date(item.createdAt))}
+                        </Text>
+                    </View>
+                )}
+                <View
+                    style={[
+                        styles.messageRow,
+                        isMe ? styles.myMessageRow : styles.otherMessageRow,
+                        { marginBottom: isFirstOfGroup ? 10 : 2 },
+                    ]}
+                >
+                    <View
+                        style={[
+                            styles.messageBubble,
+                            isMe
+                                ? [
+                                    styles.myBubble,
+                                    { backgroundColor: colors.primary },
+                                    !isLastOfGroup && styles.myBubbleGrouped,
+                                    !isFirstOfGroup && styles.myBubbleGroupedTop,
+                                ]
+                                : [
+                                    styles.otherBubble,
+                                    { backgroundColor: colors.surfaceSolidRaised },
+                                    !isLastOfGroup && styles.otherBubbleGrouped,
+                                    !isFirstOfGroup && styles.otherBubbleGroupedTop,
+                                ],
+                        ]}
+                    >
+                        <Text style={[styles.messageText, { color: isMe ? colors.textInverse : colors.text }]}>
+                            {item.content}
+                        </Text>
+                        {isLastOfGroup && (
+                            <Text style={[styles.messageTime, { color: isMe ? "rgba(26,26,26,0.6)" : colors.textDim }]}>
+                                {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                        )}
+                    </View>
                 </View>
             </View>
         );
@@ -269,16 +326,18 @@ export default function DirectChatScreen({ route, navigation }: Props) {
 
                 <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                     <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(16, SPACING.xl, SPACING.xxl) }]}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <PressableScale onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
                             <Ionicons name="chevron-back" size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </PressableScale>
                         <View style={styles.headerInfo}>
                             <Text style={[styles.headerName, { color: colors.text }]}>{otherUserName}</Text>
-                            <Text style={[styles.headerStatus, { color: colors.textDim, textTransform: 'lowercase' }]}>
-                                {otherUserRole || "active"}
-                            </Text>
+                            {otherUserRole ? (
+                                <Text style={[styles.headerStatus, { color: colors.textDim, textTransform: 'lowercase' }]}>
+                                    {otherUserRole}
+                                </Text>
+                            ) : null}
                         </View>
-                        <View style={{ width: 40 }} />
+                        <View style={{ width: TOUCH_TARGET.min }} />
                     </View>
 
                     {loading ? (
@@ -307,9 +366,11 @@ export default function DirectChatScreen({ route, navigation }: Props) {
                             ListHeaderComponent={
                                 isOtherTyping ? (
                                     <View style={styles.typingContainer}>
-                                        <Text style={[styles.typingText, { color: colors.textDim }]}>
-                                            {otherTypingName} is typing...
-                                        </Text>
+                                        <View style={[styles.typingBubble, { backgroundColor: colors.surfaceSolidRaised }]}>
+                                            <Text style={[styles.typingText, { color: colors.textDim }]}>
+                                                {otherTypingName} is typing…
+                                            </Text>
+                                        </View>
                                     </View>
                                 ) : null
                             }
@@ -321,31 +382,52 @@ export default function DirectChatScreen({ route, navigation }: Props) {
                         />
                     )}
 
-                    <View style={[styles.inputArea, { 
-                        borderTopColor: colors.border, 
-                        backgroundColor: colors.surface,
-                        paddingBottom: isKeyboardVisible ? 12 : (Platform.OS === "ios" ? 30 : 12)
-                    }]}>
+                    {failedMessage && (
+                        <PressableScale
+                            onPress={handleRetrySend}
+                            style={[styles.retryBanner, { backgroundColor: colors.error + "20", borderColor: colors.error }]}
+                            haptic="warning"
+                            accessibilityLabel="Message failed to send. Tap to retry."
+                        >
+                            <Ionicons name="alert-circle" size={16} color={colors.error} />
+                            <Text style={[styles.retryText, { color: colors.error }]}>Message failed to send. Tap to retry.</Text>
+                        </PressableScale>
+                    )}
+
+                    <GlassSurface
+                        level="elevated"
+                        allowBlur
+                        style={[styles.inputArea, {
+                            borderRadius: 0,
+                            borderLeftWidth: 0,
+                            borderRightWidth: 0,
+                            borderBottomWidth: 0,
+                            borderTopColor: colors.glassBorder,
+                            paddingBottom: isKeyboardVisible ? 12 : (Platform.OS === "ios" ? 30 : 12),
+                        }]}
+                    >
                         <TextInput
-                            style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
+                            style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}
                             placeholder="Type a message..."
                             placeholderTextColor={colors.textDim}
                             value={inputText}
                             onChangeText={handleTextChange}
                             multiline
+                            accessibilityLabel="Message input"
                         />
-                        <TouchableOpacity
+                        <PressableScale
                             style={[styles.sendBtn, { backgroundColor: colors.primary }, (!inputText.trim() || sending) && { opacity: 0.5 }]}
                             onPress={handleSend}
                             disabled={!inputText.trim() || sending}
+                            accessibilityLabel="Send message"
                         >
                             {sending ? (
-                                <ActivityIndicator size="small" color="#fff" />
+                                <ActivityIndicator size="small" color={colors.textInverse} />
                             ) : (
-                                <Ionicons name="send" size={20} color="#fff" />
+                                <Ionicons name="send" size={20} color={colors.textInverse} />
                             )}
-                        </TouchableOpacity>
-                    </View>
+                        </PressableScale>
+                    </GlassSurface>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -362,15 +444,24 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderBottomWidth: 1,
     },
-    backBtn: { width: 40, height: 40, justifyContent: "center" },
+    backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center" },
     headerInfo: { alignItems: "center" },
     headerName: { fontSize: 16, fontWeight: "700" },
     headerStatus: { fontSize: 10, fontWeight: "600", marginTop: 2 },
 
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    listContent: { padding: 16, gap: 12, paddingTop: 20 },
+    listContent: { padding: 16, paddingTop: 20 },
 
-    messageRow: { flexDirection: "row", width: "100%", marginBottom: 4 },
+    daySeparatorRow: { alignItems: "center", marginVertical: 10 },
+    daySeparatorText: {
+        fontSize: 11,
+        fontWeight: "700",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+    },
+
+    messageRow: { flexDirection: "row", width: "100%" },
     myMessageRow: { justifyContent: "flex-end" },
     otherMessageRow: { justifyContent: "flex-start" },
 
@@ -378,13 +469,30 @@ const styles = StyleSheet.create({
         maxWidth: "80%",
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 16,
+        borderRadius: 18,
     },
     myBubble: { borderBottomRightRadius: 4 },
+    myBubbleGrouped: { borderBottomRightRadius: 18 },
+    myBubbleGroupedTop: { borderTopRightRadius: 4 },
     otherBubble: { borderBottomLeftRadius: 4 },
+    otherBubbleGrouped: { borderBottomLeftRadius: 18 },
+    otherBubbleGroupedTop: { borderTopLeftRadius: 4 },
 
     messageText: { fontSize: 15, lineHeight: 20 },
     messageTime: { fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
+
+    retryBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginHorizontal: 16,
+        marginBottom: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+    },
+    retryText: { fontSize: 12, fontWeight: "600", flexShrink: 1 },
 
     inputArea: {
         flexDirection: "row",
@@ -405,9 +513,9 @@ const styles = StyleSheet.create({
         fontSize: 15,
     },
     sendBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: TOUCH_TARGET.min,
+        height: TOUCH_TARGET.min,
+        borderRadius: TOUCH_TARGET.min / 2,
         justifyContent: "center",
         alignItems: "center",
         marginLeft: 8,
@@ -416,6 +524,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 4,
         marginBottom: 8,
+    },
+    typingBubble: {
+        alignSelf: "flex-start",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 18,
+        borderBottomLeftRadius: 4,
     },
     typingText: {
         fontSize: 12,

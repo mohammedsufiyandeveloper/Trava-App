@@ -55,6 +55,9 @@ export default function CreateIndentScreen({ route, navigation }: any) {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [materials, setMaterials] = useState<any[]>([]);
 
+    // Inline field validation (preserves entered values on failure)
+    const [formErrors, setFormErrors] = useState<{ name?: string }>({});
+
     // Modal state for adding material item
     const [itemModalVisible, setItemModalVisible] = useState(false);
     const [matName, setMatName] = useState("");
@@ -173,9 +176,10 @@ export default function CreateIndentScreen({ route, navigation }: any) {
     const handleSubmit = async () => {
         if (!activeWorkspace?.id) return;
         if (!name.trim()) {
-            Alert.alert("Error", "Indent name is required");
+            setFormErrors((e) => ({ ...e, name: "Indent name is required." }));
             return;
         }
+        setFormErrors({});
         if (!selectedProject) {
             Alert.alert("Error", "Please select a project");
             return;
@@ -248,12 +252,19 @@ export default function CreateIndentScreen({ route, navigation }: any) {
                     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Text style={[styles.label, { color: colors.textDim }]}>Indent Name *</Text>
                         <TextInput
-                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                            style={[
+                                styles.input,
+                                { backgroundColor: colors.background, color: colors.text, borderColor: formErrors.name ? colors.error : colors.border },
+                            ]}
                             value={name}
-                            onChangeText={setName}
+                            onChangeText={(t) => {
+                                setName(t);
+                                if (formErrors.name) setFormErrors((e) => ({ ...e, name: "" }));
+                            }}
                             placeholder="e.g. Sourcing Cement for Phase 1"
                             placeholderTextColor={colors.textDim}
                         />
+                        {formErrors.name ? <Text style={[styles.errorText, { color: colors.error }]}>{formErrors.name}</Text> : null}
 
                         <Text style={[styles.label, { color: colors.textDim, marginTop: SPACING.md }]}>Description</Text>
                         <TextInput
@@ -514,6 +525,7 @@ const styles = StyleSheet.create({
     
     card: { padding: 16, borderRadius: BORDER_RADIUS.lg, borderWidth: 1 },
     label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
+    errorText: { fontSize: 12, fontWeight: "600", marginTop: 6 },
     input: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 15 },
     textArea: { height: 80, paddingVertical: 10, textAlignVertical: "top" },
     

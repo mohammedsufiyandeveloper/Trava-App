@@ -19,6 +19,7 @@ import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createProjectTask, updateTask } from "../services/api";
+import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -124,7 +125,7 @@ export default function CreateTaskModal({ visible, onClose, initialProjectId, ed
                             <View style={[styles.handle, { backgroundColor: colors.border }]} />
                             <View style={styles.titleRow}>
                                 <Text style={[styles.title, { color: colors.text }]}>{isEditing ? "Edit Task" : "Create Task"}</Text>
-                                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
                                     <Ionicons name="close" size={24} color={colors.textDim} />
                                 </TouchableOpacity>
                             </View>
@@ -178,20 +179,15 @@ export default function CreateTaskModal({ visible, onClose, initialProjectId, ed
 
                         <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
                             {error && <Text style={[styles.errorText, { marginBottom: 12, marginTop: 0 }]}>{error}</Text>}
-                            <TouchableOpacity 
-                                style={[styles.createBtn, { backgroundColor: colors.primary }, loading && styles.createBtnDisabled]}
+                            <AppButton
+                                label={isEditing ? "Save Changes" : "Create Task"}
+                                icon={isEditing ? undefined : "add"}
                                 onPress={handleSubmit}
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="add" size={20} color="#fff" />
-                                        <Text style={styles.createBtnText}>{isEditing ? "Save Changes" : "Create Task"}</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                loading={loading}
+                                fullWidth
+                                size="lg"
+                                haptic="medium"
+                            />
                         </View>
                     </View>
                 </KeyboardAvoidingView>

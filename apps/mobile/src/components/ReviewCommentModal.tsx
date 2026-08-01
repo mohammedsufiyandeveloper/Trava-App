@@ -1,21 +1,22 @@
 import React, { useState } from "react";
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    Modal, 
-    TouchableOpacity, 
-    TextInput, 
-    ActivityIndicator,
+import {
+    View,
+    Text,
+    StyleSheet,
+    Modal,
+    TouchableOpacity,
+    TextInput,
     KeyboardAvoidingView,
     Platform,
-    ScrollView
+    ScrollView,
+    ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { SPACING, BORDER_RADIUS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
+import AppButton from "./AppButton";
 
 interface ReviewCommentModalProps {
     visible: boolean;
@@ -29,6 +30,7 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
     const [comment, setComment] = useState("");
     const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handlePickFile = async () => {
         try {
@@ -40,9 +42,10 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
                 if (asset.size && asset.size > 10 * 1024 * 1024) {
-                    alert("File size must be less than 10MB");
+                    setError("File size must be less than 10MB");
                     return;
                 }
+                setError(null);
                 setAttachment(asset);
             }
         } catch (err) {
@@ -56,11 +59,12 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
 
     const handleSubmit = async () => {
         if (!comment.trim() && !attachment) {
-            alert("Please provide a comment or attachment");
+            setError("Please provide a comment or attachment");
             return;
         }
 
         setIsSubmitting(true);
+        setError(null);
         try {
             let attachmentData = null;
             if (attachment) {
@@ -76,14 +80,14 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
             }
 
             await onSubmit(comment.trim(), attachmentData);
-            
+
             // Reset
             setComment("");
             setAttachment(null);
             onClose();
-        } catch (error) {
-            console.error("Error submitting review:", error);
-            alert("Failed to submit review. Please try again.");
+        } catch (err: any) {
+            console.error("Error submitting review:", err);
+            setError(err?.message || "Failed to submit review. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -92,6 +96,7 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
     const handleCancel = () => {
         setComment("");
         setAttachment(null);
+        setError(null);
         onClose();
     };
 
@@ -109,7 +114,7 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
                 <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: colors.text }]}>Add Review Comment</Text>
-                        <TouchableOpacity onPress={handleCancel}>
+                        <TouchableOpacity onPress={handleCancel} accessibilityRole="button" accessibilityLabel="Close">
                             <Ionicons name="close" size={24} color={colors.textDim} />
                         </TouchableOpacity>
                     </View>

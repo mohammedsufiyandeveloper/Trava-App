@@ -5,7 +5,6 @@ import {
     StyleSheet,
     Modal,
     TextInput,
-    TouchableOpacity,
     ActivityIndicator,
     ScrollView,
     Dimensions,
@@ -13,16 +12,19 @@ import {
     Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { 
-    getProjectMembers, 
-    getWorkspaceMembers, 
-    addProjectMembers, 
-    updateProjectMember, 
-    removeProjectMember 
+import {
+    getProjectMembers,
+    getWorkspaceMembers,
+    addProjectMembers,
+    updateProjectMember,
+    removeProjectMember
 } from "../services/api";
+import PressableScale from "./PressableScale";
+import ConfirmationSheet from "./ConfirmationSheet";
+import EmptyState from "./EmptyState";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -46,6 +48,7 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [showAddMember, setShowAddMember] = useState(false);
+    const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
 
     useEffect(() => {
         if (visible && projectId) {
@@ -113,32 +116,26 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
     };
 
     const handleRemoveMember = (userId: string, name: string) => {
-        Alert.alert(
-            "Remove Member",
-            `Are you sure you want to remove ${name} from this project?`,
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Remove", 
-                    style: "destructive",
-                    onPress: async () => {
-                        setActionLoading(userId);
-                        try {
-                            const res = await removeProjectMember(projectId, userId);
-                            if (res.success) {
-                                await loadAllData();
-                            } else {
-                                Alert.alert("Error", res.error || "Failed to remove member");
-                            }
-                        } catch (err: any) {
-                            Alert.alert("Error", err.message || "An error occurred");
-                        } finally {
-                            setActionLoading(null);
-                        }
-                    }
-                }
-            ]
-        );
+        setRemoveTarget({ userId, name });
+    };
+
+    const confirmRemoveMember = async () => {
+        if (!removeTarget) return;
+        const { userId } = removeTarget;
+        setActionLoading(userId);
+        try {
+            const res = await removeProjectMember(projectId, userId);
+            if (res.success) {
+                await loadAllData();
+                setRemoveTarget(null);
+            } else {
+                Alert.alert("Error", res.error || "Failed to remove member");
+            }
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "An error occurred");
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     const filteredWorkspaceMembers = workspaceMembers.filter(wm => {
@@ -156,7 +153,7 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+                <View style={[styles.sheet, { backgroundColor: colors.surfaceSolid }]}>
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={[styles.handle, { backgroundColor: colors.border }]} />
@@ -170,9 +167,15 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                                     <Text style={[styles.subtitle, { color: colors.textDim }]} numberOfLines={1}>{projectName}</Text>
                                 </View>
                             </View>
-                            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <PressableScale
+                                onPress={onClose}
+                                style={styles.closeBtn}
+                                accessibilityLabel="Close"
+                                accessibilityRole="button"
+                                hitSlop={8}
+                            >
                                 <Ionicons name="close" size={22} color={colors.textDim} />
-                            </TouchableOpacity>
+                            </PressableScale>
                         </View>
                     </View>
 
@@ -187,13 +190,16 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                                 <Text style={[styles.sectionTitle, { color: colors.textDim }]}>
                                     {projectMembers.length} Members
                                 </Text>
-                                <TouchableOpacity 
+                                <PressableScale
                                     style={[styles.addBtn, { backgroundColor: colors.primary }]}
                                     onPress={() => setShowAddMember(true)}
+                                    haptic="selection"
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Add member"
                                 >
                                     <Ionicons name="add" size={18} color="#fff" />
                                     <Text style={styles.addBtnText}>Add</Text>
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
 
                             <ScrollView style={styles.memberList}>
@@ -211,34 +217,40 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                                             </View>
                                             <View style={styles.userDetails}>
                                                 <Text style={[styles.memberName, { color: colors.text }]}>{member.surname || member.name}</Text>
-                                                <TouchableOpacity 
+                                                <PressableScale
                                                     style={[styles.roleBadge, { backgroundColor: colors.background }]}
                                                     onPress={() => handleUpdateRole(member.userId, member.role)}
                                                     disabled={actionLoading === member.userId}
+                                                    haptic="selection"
+                                                    accessibilityRole="button"
+                                                    accessibilityLabel={`Role: ${(member.role ?? "MEMBER").replace("_", " ")}. Tap to change`}
                                                 >
                                                     <Text style={[styles.roleText, { color: colors.textDim }]}>
                                                         {(member.role ?? "MEMBER").replace("_", " ")}
                                                     </Text>
                                                     <Ionicons name="chevron-forward" size={12} color={colors.textDim} style={{ marginLeft: 4 }} />
-                                                </TouchableOpacity>
+                                                </PressableScale>
                                             </View>
                                         </View>
-                                        
-                                        <TouchableOpacity 
-                                            onPress={() => handleRemoveMember(member.userId, member.name)}
+
+                                        <PressableScale
+                                            onPress={() => handleRemoveMember(member.userId, member.surname || member.name)}
                                             disabled={actionLoading === member.userId}
                                             style={styles.removeBtn}
+                                            haptic="warning"
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Remove ${member.surname || member.name} from project`}
                                         >
                                             {actionLoading === member.userId ? (
                                                 <ActivityIndicator size="small" color={colors.error} />
                                             ) : (
                                                 <Ionicons name="trash-outline" size={20} color={colors.error} />
                                             )}
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                     </View>
                                 ))}
                                 {projectMembers.length === 0 && (
-                                    <Text style={[styles.emptyText, { color: colors.textDim }]}>No members found in this project.</Text>
+                                    <EmptyState icon="people-outline" title="No members yet" message="Add workspace members to this project to get started." />
                                 )}
                                 <View style={{ height: 40 }} />
                             </ScrollView>
@@ -246,17 +258,35 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                     )}
                 </View>
 
+                <ConfirmationSheet
+                    visible={!!removeTarget}
+                    title="Remove member"
+                    description={removeTarget ? `Are you sure you want to remove ${removeTarget.name} from this project?` : undefined}
+                    tone="destructive"
+                    confirmLabel="Remove"
+                    cancelLabel="Cancel"
+                    loading={!!removeTarget && actionLoading === removeTarget.userId}
+                    onConfirm={confirmRemoveMember}
+                    onClose={() => { if (!actionLoading) setRemoveTarget(null); }}
+                />
+
                 {/* Add Member Sub-Modal */}
                 <Modal visible={showAddMember} transparent animationType="fade">
                     <View style={styles.subOverlay}>
-                        <View style={[styles.subContainer, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.subContainer, { backgroundColor: colors.surfaceSolid }]}>
                             <View style={styles.subHeader}>
                                 <Text style={[styles.subTitle, { color: colors.text }]}>Add Workspace Member</Text>
-                                <TouchableOpacity onPress={() => setShowAddMember(false)}>
+                                <PressableScale
+                                    onPress={() => setShowAddMember(false)}
+                                    style={styles.subCloseBtn}
+                                    accessibilityLabel="Close"
+                                    accessibilityRole="button"
+                                    hitSlop={8}
+                                >
                                     <Ionicons name="close" size={24} color={colors.textDim} />
-                                </TouchableOpacity>
+                                </PressableScale>
                             </View>
-                            
+
                             <View style={[styles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
                                 <Ionicons name="search" size={18} color={colors.textDim} />
                                 <TextInput
@@ -265,16 +295,20 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                                     placeholderTextColor={colors.textDim}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
+                                    accessibilityLabel="Search workspace members"
                                 />
                             </View>
 
                             <ScrollView style={styles.subList}>
                                 {filteredWorkspaceMembers.map((wm) => (
-                                    <TouchableOpacity 
-                                        key={wm.userId} 
+                                    <PressableScale
+                                        key={wm.userId}
                                         style={[styles.subCard, { borderBottomColor: colors.border }]}
                                         onPress={() => handleAddMember(wm.userId)}
                                         disabled={!!actionLoading}
+                                        haptic="selection"
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Add ${wm.user.surname || wm.user.name}`}
                                     >
                                         <View style={styles.subInfo}>
                                             <View style={[styles.subAvatar, { backgroundColor: colors.primary + "15" }]}>
@@ -292,7 +326,7 @@ export default function ProjectMembersModal({ visible, onClose, projectId, proje
                                         ) : (
                                             <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                                         )}
-                                    </TouchableOpacity>
+                                    </PressableScale>
                                 ))}
                                 {filteredWorkspaceMembers.length === 0 && (
                                     <Text style={[styles.emptyText, { color: colors.textDim, marginTop: 40 }]}>
@@ -359,7 +393,8 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: -2,
     },
-    closeBtn: { padding: 4 },
+    closeBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
+    subCloseBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
     content: { 
         flex: 1,
         paddingHorizontal: SPACING.lg,
@@ -380,8 +415,9 @@ const styles = StyleSheet.create({
     addBtn: {
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        justifyContent: "center",
+        paddingHorizontal: 14,
+        minHeight: TOUCH_TARGET.min - 8,
         borderRadius: 16,
         gap: 4,
     },
@@ -439,7 +475,10 @@ const styles = StyleSheet.create({
         textTransform: "uppercase",
     },
     removeBtn: {
-        padding: 8,
+        minWidth: TOUCH_TARGET.min,
+        minHeight: TOUCH_TARGET.min,
+        justifyContent: "center",
+        alignItems: "center",
     },
     loadingContainer: {
         flex: 1,

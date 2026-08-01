@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import PressableScale from "./PressableScale";
+import GlassSurface from "./GlassSurface";
 
 export default function RadialMenu({
     visible,
@@ -77,12 +78,12 @@ export default function RadialMenu({
                                     accessibilityRole="button"
                                     accessibilityLabel={`Create ${item.label}`}
                                 >
-                                    <View style={[styles.labelContainer, { backgroundColor: isDark ? colors.surface : "#FFFFFF" }]}>
+                                    <GlassSurface level="elevated" intensity="sheet" radius="lg" elevation="sm" style={styles.labelContainer}>
                                         <Text style={[styles.labelText, { color: colors.text }]}>{item.label}</Text>
-                                    </View>
-                                    <View style={[styles.iconBlob, { backgroundColor: isDark ? colors.surface : "#FFFFFF" }]}>
+                                    </GlassSurface>
+                                    <GlassSurface level="elevated" intensity="sheet" radius="full" elevation="sm" style={styles.iconBlob}>
                                         <Ionicons name={item.icon as any} size={22} color={item.color} />
-                                    </View>
+                                    </GlassSurface>
                                 </PressableScale>
                             </Animated.View>
                         );

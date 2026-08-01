@@ -1,11 +1,29 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, TOUCH_TARGET } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { Task } from "../types";
 import { formatGanttDateRange, calculateDuration } from "../utils/ganttUtils";
-import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
+import { getStatusHex } from "../utils/taskColors";
+import StatusChip, { StatusKind } from "./StatusChip";
+
+const STATUS_LABELS: Record<string, string> = {
+    TO_DO: "To Do",
+    IN_PROGRESS: "In Progress",
+    REVIEW: "Review",
+    HOLD: "Hold",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+};
+const STATUS_KINDS: Record<string, StatusKind> = {
+    TO_DO: "todo",
+    IN_PROGRESS: "inProgress",
+    REVIEW: "review",
+    HOLD: "hold",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+};
 
 interface GanttTaskRowProps {
     task: Task;
@@ -60,7 +78,14 @@ export default function GanttTaskRow({
                 {/* Expander Arrow - ONLY for Tree Expansion */}
                 <View style={styles.expanderContainer}>
                     {hasSubtasks ? (
-                        <TouchableOpacity onPress={onToggle} style={styles.expander}>
+                        <TouchableOpacity
+                            onPress={onToggle}
+                            style={styles.expander}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            accessibilityRole="button"
+                            accessibilityLabel={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+                            accessibilityState={{ expanded: isExpanded }}
+                        >
                             <Ionicons
                                 name={isExpanded ? "chevron-down" : "chevron-forward"}
                                 size={18}
@@ -106,9 +131,13 @@ export default function GanttTaskRow({
                                 >
                                     {task.name}
                                 </Text>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={() => setIsDetailExpanded(!isDetailExpanded)}
                                     style={styles.detailToggle}
+                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={isDetailExpanded ? "Hide task details" : "Show task details"}
+                                    accessibilityState={{ expanded: isDetailExpanded }}
                                 >
                                     <Ionicons
                                         name={isDetailExpanded ? "chevron-up" : "chevron-down"}
@@ -126,7 +155,11 @@ export default function GanttTaskRow({
                         )}
 
                         {isSubtask && !isDetailExpanded && (
-                            <View style={[styles.miniStatus, { backgroundColor: getStatusColor() }]} />
+                            <StatusChip
+                                label={STATUS_LABELS[task.status ?? "TO_DO"] ?? task.status ?? "To Do"}
+                                kind={STATUS_KINDS[task.status ?? "TO_DO"] ?? "todo"}
+                                size="sm"
+                            />
                         )}
                     </View>
 
@@ -136,11 +169,11 @@ export default function GanttTaskRow({
                             <View style={styles.detailsGrid}>
                                 {/* Status */}
                                 <View style={[styles.col, { flex: 1.2 }]}>
-                                    <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(task.status), borderColor: getStatusHex(task.status) + "30" }]}>
-                                        <Text style={[styles.statusBadgeText, { color: getStatusColor() }]}>
-                                            {(task.status ?? "TO_DO").replace("_", " ")}
-                                        </Text>
-                                    </View>
+                                    <StatusChip
+                                        label={STATUS_LABELS[task.status ?? "TO_DO"] ?? task.status ?? "To Do"}
+                                        kind={STATUS_KINDS[task.status ?? "TO_DO"] ?? "todo"}
+                                        size="sm"
+                                    />
                                 </View>
 
                                 {/* Assignee */}
