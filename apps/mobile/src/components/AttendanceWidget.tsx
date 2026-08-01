@@ -197,8 +197,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
     );
   }
 
-  const isCheckedIn = attendance && attendance.checkIn;
-  const isCheckedOut = attendance && attendance.checkOut;
+  const isCheckedIn = !!(attendance && attendance.checkIn);
+  const isCheckedOut = !!(attendance && attendance.checkOut);
 
   const getStatusText = () => {
     if (isAdmin && viewMode === 'team' && teamStats) {
