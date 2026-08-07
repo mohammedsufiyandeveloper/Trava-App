@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 
-import { MOTION, SPACING, TOUCH_TARGET } from "../constants/theme";
+import { MOTION, SPACING } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -12,15 +12,16 @@ import PressableScale from "../components/PressableScale";
 import GlassSurface from "../components/GlassSurface";
 
 interface TabMeta {
-    iconActive: keyof typeof Ionicons.glyphMap;
-    iconInactive: keyof typeof Ionicons.glyphMap;
+    iconActive: string;
+    iconInactive: string;
     label: string;
+    iconFamily?: "Ionicons" | "MaterialCommunityIcons" | "Feather";
 }
 
 const TAB_META: Record<string, TabMeta> = {
     Home: { iconActive: "home", iconInactive: "home-outline", label: "Home" },
     Projects: { iconActive: "briefcase", iconInactive: "briefcase-outline", label: "Projects" },
-    MyTasks: { iconActive: "list", iconInactive: "list-outline", label: "Tasks" },
+    MyTasks: { iconActive: "trello", iconInactive: "trello", label: "Board", iconFamily: "Feather" },
     Profile: { iconActive: "person", iconInactive: "person-outline", label: "Profile" },
 };
 
@@ -28,45 +29,50 @@ function TabButton({
     focused,
     meta,
     onPress,
-    activeColor,
-    inactiveColor,
     reducedMotion,
 }: {
     focused: boolean;
     meta: TabMeta;
     onPress: () => void;
-    activeColor: string;
-    inactiveColor: string;
     reducedMotion: boolean;
 }) {
     const iconStyle = useAnimatedStyle(() => ({
         transform: [
-            { scale: reducedMotion ? 1 : withSpring(focused ? 1.12 : 1, MOTION.spring.snappy) },
+            { scale: reducedMotion ? 1 : withSpring(focused ? 1.05 : 1, MOTION.spring.snappy) },
         ],
     }));
+
+    const IconComponent = 
+        meta.iconFamily === "MaterialCommunityIcons" 
+            ? MaterialCommunityIcons 
+            : meta.iconFamily === "Feather"
+            ? Feather
+            : Ionicons;
 
     return (
         <PressableScale
             haptic={null}
-            activeScale={0.9}
+            activeScale={0.95}
             onPress={onPress}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={meta.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", height: "100%", minHeight: TOUCH_TARGET.min }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", height: "100%" }}
         >
-            <Animated.View style={[{ alignItems: "center" }, iconStyle]}>
-                <Ionicons
-                    name={focused ? meta.iconActive : meta.iconInactive}
-                    size={focused ? 23 : 20}
-                    color={focused ? activeColor : inactiveColor}
-                />
+            <Animated.View style={[{ alignItems: "center", justifyContent: "center", width: "100%" }, iconStyle]}>
+                <View style={{ height: 32, width: 56, borderRadius: 16, justifyContent: "center", alignItems: "center" }}>
+                    <IconComponent
+                        name={focused ? (meta.iconActive as any) : (meta.iconInactive as any)}
+                        size={20}
+                        color={focused ? "#000000" : "#888888"}
+                    />
+                </View>
                 <Text
                     style={{
-                        fontSize: focused ? 10 : 9,
-                        fontWeight: focused ? "800" : "500",
-                        color: focused ? activeColor : inactiveColor,
-                        marginTop: 2,
+                        fontSize: 10,
+                        fontWeight: focused ? "700" : "500",
+                        color: focused ? "#ffffff" : "#888888",
+                        marginTop: 4,
                     }}
                 >
                     {meta.label}
@@ -76,11 +82,6 @@ function TabButton({
     );
 }
 
-/**
- * Premium bottom tab bar: a spring-driven pill indicator slides under the active
- * tab, icons scale on focus, and every tab change fires a selection haptic.
- * Respects Reduce Motion (indicator snaps instead of springing).
- */
 export default function AnimatedTabBar({
     state,
     navigation,
@@ -90,32 +91,29 @@ export default function AnimatedTabBar({
     navigation: any;
     onOpenMenu: () => void;
 }) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const reducedMotion = useReducedMotion();
     const routes = state.routes;
 
-    const [pillWidth, setPillWidth] = useState(0);
-    const onPillLayout = useCallback((e: LayoutChangeEvent) => {
-        setPillWidth(e.nativeEvent.layout.width);
+    const [tabsWidth, setTabsWidth] = useState(0);
+    const onTabsLayout = useCallback((e: LayoutChangeEvent) => {
+        setTabsWidth(e.nativeEvent.layout.width);
     }, []);
 
-    const PILL_PADDING = 4;
-    const tabWidth = pillWidth > 0 ? (pillWidth - PILL_PADDING * 2) / routes.length : 0;
+    const tabWidth = tabsWidth > 0 ? tabsWidth / routes.length : 0;
+    const indicatorWidth = 56;
 
     const indicatorStyle = useAnimatedStyle(() => {
-        const x = PILL_PADDING + state.index * tabWidth;
+        const x = state.index * tabWidth + (tabWidth - indicatorWidth) / 2;
         return {
-            width: tabWidth,
+            width: indicatorWidth,
             transform: [
                 { translateX: reducedMotion ? withTiming(x, { duration: 0 }) : withSpring(x, MOTION.spring.snappy) },
             ],
         };
     });
 
-    const indicatorBg = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)";
-    // expo-blur on Android is more prone to jank/inconsistency behind fast-scrolling
-    // content; keep the tab bar's blur cheap and lean on the tint if it struggles.
     const allowTabBarBlur = Platform.OS !== "android" || Platform.Version >= 28;
 
     const handlePress = (route: any, index: number) => {
@@ -130,93 +128,109 @@ export default function AnimatedTabBar({
     return (
         <View
             style={{
-                flexDirection: "row",
-                alignItems: "center",
                 backgroundColor: colors.background,
                 paddingHorizontal: SPACING.md,
                 paddingBottom: Math.max(insets.bottom, SPACING.sm),
                 paddingTop: SPACING.sm,
-                gap: 12,
             }}
         >
             <GlassSurface
                 level="elevated"
                 intensity="header"
-                radius="full"
+                radius="xl"
                 elevation="md"
                 allowBlur={allowTabBarBlur}
-                style={{ flex: 1 }}
+                style={{ 
+                    backgroundColor: "#111111", 
+                    borderRadius: 24, 
+                    borderWidth: 1, 
+                    borderColor: "rgba(255,255,255,0.04)" 
+                }}
             >
                 <View
-                    onLayout={onPillLayout}
-                    accessibilityRole="tablist"
                     style={{
                         flexDirection: "row",
-                        height: 56,
-                        padding: PILL_PADDING,
+                        alignItems: "center",
+                        height: 64,
+                        paddingHorizontal: 8,
                     }}
                 >
-                    {pillWidth > 0 && (
-                        <Animated.View
-                            pointerEvents="none"
-                            style={[
-                                {
-                                    position: "absolute",
-                                    top: PILL_PADDING,
-                                    bottom: PILL_PADDING,
-                                    borderRadius: 22,
-                                    backgroundColor: indicatorBg,
-                                    borderWidth: StyleSheet.hairlineWidth,
-                                    borderColor: colors.glassBorder,
-                                    shadowColor: isDark ? "#000" : colors.primary,
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: isDark ? 0.35 : 0.15,
-                                    shadowRadius: 8,
-                                    elevation: 6,
-                                },
-                                indicatorStyle,
-                            ]}
-                        />
-                    )}
-                    {routes.map((route: any, index: number) => {
-                        const meta = TAB_META[route.name] ?? {
-                            iconActive: "ellipse",
-                            iconInactive: "ellipse-outline",
-                            label: route.name,
-                        };
-                        return (
-                            <TabButton
-                                key={route.key}
-                                focused={state.index === index}
-                                meta={meta}
-                                onPress={() => handlePress(route, index)}
-                                activeColor={colors.primary}
-                                inactiveColor={colors.textDim}
-                                reducedMotion={reducedMotion}
+                    {/* Tabs Container */}
+                    <View
+                        onLayout={onTabsLayout}
+                        accessibilityRole="tablist"
+                        style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            height: "100%",
+                            alignItems: "center",
+                            position: "relative",
+                        }}
+                    >
+                        {tabsWidth > 0 && (
+                            <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                    {
+                                        position: "absolute",
+                                        top: 8, // Centered vertically in 64px height: (64 - 48)/2 = 8px
+                                        height: 32,
+                                        borderRadius: 16,
+                                        backgroundColor: "#ffffff",
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 4,
+                                        elevation: 3,
+                                    },
+                                    indicatorStyle,
+                                ]}
                             />
-                        );
-                    })}
-                </View>
-            </GlassSurface>
+                        )}
+                        {routes.map((route: any, index: number) => {
+                            const meta = TAB_META[route.name] ?? {
+                                iconActive: "ellipse",
+                                iconInactive: "ellipse-outline",
+                                label: route.name,
+                            };
+                            return (
+                                <TabButton
+                                    key={route.key}
+                                    focused={state.index === index}
+                                    meta={meta}
+                                    onPress={() => handlePress(route, index)}
+                                    reducedMotion={reducedMotion}
+                                />
+                            );
+                        })}
+                    </View>
 
-            <GlassSurface
-                level="elevated"
-                intensity="header"
-                radius="full"
-                elevation="md"
-                allowBlur={allowTabBarBlur}
-                style={{ width: 56, height: 56 }}
-            >
-                <PressableScale
-                    haptic="medium"
-                    onPress={onOpenMenu}
-                    accessibilityRole="button"
-                    accessibilityLabel="Create"
-                    accessibilityHint="Opens the create menu"
-                    style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-                >
-                    <Ionicons name="add" size={28} color={colors.primary} />
-                </PressableScale>
+                    {/* Spacing between tabs and FAB */}
+                    <View style={{ width: 4 }} />
+
+                    {/* FAB "+" Button */}
+                    <View style={{ justifyContent: "center", alignItems: "center" }}>
+                        <PressableScale
+                            haptic="medium"
+                            onPress={onOpenMenu}
+                            accessibilityRole="button"
+                            accessibilityLabel="Create"
+                            accessibilityHint="Opens the create menu"
+                            style={{ 
+                                width: 44, 
+                                height: 44, 
+                                borderRadius: 22, 
+                                borderColor: "#f59e0b", 
+                                borderWidth: 1, 
+                                backgroundColor: "#111111", 
+                                justifyContent: "center", 
+                                alignItems: "center" 
+                            }}
+                        >
+                            <Ionicons name="add" size={24} color="#f59e0b" />
+                        </PressableScale>
+                    </View>
+                </View>
             </GlassSurface>
         </View>
     );

@@ -216,23 +216,20 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
     let actionType: "check-in" | "check-out" = "check-in";
     const showTeam = isAdmin && viewMode === 'team';
 
-    let iconName = showTeam ? "people" : "log-in";
-    let iconColor = showTeam ? colors.primary : "#3b82f6";
-    let titleText = showTeam ? "Team Roster" : "Check In";
-    let valueText = showTeam ? (teamStats ? `${teamStats.present} / ${teamStats.total}` : "—") : "Time";
+    let iconName = showTeam ? "people-outline" : "time-outline";
+    let iconColor = "#eab308";
+    let valueText = "Check in";
+    let titleText = "Attendance";
 
-    if (!showTeam) {
+    if (showTeam) {
+      valueText = teamStats ? `${teamStats.present} / ${teamStats.total}` : "—";
+      titleText = "Team Attendance";
+    } else {
       if (isCheckedIn && !isCheckedOut) {
         actionType = "check-out";
-        iconName = "log-out";
-        iconColor = "#ef4444";
-        titleText = "Check Out";
-        valueText = "Active";
+        valueText = "Check out";
       } else if (isCheckedOut) {
-        iconName = "checkmark-circle";
-        iconColor = "#10b981";
-        titleText = "Shift Done";
-        valueText = "Done";
+        valueText = "Shift Done";
       }
     }
 
@@ -257,8 +254,8 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
         accessibilityLabel={`${titleText}, ${valueText}`}
         accessibilityState={{ disabled: actionLoading || (isCheckedOut && !onLongPress), busy: actionLoading }}
       >
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[styles.miniIcon, { backgroundColor: iconColor + "20" }]}>
+        <View style={{ flex: 1, width: '100%', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <View style={[styles.miniIcon, { backgroundColor: "rgba(234, 179, 8, 0.15)" }]}>
             {actionLoading ? (
               <ActivityIndicator color={iconColor} size="small" />
             ) : (
@@ -275,7 +272,7 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
               {valueText}
             </Text>
             <Text 
-              style={[styles.miniTitle, { color: colors.textDim }]}
+              style={[styles.miniTitle, { color: "#888888" }]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.7}
@@ -409,39 +406,36 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
     overflow: 'hidden',
   },
-  // Mini variant styles (matching statBox from HomeScreen)
   miniBox: {
     flex: 1,
     width: '100%',
-    height: 80,
-    paddingHorizontal: 14,
+    height: 115,
+    padding: 14,
     borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
   },
   miniIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
   miniTextContent: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingRight: 8,
+    marginTop: "auto",
+    width: "100%",
   },
   miniValue: {
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 2,
   },
   miniTitle: {
     fontSize: 12,
     fontWeight: "500",
-    marginTop: 2,
   },
 
   glassInner: {
