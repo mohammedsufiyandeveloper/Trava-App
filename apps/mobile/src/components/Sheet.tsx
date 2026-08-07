@@ -8,7 +8,7 @@ import {
     View,
     ViewStyle,
 } from "react-native";
-import { BlurView } from "expo-blur";
+import BlurView from "./BlurView";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
-import { BlurView } from "expo-blur";
+import BlurView from "./BlurView";
 import { BORDER_RADIUS, BLUR_INTENSITY, ELEVATION } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 
