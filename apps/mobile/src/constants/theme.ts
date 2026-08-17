@@ -219,21 +219,42 @@ export const SPACING = {
     bottomTabBar: 24, // Minimal padding as the bar is now non-absolute
 } as const;
 
+/**
+ * Corner radii, tuned to the Home screen's language: pill-soft widgets (lg)
+ * inside a large hero card (xl). Raising these propagates the rounder look to
+ * every AppCard, sheet, and button in the app.
+ */
 export const BORDER_RADIUS = {
-    sm: 6,
-    md: 12,
-    lg: 16,
-    xl: 24,
+    sm: 8,
+    md: 14,
+    lg: 20,
+    xl: 28,
     full: 999,
 } as const;
 
+/**
+ * Plus Jakarta Sans — the app's display/UI typeface. Loaded once in App.tsx.
+ *
+ * Always pick the face that matches the weight you want and DROP `fontWeight`:
+ * with a custom family, Android synthesizes fake bold and iOS can resolve the
+ * wrong face when both are set. `fontFamily: FONTS.bold` alone is correct.
+ */
+export const FONTS = {
+    light: "PlusJakartaSans_300Light",
+    regular: "PlusJakartaSans_400Regular",
+    medium: "PlusJakartaSans_500Medium",
+    semibold: "PlusJakartaSans_600SemiBold",
+    bold: "PlusJakartaSans_700Bold",
+    extrabold: "PlusJakartaSans_800ExtraBold",
+} as const;
+
 export const TYPOGRAPHY = {
-    h1: { fontSize: 28, fontWeight: "700" as const, lineHeight: 34 },
-    h2: { fontSize: 22, fontWeight: "700" as const, lineHeight: 28 },
-    h3: { fontSize: 18, fontWeight: "600" as const, lineHeight: 24 },
-    body: { fontSize: 14, fontWeight: "400" as const, lineHeight: 20 },
-    caption: { fontSize: 12, fontWeight: "400" as const, lineHeight: 16 },
-    label: { fontSize: 10, fontWeight: "700" as const, letterSpacing: 1 },
+    h1: { fontSize: 28, fontFamily: FONTS.extrabold, lineHeight: 34, letterSpacing: -0.5 },
+    h2: { fontSize: 22, fontFamily: FONTS.bold, lineHeight: 28, letterSpacing: -0.3 },
+    h3: { fontSize: 18, fontFamily: FONTS.semibold, lineHeight: 24, letterSpacing: -0.2 },
+    body: { fontSize: 14, fontFamily: FONTS.regular, lineHeight: 20 },
+    caption: { fontSize: 12, fontFamily: FONTS.regular, lineHeight: 16 },
+    label: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 1 },
 } as const;
 
 /**
@@ -275,26 +296,28 @@ export const ELEVATION = {
         shadowOffset: { width: 0, height: 0 },
         elevation: 0,
     },
+    // Softer and more diffuse than a stock material shadow — the Home cards read
+    // as barely-lifted paper, and every other surface should match.
     sm: {
         shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
         elevation: 2,
     },
     md: {
         shadowColor: "#000",
-        shadowOpacity: 0.16,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 5,
     },
     lg: {
         shadowColor: "#000",
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 12,
+        shadowOpacity: 0.14,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 10 },
+        elevation: 10,
     },
 } as const;
 

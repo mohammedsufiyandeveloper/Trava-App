@@ -11,7 +11,7 @@ import {
     TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
 import { getWorkspaceMembers, getTags, getProjectMembers, getTasks } from "../services/api";
@@ -278,7 +278,7 @@ export default function TaskFilterSheet({
                                                 onPress={() => toggleFilter("projectId", project.id)}
                                             >
                                                 <View style={[styles.projectDot, { backgroundColor: project.color || colors.primary }]} />
-                                                <Text style={[styles.chipText, { color: colors.textDim }, selected && { color: project.color || colors.primary, fontWeight: "700" }]}>
+                                                <Text style={[styles.chipText, { color: colors.textDim }, selected && { color: project.color || colors.primary, fontFamily: FONTS.bold }]}>
                                                     {project.name}
                                                 </Text>
                                             </TouchableOpacity>
@@ -304,7 +304,7 @@ export default function TaskFilterSheet({
                                         onPress={() => toggleFilter("status", opt.id)}
                                     >
                                         <View style={[styles.dot, { backgroundColor: opt.color }]} />
-                                        <Text style={[styles.chipText, { color: colors.textDim }, selected && [styles.chipTextSelected, { color: opt.color, fontWeight: "700" }]]}>
+                                        <Text style={[styles.chipText, { color: colors.textDim }, selected && [styles.chipTextSelected, { color: opt.color, fontFamily: FONTS.bold }]]}>
                                             {opt.label}
                                         </Text>
                                     </TouchableOpacity>
@@ -496,11 +496,11 @@ const styles = StyleSheet.create({
     header: { alignItems: "center", paddingTop: 12, paddingBottom: 16 },
     handle: { width: 40, height: 4, borderRadius: 2, marginBottom: 12 },
     titleRow: { flexDirection: "row", justifyContent: "space-between", width: "100%", paddingHorizontal: SPACING.lg },
-    title: { fontSize: 20, fontWeight: "700" },
-    resetText: { fontSize: 14, color: "#ef4444", fontWeight: "600" },
+    title: { fontSize: 20, fontFamily: FONTS.bold },
+    resetText: { fontSize: 14, color: "#ef4444", fontFamily: FONTS.semibold },
 
     content: { flex: 1, paddingHorizontal: SPACING.lg },
-    sectionTitle: { fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginTop: 24, marginBottom: 12 },
+    sectionTitle: { fontSize: 13, fontFamily: FONTS.bold, textTransform: "uppercase", letterSpacing: 1, marginTop: 24, marginBottom: 12 },
 
     searchContainer: { flexDirection: "row", alignItems: "center", borderRadius: BORDER_RADIUS.md, paddingHorizontal: SPACING.md, height: 48, borderWidth: 1 },
     searchInput: { flex: 1, marginLeft: 10, fontSize: 15 },
@@ -509,14 +509,14 @@ const styles = StyleSheet.create({
     chip: { flexDirection: "row", alignItems: "center", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1 },
     chipSelected: {},
     dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-    chipText: { fontSize: 14, fontWeight: "500" },
+    chipText: { fontSize: 14, fontFamily: FONTS.medium },
     chipTextSelected: {},
 
     horizontalScroll: { marginHorizontal: -SPACING.lg, paddingHorizontal: SPACING.lg, marginBottom: 4 },
     avatarChip: { flexDirection: "row", alignItems: "center", borderRadius: 24, padding: 6, paddingRight: 16, borderWidth: 1, marginRight: 10 },
     avatarChipSelected: {},
     avatar: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center", marginRight: 8 },
-    avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    avatarText: { color: "#fff", fontSize: 12, fontFamily: FONTS.bold },
 
     projectChip: { flexDirection: "row", alignItems: "center", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, marginRight: 10 },
     projectDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
@@ -542,12 +542,12 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textAlign: "center",
         marginBottom: 16,
     },
     applyBtn: { borderRadius: BORDER_RADIUS.md, height: 52, justifyContent: "center", alignItems: "center" },
-    applyBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    applyBtnText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
     dropdownButton: {
         height: 48,
         borderRadius: BORDER_RADIUS.md,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     },
     dropdownButtonText: {
         fontSize: 14,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     dropdownMenu: {
         borderRadius: BORDER_RADIUS.md,
@@ -575,6 +575,6 @@ const styles = StyleSheet.create({
     },
     dropdownItemText: {
         fontSize: 14,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
 });

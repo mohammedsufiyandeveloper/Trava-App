@@ -16,7 +16,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types";
 import { useTheme } from "../context/ThemeContext";
 import { changePassword } from "../services/api";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
 import PressableScale from "../components/PressableScale";
 import AppButton from "../components/AppButton";
@@ -197,10 +197,10 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center", alignItems: "center" },
-    headerTitle: { fontSize: 18, fontWeight: "700" },
+    headerTitle: { fontSize: 18, fontFamily: FONTS.bold },
     scrollContent: { padding: 24 },
     infoBox: { alignItems: "center", marginBottom: 32 },
-    infoTitle: { fontSize: 20, fontWeight: "700", marginTop: 16, marginBottom: 8 },
+    infoTitle: { fontSize: 20, fontFamily: FONTS.bold, marginTop: 16, marginBottom: 8 },
     infoText: { fontSize: 14, textAlign: "center", lineHeight: 20, paddingHorizontal: 20 },
     form: { gap: 20 },
     errorBanner: {
@@ -211,9 +211,9 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.sm,
     },
-    errorBannerText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
+    errorBannerText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, lineHeight: 18 },
     inputGroup: { gap: 8 },
-    label: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginLeft: 4 },
+    label: { fontSize: 11, fontFamily: FONTS.bold, letterSpacing: 1, marginLeft: 4 },
     inputWrapper: {
         flexDirection: "row",
         alignItems: "center",

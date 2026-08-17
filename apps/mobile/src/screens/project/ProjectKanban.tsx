@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET, ThemeColors } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, ThemeColors, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { updateTask, getTasks, deleteTask, getProject } from "../../services/api";
 import { Task, TaskStatus } from "../../types";
@@ -561,10 +561,10 @@ const styles = StyleSheet.create({
     column: { width: COLUMN_WIDTH, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, overflow: "hidden", maxHeight: "100%" },
     columnHeader: { flexDirection: "row", alignItems: "center", padding: SPACING.md, gap: SPACING.sm },
     headerIconBox: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-    columnTitle: { fontSize: 16, fontWeight: "700", flex: 1 },
+    columnTitle: { fontSize: 16, fontFamily: FONTS.bold, flex: 1 },
     columnScrollContent: { padding: SPACING.sm, paddingBottom: SPACING.bottomTabBar },
     countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-    countText: { fontSize: 11, fontWeight: "800" },
+    countText: { fontSize: 11, fontFamily: FONTS.extrabold },
 
     taskCard: {
         padding: SPACING.md,
@@ -588,21 +588,21 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
     projectDot: { width: 8, height: 8, borderRadius: 4 },
-    projectText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+    projectText: { fontSize: 10, fontFamily: FONTS.bold, textTransform: "uppercase" },
     separator: { fontSize: 10, opacity: 0.3 },
-    parentText: { fontSize: 10, fontWeight: "500", opacity: 0.8 },
-    taskName: { fontSize: 14, fontWeight: "600", lineHeight: 20, marginBottom: 12 },
+    parentText: { fontSize: 10, fontFamily: FONTS.medium, opacity: 0.8 },
+    taskName: { fontSize: 14, fontFamily: FONTS.semibold, lineHeight: 20, marginBottom: 12 },
     taskFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     footerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
     footerIconBox: { flexDirection: "row", alignItems: "center", gap: 4 },
-    footerIconText: { fontSize: 11, fontWeight: "600" },
+    footerIconText: { fontSize: 11, fontFamily: FONTS.semibold },
     avatarCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, justifyContent: "center", alignItems: "center" },
-    avatarText: { fontSize: 10, fontWeight: "800" },
+    avatarText: { fontSize: 10, fontFamily: FONTS.extrabold },
 
     memberInfoRow: { flexDirection: "row", alignItems: "center" },
-    roleLabel: { fontSize: 8, fontWeight: "700", textTransform: "uppercase", opacity: 0.6, marginBottom: 1 },
-    memberSurname: { fontSize: 11, fontWeight: "700" },
+    roleLabel: { fontSize: 8, fontFamily: FONTS.bold, textTransform: "uppercase", opacity: 0.6, marginBottom: 1 },
+    memberSurname: { fontSize: 11, fontFamily: FONTS.bold },
 
     emptyColumn: { margin: SPACING.md, padding: SPACING.xl, alignItems: "center", justifyContent: "center", borderStyle: "dashed", borderWidth: 1, borderRadius: BORDER_RADIUS.md, opacity: 0.5 },
-    emptyText: { fontSize: 12, fontWeight: "500" },
+    emptyText: { fontSize: 12, fontFamily: FONTS.medium },
 });

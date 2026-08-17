@@ -18,7 +18,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import {
     getProcurableProjects,
     getWorkspaceMembers,
@@ -299,7 +299,7 @@ export default function CreateIndentScreen({ route, navigation }: any) {
                                     }}
                                 >
                                     <Text style={{
-                                        fontWeight: "700",
+                                        fontFamily: FONTS.bold,
                                         fontSize: 12,
                                         color: selectedProject?.id === proj.id ? "#fff" : colors.text
                                     }}>
@@ -325,7 +325,7 @@ export default function CreateIndentScreen({ route, navigation }: any) {
                                         onPress={() => setSelectedAssignee(member)}
                                     >
                                         <Text style={{
-                                            fontWeight: "700",
+                                            fontFamily: FONTS.bold,
                                             fontSize: 12,
                                             color: selectedAssignee?.id === member.id ? "#fff" : colors.text
                                         }}>
@@ -375,7 +375,7 @@ export default function CreateIndentScreen({ route, navigation }: any) {
                     {materials.length === 0 ? (
                         <View style={[styles.emptyCard, { borderColor: colors.border }]}>
                             <Ionicons name="gift-outline" size={28} color={colors.textDim} />
-                            <Text style={{ color: colors.textDim, fontSize: 13, fontWeight: "500", marginTop: 4 }}>
+                            <Text style={{ color: colors.textDim, fontSize: 13, fontFamily: FONTS.medium, marginTop: 4 }}>
                                 No materials added yet. Tap Add Material above.
                             </Text>
                         </View>
@@ -447,7 +447,7 @@ export default function CreateIndentScreen({ route, navigation }: any) {
                                                 style={[styles.autocompleteItem, { borderBottomColor: colors.border }]}
                                                 onPress={() => selectAutocompleteItem(item)}
                                             >
-                                                <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>{item.name}</Text>
+                                                <Text style={{ color: colors.text, fontSize: 13, fontFamily: FONTS.semibold }}>{item.name}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </View>
@@ -517,15 +517,15 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: SPACING.md },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 20, fontWeight: "700" },
+    title: { fontSize: 20, fontFamily: FONTS.bold },
     
     scrollContent: { paddingBottom: 60 },
-    sectionTitle: { fontSize: 15, fontWeight: "700", marginTop: SPACING.lg, marginBottom: SPACING.sm },
+    sectionTitle: { fontSize: 15, fontFamily: FONTS.bold, marginTop: SPACING.lg, marginBottom: SPACING.sm },
     sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: SPACING.lg, marginBottom: SPACING.sm },
     
     card: { padding: 16, borderRadius: BORDER_RADIUS.lg, borderWidth: 1 },
-    label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
-    errorText: { fontSize: 12, fontWeight: "600", marginTop: 6 },
+    label: { fontSize: 12, fontFamily: FONTS.semibold, marginBottom: 6 },
+    errorText: { fontSize: 12, fontFamily: FONTS.semibold, marginTop: 6 },
     input: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 15 },
     textArea: { height: 80, paddingVertical: 10, textAlignVertical: "top" },
     
@@ -533,20 +533,20 @@ const styles = StyleSheet.create({
     pickerPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
     
     addMatBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
-    addMatText: { fontSize: 12, fontWeight: "700", marginLeft: 2 },
+    addMatText: { fontSize: 12, fontFamily: FONTS.bold, marginLeft: 2 },
     
     emptyCard: { borderStyle: "dashed", borderWidth: 1, borderRadius: BORDER_RADIUS.md, padding: 24, alignItems: "center" },
     itemCard: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: 8 },
-    itemNameText: { fontSize: 15, fontWeight: "700" },
-    itemDetailsText: { fontSize: 12, fontWeight: "500", marginTop: 2 },
+    itemNameText: { fontSize: 15, fontFamily: FONTS.bold },
+    itemDetailsText: { fontSize: 12, fontFamily: FONTS.medium, marginTop: 2 },
     
     submitButton: { marginTop: SPACING.xxl, height: 50, borderRadius: BORDER_RADIUS.lg, justifyContent: "center", alignItems: "center" },
-    submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    submitButtonText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
     
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
     modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: SPACING.xl, maxHeight: "90%" },
     modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SPACING.lg },
-    modalTitle: { fontSize: 18, fontWeight: "700" },
+    modalTitle: { fontSize: 18, fontFamily: FONTS.bold },
     form: { marginBottom: SPACING.xl },
     modalInput: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 15, marginBottom: 12 },
     
@@ -555,5 +555,5 @@ const styles = StyleSheet.create({
     
     row: { flexDirection: "row" },
     modalAddBtn: { marginTop: SPACING.lg, height: 48, borderRadius: BORDER_RADIUS.md, justifyContent: "center", alignItems: "center" },
-    modalAddBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    modalAddBtnText: { color: "#fff", fontSize: 15, fontFamily: FONTS.bold },
 });

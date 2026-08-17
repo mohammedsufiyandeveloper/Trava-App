@@ -22,7 +22,7 @@ import { LeaveRequest, LeaveBalance, LeaveType, LeaveStatus, User } from "../typ
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { getLeaveBalance, getLeaveRequestsPage, submitLeaveRequest, updateLeaveStatus, getCachedSession } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import StatusChip, { StatusKind } from "../components/StatusChip";
@@ -257,7 +257,7 @@ export default function LeaveScreen({ navigation }: any) {
                 <View>
                     <Text style={[styles.title, { color: colors.text }]}>Leaves</Text>
                     {activeWorkspace && (
-                        <Text style={{ fontSize: 10, color: colors.textDim, fontWeight: "700" }}>
+                        <Text style={{ fontSize: 10, color: colors.textDim, fontFamily: FONTS.bold }}>
                             {activeWorkspace.name.toUpperCase()}
                         </Text>
                     )}
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.lg },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 24, fontWeight: "700" },
+    title: { fontSize: 24, fontFamily: FONTS.bold },
     addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
     scrollContent: { paddingBottom: 40 },
 
@@ -587,13 +587,13 @@ const styles = StyleSheet.create({
     balanceItem: { flex: 1, flexDirection: "row", alignItems: "center", padding: 16, borderRadius: BORDER_RADIUS.lg },
     iconCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
     balanceInfo: { marginLeft: 12 },
-    balanceVal: { fontSize: 20, fontWeight: "800" },
-    balanceLab: { fontSize: 10, fontWeight: "700", marginTop: 2 },
+    balanceVal: { fontSize: 20, fontFamily: FONTS.extrabold },
+    balanceLab: { fontSize: 10, fontFamily: FONTS.bold, marginTop: 2 },
 
     accrualCard: { padding: 16, borderRadius: BORDER_RADIUS.lg },
     accrualHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-    accrualTitle: { fontSize: 11, fontWeight: "800", marginLeft: 8, flex: 1 },
-    accrualLabel: { fontSize: 11, fontWeight: "700" },
+    accrualTitle: { fontSize: 11, fontFamily: FONTS.extrabold, marginLeft: 8, flex: 1 },
+    accrualLabel: { fontSize: 11, fontFamily: FONTS.bold },
     progressBarBg: { height: 6, borderRadius: 3, overflow: "hidden" },
     progressBarFill: { height: "100%", borderRadius: 3 },
 
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     searchInput: { flex: 1, marginLeft: 8, fontSize: 14 },
 
     listHeader: { flexDirection: "row", paddingHorizontal: SPACING.lg, marginBottom: 12 },
-    listCol: { fontSize: 11, fontWeight: "700" },
+    listCol: { fontSize: 11, fontFamily: FONTS.bold },
 
 
     requestCard: {
@@ -624,26 +624,26 @@ const styles = StyleSheet.create({
     memberInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
     avatarSmall: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", overflow: "hidden" },
     avatarImg: { width: "100%", height: "100%" },
-    avatarTxt: { fontSize: 14, fontWeight: "700" },
-    memberName: { fontSize: 15, fontWeight: "700", maxWidth: width * 0.4 },
-    memberBal: { fontSize: 10, fontWeight: "600", marginTop: 2 },
+    avatarTxt: { fontSize: 14, fontFamily: FONTS.bold },
+    memberName: { fontSize: 15, fontFamily: FONTS.bold, maxWidth: width * 0.4 },
+    memberBal: { fontSize: 10, fontFamily: FONTS.semibold, marginTop: 2 },
     typeBadgeSmall: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    typeTextSmall: { fontSize: 10, fontWeight: "800" },
+    typeTextSmall: { fontSize: 10, fontFamily: FONTS.extrabold },
 
     rowCol: { justifyContent: "center" },
-    dateSmall: { fontSize: 14, fontWeight: "600" },
-    durationSmall: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+    dateSmall: { fontSize: 14, fontFamily: FONTS.semibold },
+    durationSmall: { fontSize: 11, fontFamily: FONTS.bold, marginTop: 2 },
 
     statusBadgeSmall: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-    statusTextSmall: { fontSize: 11, fontWeight: "800" },
+    statusTextSmall: { fontSize: 11, fontFamily: FONTS.extrabold },
 
     rowReason: { fontSize: 13, fontStyle: "italic", marginBottom: 4, lineHeight: 18 },
 
     rowActions: { flexDirection: "row", gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)" },
     miniActionBtn: { width: 40, height: 36, borderRadius: 8, justifyContent: "center", alignItems: "center" },
     approveActionBtn: { flex: 1, flexDirection: "row", gap: 6, minHeight: 44, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    approveActionText: { fontSize: 13, fontWeight: "700", color: "#166534" },
-    formErrorText: { fontSize: 12, fontWeight: "600", marginTop: -4, marginBottom: SPACING.md },
+    approveActionText: { fontSize: 13, fontFamily: FONTS.bold, color: "#166534" },
+    formErrorText: { fontSize: 12, fontFamily: FONTS.semibold, marginTop: -4, marginBottom: SPACING.md },
 
     emptyState: { alignItems: "center", marginTop: 40 },
     emptyText: { marginTop: 12, fontSize: 16 },
@@ -651,16 +651,16 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
     modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: SPACING.xl, maxHeight: "90%" },
     modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SPACING.xl },
-    modalTitle: { fontSize: 20, fontWeight: "700" },
+    modalTitle: { fontSize: 20, fontFamily: FONTS.bold },
     form: { marginBottom: SPACING.xl },
-    label: { fontSize: 14, fontWeight: "600", marginBottom: 8, marginTop: SPACING.md },
+    label: { fontSize: 14, fontFamily: FONTS.semibold, marginBottom: 8, marginTop: SPACING.md },
     input: { borderRadius: BORDER_RADIUS.md, borderWidth: 1, padding: 12, fontSize: 16 },
     textArea: { height: 100, textAlignVertical: "top" },
     typeSelector: { flexDirection: "row", gap: SPACING.md },
     typeOption: { flex: 1, padding: 12, borderRadius: BORDER_RADIUS.md, borderWidth: 1, alignItems: "center" },
-    typeOptionText: { fontWeight: "600" },
+    typeOptionText: { fontFamily: FONTS.semibold },
     submitButton: { marginTop: SPACING.xl, padding: 16, borderRadius: BORDER_RADIUS.md, alignItems: "center" },
-    submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    submitButtonText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
 
     managerCard: {
         flexDirection: "row",
@@ -679,12 +679,12 @@ const styles = StyleSheet.create({
     },
     managerLabel: {
         fontSize: 10,
-        fontWeight: "800",
+        fontFamily: FONTS.extrabold,
         letterSpacing: 0.5,
         marginBottom: 2
     },
     managerName: {
         fontSize: 15,
-        fontWeight: "700"
+        fontFamily: FONTS.bold
     },
 });

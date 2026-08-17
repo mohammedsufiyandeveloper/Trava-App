@@ -8,9 +8,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import BlurView from "./BlurView";
-import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 
-import { MOTION } from "../constants/theme";
+import { MOTION, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { RadialMenuProps, RadialActionItem } from "../types";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,12 @@ import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import PressableScale from "./PressableScale";
 import GlassSurface from "./GlassSurface";
+
+/**
+ * Tighter than MOTION.stagger (45ms): with six items that token would spread
+ * the reveal over 225ms, which reads as slow rather than lively.
+ */
+const ITEM_STAGGER = 26;
 
 export default function RadialMenu({
     visible,
@@ -61,18 +67,19 @@ export default function RadialMenu({
                 <View style={[styles.menuContainer, { bottom: Math.max(insets.bottom, 20) + 110 }]}>
                     {ACTIONS.map((item, index) => {
                         // Items animate bottom-up; reverse the stagger so they appear
-                        // to shoot out from the FAB. Disabled under Reduce Motion.
+                        // to rise from the FAB. Eased rather than sprung — a spring
+                        // loose enough to feel lively here overshoots and wobbles.
                         const entering = reducedMotion
                             ? FadeIn.duration(MOTION.duration.fast)
-                            : FadeInDown.springify()
-                                  .damping(MOTION.spring.bouncy.damping)
-                                  .stiffness(MOTION.spring.bouncy.stiffness)
-                                  .delay((total - 1 - index) * MOTION.stagger);
+                            : FadeInDown.duration(MOTION.duration.base)
+                                  .easing(Easing.out(Easing.cubic))
+                                  .withInitialValues({ transform: [{ translateY: 14 }] })
+                                  .delay((total - 1 - index) * ITEM_STAGGER);
                         return (
                             <Animated.View key={item.id} entering={entering} style={styles.actionWrapper}>
                                 <PressableScale
                                     haptic={null}
-                                    activeScale={0.9}
+                                    activeScale={0.96}
                                     style={styles.actionRow}
                                     onPress={() => handleSelect(item.id)}
                                     accessibilityRole="button"
@@ -121,7 +128,7 @@ const styles = StyleSheet.create({
     },
     labelText: {
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     iconBlob: {
         width: 54,

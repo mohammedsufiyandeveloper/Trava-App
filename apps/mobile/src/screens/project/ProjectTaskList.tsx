@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { deleteTask } from "../../services/api";
@@ -189,9 +189,9 @@ const styles = StyleSheet.create({
     taskCard: { borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, borderWidth: 1 },
     taskHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
     statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-    taskName: { fontSize: 16, fontWeight: "600", maxWidth: "85%" },
+    taskName: { fontSize: 16, fontFamily: FONTS.semibold, maxWidth: "85%" },
     tagBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    tagText: { fontSize: 10, fontWeight: "700" },
+    tagText: { fontSize: 10, fontFamily: FONTS.bold },
 
     taskFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTopWidth: 1 },
     meta: { flexDirection: "row", alignItems: "center" },
@@ -209,6 +209,6 @@ const styles = StyleSheet.create({
     },
     subtaskText: {
         fontSize: 10,
-        fontWeight: "800",
+        fontFamily: FONTS.extrabold,
     },
 });

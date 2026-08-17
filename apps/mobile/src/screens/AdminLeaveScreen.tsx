@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { getLeaveRequestsPage, updateLeaveStatus } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import StatusChip, { StatusKind } from "../components/StatusChip";
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.lg },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 20, fontWeight: "700" },
+    title: { fontSize: 20, fontFamily: FONTS.bold },
     scrollContent: { padding: SPACING.lg },
     emptyState: { alignItems: "center", marginTop: 40 },
     emptyText: { marginTop: 12, fontSize: 16 },
@@ -266,18 +266,18 @@ const styles = StyleSheet.create({
     userRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
     avatar: { width: 40, height: 40, borderRadius: 20 },
     avatarFallback: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-    userName: { fontSize: 15, fontWeight: "700" },
+    userName: { fontSize: 15, fontFamily: FONTS.bold },
     userEmail: { fontSize: 12, marginTop: 2 },
-    statusBadge: { fontSize: 11, fontWeight: "800" },
+    statusBadge: { fontSize: 11, fontFamily: FONTS.extrabold },
     infoRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 8 },
     typeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-    typeText: { fontSize: 10, fontWeight: "700" },
-    dateText: { fontSize: 14, fontWeight: "600" },
+    typeText: { fontSize: 10, fontFamily: FONTS.bold },
+    dateText: { fontSize: 14, fontFamily: FONTS.semibold },
     reason: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
     actionRow: { flexDirection: "row", gap: SPACING.md },
     actionBtn: { flex: 1, height: 40, borderRadius: 8, justifyContent: "center", alignItems: "center" },
     rejectBtn: { borderWidth: 1, borderColor: "#ef4444" },
-    rejectBtnText: { color: "#ef4444", fontWeight: "700" },
+    rejectBtnText: { color: "#ef4444", fontFamily: FONTS.bold },
     approveBtn: {},
-    approveBtnText: { color: "#fff", fontWeight: "700" },
+    approveBtnText: { color: "#fff", fontFamily: FONTS.bold },
 });

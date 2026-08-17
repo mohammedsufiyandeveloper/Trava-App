@@ -14,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import AppButton from "./AppButton";
 
@@ -121,7 +121,7 @@ export default function ReviewCommentModal({ visible, onClose, onSubmit, taskNam
 
                     <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
                         <Text style={[styles.description, { color: colors.textDim }]}>
-                            Moving <Text style={{ fontWeight: "600", color: colors.text }}>{taskName}</Text> to Review requires a comment or attachment.
+                            Moving <Text style={{ fontFamily: FONTS.semibold, color: colors.text }}>{taskName}</Text> to Review requires a comment or attachment.
                         </Text>
 
                         <View style={styles.section}>
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     scroll: {
         padding: SPACING.lg,
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         marginBottom: 8,
     },
     input: {
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     },
     uploadText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     attachmentBox: {
         flexDirection: "row",
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     },
     attachmentName: {
         fontSize: 13,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     attachmentSize: {
         fontSize: 11,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     cancelBtnText: {
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     submitBtn: {
         flex: 1,
@@ -321,6 +321,6 @@ const styles = StyleSheet.create({
     },
     submitBtnText: {
         color: "#fff",
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
 });

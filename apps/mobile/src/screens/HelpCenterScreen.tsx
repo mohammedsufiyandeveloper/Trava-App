@@ -6,7 +6,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types";
 import { useTheme } from "../context/ThemeContext";
 import { useResponsive } from "../hooks/useResponsive";
-import { SPACING } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import AppCard from "../components/AppCard";
 import PressableScale from "../components/PressableScale";
 
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     body: {
         flexGrow: 1,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     },
     question: {
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textAlign: "center",
         marginBottom: 8,
     },

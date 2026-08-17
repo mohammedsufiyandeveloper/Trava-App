@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { RootStackParamList } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 34,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textAlign: "center",
         letterSpacing: -0.5,
         lineHeight: 42,

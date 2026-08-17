@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BORDER_RADIUS, SPACING, TOUCH_TARGET } from "../constants/theme";
+import { BORDER_RADIUS, SPACING, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { requestPasswordResetOtp, resetPasswordWithOtp } from "../services/api";
 import { RootStackParamList } from "../types";
@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
         padding: SPACING.sm,
         marginBottom: 16,
     },
-    errorBannerText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
-    backText: { fontSize: 14, fontWeight: "600" },
+    errorBannerText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, lineHeight: 18 },
+    backText: { fontSize: 14, fontFamily: FONTS.semibold },
     card: { width: "100%", borderWidth: 1, borderRadius: BORDER_RADIUS.lg, padding: SPACING.lg },
     icon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 18 },
-    title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
+    title: { fontSize: 24, fontFamily: FONTS.bold, marginBottom: 8 },
     description: { fontSize: 14, lineHeight: 20, marginBottom: 24 },
-    label: { fontSize: 13, fontWeight: "600", marginBottom: 8 },
+    label: { fontSize: 13, fontFamily: FONTS.semibold, marginBottom: 8 },
     input: {
         borderWidth: 1,
         borderRadius: BORDER_RADIUS.md,
@@ -275,5 +275,5 @@ const styles = StyleSheet.create({
     },
     primaryButton: { marginTop: 4 },
     actions: { flexDirection: "row", justifyContent: "space-between", marginTop: 18 },
-    actionText: { fontSize: 13, fontWeight: "600" },
+    actionText: { fontSize: 13, fontFamily: FONTS.semibold },
 });

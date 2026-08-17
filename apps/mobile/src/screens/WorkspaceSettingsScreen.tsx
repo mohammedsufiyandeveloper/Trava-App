@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { getWorkspaceSettings, updateWorkspaceSettings } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import AppCard from "../components/AppCard";
@@ -296,12 +296,12 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.lg },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 20, fontWeight: "700" },
+    title: { fontSize: 20, fontFamily: FONTS.bold },
     scrollContent: { padding: SPACING.lg, paddingBottom: 40 },
-    sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: SPACING.xl, marginBottom: SPACING.md },
+    sectionTitle: { fontSize: 16, fontFamily: FONTS.bold, marginTop: SPACING.xl, marginBottom: SPACING.md },
     card: { padding: SPACING.lg, borderRadius: BORDER_RADIUS.lg, borderWidth: 1 },
-    label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
+    label: { fontSize: 12, fontFamily: FONTS.semibold, marginBottom: 6 },
     input: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 16 },
     row: { flexDirection: "row" },
-    errorText: { fontSize: 12, fontWeight: "600", marginTop: 6 },
+    errorText: { fontSize: 12, fontFamily: FONTS.semibold, marginTop: 6 },
 });

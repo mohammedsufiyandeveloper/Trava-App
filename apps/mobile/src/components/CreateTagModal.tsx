@@ -8,7 +8,7 @@ import {
     ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createTag, updateTag } from "../services/api";
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 19,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     content: { padding: SPACING.lg },
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         marginBottom: 8,
         textTransform: "uppercase",
         letterSpacing: 0.5,
@@ -201,6 +201,6 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     createBtnDisabled: { opacity: 0.45 },
-    createBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    createBtnText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
     errorText: { color: "#ef4444", fontSize: 12, marginTop: 12, textAlign: "center" },
 });

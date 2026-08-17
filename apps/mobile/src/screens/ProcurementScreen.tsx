@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { getIndentRequestsPage, getVendors } from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import StatusChip, { StatusKind } from "../components/StatusChip";
@@ -179,7 +179,7 @@ export default function ProcurementScreen({ navigation }: any) {
                     <View style={{ flex: 1, marginLeft: SPACING.sm }}>
                         <Text style={[styles.title, { color: colors.text }]}>Procurement</Text>
                         {activeWorkspace && (
-                            <Text style={{ fontSize: 10, color: colors.textDim, fontWeight: "700", letterSpacing: 0.5 }}>
+                            <Text style={{ fontSize: 10, color: colors.textDim, fontFamily: FONTS.bold, letterSpacing: 0.5 }}>
                                 {activeWorkspace.name.toUpperCase()}
                             </Text>
                         )}
@@ -294,7 +294,7 @@ export default function ProcurementScreen({ navigation }: any) {
                                                 </Text>
                                                 {item.Project && (
                                                     <View style={[styles.projectBadge, { borderColor: item.Project.color || colors.primary }]}>
-                                                        <Text style={{ fontSize: 10, fontWeight: "600", color: item.Project.color || colors.primary }}>
+                                                        <Text style={{ fontSize: 10, fontFamily: FONTS.semibold, color: item.Project.color || colors.primary }}>
                                                             {item.Project.name.toUpperCase()}
                                                         </Text>
                                                     </View>
@@ -472,20 +472,20 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", alignItems: "center", paddingVertical: SPACING.md },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+    title: { fontSize: 24, fontFamily: FONTS.extrabold, letterSpacing: -0.5 },
     addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
     
     tabContainer: { paddingVertical: SPACING.sm },
     pillSwitcher: { flexDirection: "row", padding: 4, borderRadius: 24, height: 48 },
     pillOption: { flex: 1, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-    pillText: { fontSize: 13, fontWeight: "700" },
+    pillText: { fontSize: 13, fontFamily: FONTS.bold },
 
     searchContainer: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginVertical: SPACING.md },
     searchInput: { flex: 1, marginLeft: 8, fontSize: 14 },
 
     scrollContent: { paddingBottom: 40 },
     emptyState: { alignItems: "center", justifyContent: "center", marginTop: 80 },
-    emptyText: { marginTop: 12, fontSize: 16, fontWeight: "600" },
+    emptyText: { marginTop: 12, fontSize: 16, fontFamily: FONTS.semibold },
 
     card: {
         padding: 16,
@@ -500,27 +500,27 @@ const styles = StyleSheet.create({
     },
     cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
     badgeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    indentIdText: { fontSize: 13, fontWeight: "800" },
+    indentIdText: { fontSize: 13, fontFamily: FONTS.extrabold },
     projectBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
     statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    statusText: { fontSize: 10, fontWeight: "800" },
-    indentName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
+    statusText: { fontSize: 10, fontFamily: FONTS.extrabold },
+    indentName: { fontSize: 16, fontFamily: FONTS.bold, marginBottom: 4 },
     indentDesc: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
     cardDivider: { height: 1, marginVertical: 12, opacity: 0.3 },
     cardFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     footerRow: { flexDirection: "row", alignItems: "center" },
-    footerText: { fontSize: 12, fontWeight: "500" },
+    footerText: { fontSize: 12, fontFamily: FONTS.medium },
 
-    vendorName: { fontSize: 16, fontWeight: "700", flex: 1, marginRight: 8 },
-    vendorCompany: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+    vendorName: { fontSize: 16, fontFamily: FONTS.bold, flex: 1, marginRight: 8 },
+    vendorCompany: { fontSize: 10, fontFamily: FONTS.extrabold, letterSpacing: 0.5 },
     vendorInfoRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-    vendorInfoText: { fontSize: 12, fontWeight: "500" },
+    vendorInfoText: { fontSize: 12, fontFamily: FONTS.medium },
 
     capabilitiesContainer: { marginTop: 4 },
     capabilitiesHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-    capabilitiesTitle: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+    capabilitiesTitle: { fontSize: 10, fontFamily: FONTS.extrabold, letterSpacing: 0.5 },
     noCapabilitiesText: { fontSize: 11, fontStyle: "italic", marginLeft: 4 },
     capabilitiesPillContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
     capabilityPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-    capabilityPillText: { fontSize: 11, fontWeight: "700" },
+    capabilityPillText: { fontSize: 11, fontFamily: FONTS.bold },
 });

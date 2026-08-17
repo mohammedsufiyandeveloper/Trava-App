@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import AppButton from "./AppButton";
 
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textAlign: "center",
     },
     message: {

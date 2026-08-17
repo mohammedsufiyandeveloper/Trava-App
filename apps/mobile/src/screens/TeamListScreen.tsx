@@ -20,7 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
 import { getWorkspaceMembers, getCachedSession, getConversations } from "../services/api";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { format, isToday } from "date-fns";
 import { useResponsive } from "../hooks/useResponsive";
 import PressableScale from "../components/PressableScale";
@@ -185,7 +185,7 @@ export default function TeamListScreen({ navigation }: Props) {
                             />
                         )}
                         {lastMessage && (
-                            <Text style={[styles.lastMessage, { color: hasUnread ? colors.primary : colors.textDim, fontWeight: hasUnread ? "600" : "400" }]} numberOfLines={1}>
+                            <Text style={[styles.lastMessage, { color: hasUnread ? colors.primary : colors.textDim, fontFamily: hasUnread ? FONTS.semibold : FONTS.regular }]} numberOfLines={1}>
                                 {lastMessage.sender?.name ? `${lastMessage.sender.name}: ` : ""}{lastMessage.content}
                             </Text>
                         )}
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center" },
-    headerTitle: { fontSize: 18, fontWeight: "700" },
+    headerTitle: { fontSize: 18, fontFamily: FONTS.bold },
 
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     centerEmpty: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 80 },
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     avatarImage: { width: 48, height: 48, borderRadius: 24 },
-    avatarText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+    avatarText: { color: "#fff", fontSize: 18, fontFamily: FONTS.bold },
 
     chatInfo: { flex: 1, marginLeft: 12, justifyContent: "center" },
     chatHeader: {
@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 2,
     },
-    chatName: { fontSize: 16, fontWeight: "700", flex: 1 },
-    chatTime: { fontSize: 11, fontWeight: '400' },
+    chatName: { fontSize: 16, fontFamily: FONTS.bold, flex: 1 },
+    chatTime: { fontSize: 11, fontFamily: FONTS.regular },
     chatSubRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8 },
     roleChip: { marginTop: 0 },
     lastMessage: { fontSize: 13, flexShrink: 1 },
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     memberInfo: { flex: 1, marginLeft: 12 },
-    memberName: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
+    memberName: { fontSize: 15, fontFamily: FONTS.semibold, marginBottom: 2 },
 
     fab: {
         position: "absolute",
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: "rgba(255,255,255,0.2)",
     },
-    fabLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    fabLabel: { color: "#fff", fontSize: 15, fontFamily: FONTS.bold },
 
     modalContainer: { flex: 1 },
     modalHeader: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
         borderBottomColor: 'rgba(0,0,0,0.1)',
         marginBottom: 8,
     },
-    modalTitle: { fontSize: 18, fontWeight: "700" },
+    modalTitle: { fontSize: 18, fontFamily: FONTS.bold },
     closeBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
 });
 

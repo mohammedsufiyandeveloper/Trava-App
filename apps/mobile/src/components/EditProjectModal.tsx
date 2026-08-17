@@ -12,7 +12,7 @@ import {
     Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { updateProject, getProject, getWorkspaceMembers } from "../services/api";
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 19,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     closeBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
     content: { padding: SPACING.lg },
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         marginBottom: 8,
         marginTop: 16,
         textTransform: "uppercase",
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
         letterSpacing: 1,
     },
@@ -483,6 +483,6 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     saveBtnDisabled: { opacity: 0.45 },
-    saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    saveBtnText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
     errorText: { color: "#ef4444", fontSize: 12, marginTop: 12, textAlign: "center" },
 });

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format, startOfDay } from "date-fns";
-import { SPACING, TOUCH_TARGET } from "../../constants/theme";
+import { SPACING, TOUCH_TARGET, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { Task } from "../../types";
@@ -308,7 +308,7 @@ export default function ProjectGanttView({
                             s.cellText,
                             {
                                 color: colors.text,
-                                fontWeight: isSubtask ? "500" : "700",
+                                fontFamily: isSubtask ? FONTS.medium : FONTS.bold,
                                 fontSize: isSubtask ? 11 : 12,
                             }
                         ]}
@@ -483,7 +483,7 @@ const s = StyleSheet.create({
         alignItems: "center",
         borderBottomWidth: 1,
     },
-    headerText: { fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
+    headerText: { fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2 },
 
     // Row logic
     row: {
@@ -526,12 +526,12 @@ const s = StyleSheet.create({
     todayBadgeText: {
         color: "#fff",
         fontSize: 8,
-        fontWeight: "800",
+        fontFamily: FONTS.extrabold,
         letterSpacing: 0.3,
     },
 
     // Empty state
-    emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: 16, textAlign: "center" },
+    emptyTitle: { fontSize: 17, fontFamily: FONTS.bold, marginTop: 16, textAlign: "center" },
     emptySub: { fontSize: 13, textAlign: "center", marginTop: 8, lineHeight: 20 },
 });
 

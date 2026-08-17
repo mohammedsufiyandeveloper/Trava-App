@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { getMySpaceTodos, createMySpaceTodo, toggleMySpaceTodo, deleteMySpaceTodo, syncMySpaceTodos } from "../services/api";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
 import PressableScale from "../components/PressableScale";
 import AppButton from "../components/AppButton";
@@ -418,14 +418,14 @@ const styles = StyleSheet.create({
     },
     headerSubtitle: {
         fontSize: 11,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         textTransform: "uppercase",
         letterSpacing: 0.8,
         marginBottom: 2
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         letterSpacing: 0.3
     },
     scrollContent: {
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     todoInput: {
         flex: 1,
         fontSize: 15,
-        fontWeight: "500"
+        fontFamily: FONTS.medium
     },
     addButton: {
         width: 40,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         letterSpacing: 0.8,
         marginBottom: SPACING.xs
     },
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 14,
-        fontWeight: "500"
+        fontFamily: FONTS.medium
     },
     todoItem: {
         flexDirection: "row",
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     todoText: {
         flex: 1,
         fontSize: 15,
-        fontWeight: "500"
+        fontFamily: FONTS.medium
     },
     completedText: {
         textDecorationLine: "line-through"

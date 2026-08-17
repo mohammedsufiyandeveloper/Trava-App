@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from 'expo-blur';
-import { SPACING, BORDER_RADIUS, TYPOGRAPHY } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, TYPOGRAPHY, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 
 import { toggleBoardItemStatus, deleteBoardItem } from "../../services/api";
@@ -218,11 +218,11 @@ const styles = StyleSheet.create({
     },
     avatarInitials: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     userName: {
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         letterSpacing: -0.3,
     },
     userRole: {
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     },
     addBtnText: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
         letterSpacing: 0.5,
     },

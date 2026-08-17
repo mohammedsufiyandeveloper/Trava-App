@@ -16,7 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { format, isBefore, isSameDay, startOfToday } from "date-fns";
 import CalendarPicker from "./CalendarPicker";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createSubTask, getWorkspaceMembers, getProjectMembers, getTags, getTasks, updateTask } from "../services/api";
@@ -288,7 +288,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                         <Text style={styles.avatarText}>{initials}</Text>
                     )}
                 </View>
-                <Text style={[styles.chipText, { color: colors.textDim }, isSelected && { color: colors.primary, fontWeight: "700" }]}>
+                <Text style={[styles.chipText, { color: colors.textDim }, isSelected && { color: colors.primary, fontFamily: FONTS.bold }]}>
                     {displayName}
                 </Text>
                 {isSelected && (
@@ -379,7 +379,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                                 }}
                                             >
                                                 <View style={[styles.dot, { backgroundColor: proj.color || colors.primary, width: 12, height: 12, borderRadius: 6, marginRight: 12 }]} />
-                                                <Text style={[styles.parentLabel, { color: colors.text }, selectedProjectId === proj.id && { color: colors.primary, fontWeight: "700" }]}>
+                                                <Text style={[styles.parentLabel, { color: colors.text }, selectedProjectId === proj.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
                                                     {proj.name}
                                                 </Text>
                                                 {selectedProjectId === proj.id && (
@@ -423,7 +423,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                                         size={20}
                                                         color={selectedParentId === task.id ? colors.primary : colors.border}
                                                     />
-                                                    <Text style={[styles.parentLabel, { color: colors.text }, selectedParentId === task.id && { color: colors.primary, fontWeight: "700" }]}>
+                                                    <Text style={[styles.parentLabel, { color: colors.text }, selectedParentId === task.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
                                                         {task.name}
                                                     </Text>
                                                 </TouchableOpacity>
@@ -483,7 +483,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                                 onPress={() => setStatus(opt.id)}
                                             >
                                                 <View style={[styles.dot, { backgroundColor: opt.color }]} />
-                                                <Text style={[styles.chipText, { color: colors.textDim }, status === opt.id && { color: opt.color, fontWeight: "700" }]}>
+                                                <Text style={[styles.chipText, { color: colors.textDim }, status === opt.id && { color: opt.color, fontFamily: FONTS.bold }]}>
                                                     {opt.label}
                                                 </Text>
                                             </TouchableOpacity>
@@ -521,7 +521,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                                         onPress={() => setTagId(tagId === tag.id ? null : tag.id)}
                                                     >
                                                         <Ionicons name="pricetag-outline" size={14} color={tagId === tag.id ? colors.primary : colors.textDim} />
-                                                        <Text style={[styles.chipText, { color: colors.textDim }, tagId === tag.id && { color: colors.primary, fontWeight: "700" }]}>
+                                                        <Text style={[styles.chipText, { color: colors.textDim }, tagId === tag.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
                                                             {tag.name}
                                                         </Text>
                                                     </TouchableOpacity>
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: SCREEN_WIDTH < 380 ? 17 : 19,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     closeBtn: {
         padding: 4,
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         marginBottom: 8,
         marginTop: 16,
         textTransform: "uppercase",
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     },
     dateText: {
         fontSize: 15,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     modalOverlay: {
         flex: 1,
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     },
     pickerTitle: {
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     parentList: {
         gap: 8,
@@ -733,10 +733,10 @@ const styles = StyleSheet.create({
     },
     parentLabel: {
         fontSize: 14,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     parentLabelSelected: {
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     parentProjectName: {
         fontSize: 11,
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     createBtnText: {
         color: "#fff",
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     errorText: {
         color: "#ef4444",
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 14,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     avatarChip: {
         flexDirection: "row",
@@ -829,6 +829,6 @@ const styles = StyleSheet.create({
     avatarText: {
         color: "#fff",
         fontSize: 12,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
 });

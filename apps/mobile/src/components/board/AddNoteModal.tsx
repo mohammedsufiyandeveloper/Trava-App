@@ -9,7 +9,7 @@ import {
     Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import Sheet from "../Sheet";
 import PressableScale from "../PressableScale";
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: SCREEN_WIDTH < 380 ? 18 : 20,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     subtitle: {
         width: "100%",
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     createBtnText: {
         color: "#fff",
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     errorText: {
         color: "#ef4444",

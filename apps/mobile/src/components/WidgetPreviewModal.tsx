@@ -5,7 +5,7 @@ import BlurView from "./BlurView";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { getWorkspaceMembers, getTeamAttendance } from "../services/api";
 import { WorkspaceMember } from "../types";
 
@@ -125,7 +125,7 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                                 }}
                             >
                                 <View style={[styles.avatarSmall, { backgroundColor: "#10b981" }]}>
-                                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>
+                                    <Text style={{ color: "#fff", fontFamily: FONTS.bold, fontSize: 12 }}>
                                         {m.user.surname?.[0]?.toUpperCase() || m.user.name?.[0]?.toUpperCase()}
                                     </Text>
                                 </View>
@@ -207,7 +207,7 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                                     style={[styles.listItem, i < filtered.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                                 >
                                     <View style={[styles.avatarSmall, { backgroundColor: config.color + '30' }]}>
-                                        <Text style={{ color: config.color, fontWeight: '700', fontSize: 12 }}>{initial}</Text>
+                                        <Text style={{ color: config.color, fontFamily: FONTS.bold, fontSize: 12 }}>{initial}</Text>
                                     </View>
                                     <View style={{ marginLeft: 8, flex: 1 }}>
                                         <Text style={[styles.listName, { color: colors.text, marginLeft: 0 }]} numberOfLines={1}>{name}</Text>
@@ -234,7 +234,7 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                 <View style={[styles.cardHeader, { borderBottomColor: colors.border }]}>
                     <Ionicons name="people" size={20} color="#10b981" />
                     <Text style={[styles.cardTitle, { color: colors.text }]}>Team Attendance</Text>
-                    <Text style={[{ fontSize: 11, color: colors.textDim, marginLeft: 'auto', fontWeight: '500' }]}>
+                    <Text style={[{ fontSize: 11, color: colors.textDim, marginLeft: 'auto', fontFamily: FONTS.medium }]}>
                         Today
                     </Text>
                 </View>
@@ -263,7 +263,7 @@ export default function WidgetPreviewModal({ target, position, onClose }: Props)
                         </View>
                         <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
                             <Text style={{ color: colors.textDim, fontSize: 12 }}>Total members</Text>
-                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{attendanceStats.total}</Text>
+                            <Text style={{ color: colors.text, fontSize: 13, fontFamily: FONTS.bold }}>{attendanceStats.total}</Text>
                         </View>
                     </View>
                 ) : (
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         marginLeft: SPACING.sm,
     },
     listItem: {
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     },
     listName: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         marginLeft: SPACING.sm,
         flex: 1,
     },
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
         fontSize: 12,
         marginTop: SPACING.md,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     statRow: {
         flexDirection: "row",
@@ -394,12 +394,12 @@ const styles = StyleSheet.create({
     },
     statNum: {
         fontSize: 22,
-        fontWeight: "800",
+        fontFamily: FONTS.extrabold,
         letterSpacing: -0.5,
     },
     statLabel: {
         fontSize: 11,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     totalRow: {
         flexDirection: "row",

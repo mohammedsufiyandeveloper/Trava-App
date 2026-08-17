@@ -10,7 +10,7 @@ import ProjectGanttView from "./project/ProjectGanttView";
 import CreateSubTaskModal from "../components/CreateSubTaskModal";
 import StatusPickerModal from "../components/StatusPickerModal";
 import ReviewCommentModal from "../components/ReviewCommentModal";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../context/WorkspaceContext";
 import { getTasks, getTasksCount, getKanbanBoard, getCachedSession, updateTask } from "../services/api";
@@ -734,7 +734,7 @@ export default function MyBoardScreen() {
                             <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceHighlight, justifyContent: "center", alignItems: "center" }}>
                                 <Ionicons name={col.icon as any} size={14} color={colors.textDim} />
                             </View>
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, flex: 1 }}>{col.title}</Text>
+                            <Text style={{ fontSize: 16, fontFamily: FONTS.bold, color: colors.text, flex: 1 }}>{col.title}</Text>
                             <ShimmerBlock width={24} height={18} borderRadius={10} />
                         </View>
 
@@ -799,16 +799,16 @@ export default function MyBoardScreen() {
                     {/* Header */}
                     <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: 1, height: GANTT_HEADER_H, borderBottomColor: colors.border, backgroundColor: isDark ? "#111" : colors.surface }}>
                         <View style={{ width: GANTT_NAME_W, paddingLeft: 12 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: colors.primary }}>TASK NAME</Text>
+                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.primary }}>TASK NAME</Text>
                         </View>
                         <View style={{ width: GANTT_ASSIGNEE_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: colors.textDim }}>ASSIGNEE</Text>
+                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>ASSIGNEE</Text>
                         </View>
                         <View style={{ width: GANTT_DAYS_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: colors.textDim }}>DAYS</Text>
+                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>DAYS</Text>
                         </View>
                         <View style={{ width: GANTT_DATES_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: colors.textDim }}>DATES</Text>
+                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>DATES</Text>
                         </View>
                     </View>
 
@@ -1025,13 +1025,13 @@ export default function MyBoardScreen() {
                         {/* Card Header: Breadcrumb + Manager */}
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
-                                <Text style={{ fontSize: 10, fontWeight: "700", textTransform: "uppercase", color: colors.textDim }}>
+                                <Text style={{ fontSize: 10, fontFamily: FONTS.bold, textTransform: "uppercase", color: colors.textDim }}>
                                     {(task.project?.name || "No Project").toUpperCase()}
                                 </Text>
                                 {task.parentTaskId && (
                                     <>
                                         <Text style={{ fontSize: 10, color: colors.textDim, opacity: 0.3 }}>/</Text>
-                                        <Text style={{ fontSize: 10, fontWeight: "500", color: colors.textDim, opacity: 0.8 }}>
+                                        <Text style={{ fontSize: 10, fontFamily: FONTS.medium, color: colors.textDim, opacity: 0.8 }}>
                                             {task.parentTask?.name?.toUpperCase()}
                                         </Text>
                                     </>
@@ -1040,14 +1040,14 @@ export default function MyBoardScreen() {
                             {/* Manager avatar */}
                             <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 8 }}>
                                 <View style={{ alignItems: "flex-end", marginRight: 6 }}>
-                                    <Text style={{ fontSize: 8, fontWeight: "700", textTransform: "uppercase", color: colors.statusReview, opacity: 0.6, marginBottom: 1 }}>Manager</Text>
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.text }}>
+                                    <Text style={{ fontSize: 8, fontFamily: FONTS.bold, textTransform: "uppercase", color: colors.statusReview, opacity: 0.6, marginBottom: 1 }}>Manager</Text>
+                                    <Text style={{ fontSize: 11, fontFamily: FONTS.bold, color: colors.text }}>
                                         {manager?.surname || manager?.name || "None"}
                                     </Text>
                                 </View>
                                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1, backgroundColor: colors.statusReview + "30", borderColor: colors.statusReview, justifyContent: "center", alignItems: "center" }}>
                                     {manager ? (
-                                        <Text style={{ fontSize: 10, fontWeight: "800", color: colors.statusReview }}>
+                                        <Text style={{ fontSize: 10, fontFamily: FONTS.extrabold, color: colors.statusReview }}>
                                             {(manager.surname?.[0] || manager.name?.[0] || "?").toUpperCase()}
                                         </Text>
                                     ) : (
@@ -1058,7 +1058,7 @@ export default function MyBoardScreen() {
                         </View>
 
                         {/* Task Name */}
-                        <Text style={{ fontSize: 14, fontWeight: "600", lineHeight: 20, color: colors.text, marginBottom: 12 }}>
+                        <Text style={{ fontSize: 14, fontFamily: FONTS.semibold, lineHeight: 20, color: colors.text, marginBottom: 12 }}>
                             {task.name}
                         </Text>
 
@@ -1067,11 +1067,11 @@ export default function MyBoardScreen() {
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                                     <Ionicons name="chatbubble-outline" size={12} color={colors.textDim} />
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textDim }}>{task.commentCount || 0}</Text>
+                                    <Text style={{ fontSize: 11, fontFamily: FONTS.semibold, color: colors.textDim }}>{task.commentCount || 0}</Text>
                                 </View>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                                     <Ionicons name="calendar-outline" size={12} color={isOverdue ? colors.error : colors.textDim} />
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: isOverdue ? colors.error : colors.textDim }}>
+                                    <Text style={{ fontSize: 11, fontFamily: FONTS.semibold, color: isOverdue ? colors.error : colors.textDim }}>
                                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString([], { month: "short", day: "numeric" }) : "No date"}
                                     </Text>
                                 </View>
@@ -1079,14 +1079,14 @@ export default function MyBoardScreen() {
                             {/* Assignee avatar */}
                             <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 8 }}>
                                 <View style={{ alignItems: "flex-end", marginRight: 6 }}>
-                                    <Text style={{ fontSize: 8, fontWeight: "700", textTransform: "uppercase", color: colors.textDim, opacity: 0.6, marginBottom: 1 }}>Assignee</Text>
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.text }}>
+                                    <Text style={{ fontSize: 8, fontFamily: FONTS.bold, textTransform: "uppercase", color: colors.textDim, opacity: 0.6, marginBottom: 1 }}>Assignee</Text>
+                                    <Text style={{ fontSize: 11, fontFamily: FONTS.bold, color: colors.text }}>
                                         {task.assignee?.surname || task.assignee?.name || "None"}
                                     </Text>
                                 </View>
                                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1, backgroundColor: colors.surfaceHighlight, borderColor: colors.border, justifyContent: "center", alignItems: "center" }}>
                                     {task.assignee ? (
-                                        <Text style={{ fontSize: 10, fontWeight: "800", color: colors.textDim }}>
+                                        <Text style={{ fontSize: 10, fontFamily: FONTS.extrabold, color: colors.textDim }}>
                                             {(task.assignee.surname?.[0] || task.assignee.name?.[0] || "?").toUpperCase()}
                                         </Text>
                                     ) : (
@@ -1131,9 +1131,9 @@ export default function MyBoardScreen() {
                                     <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: statusBg, justifyContent: "center", alignItems: "center" }}>
                                         <Ionicons name={col.icon} size={14} color={statusColor} />
                                     </View>
-                                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, flex: 1 }}>{col.title}</Text>
+                                    <Text style={{ fontSize: 15, fontFamily: FONTS.bold, color: colors.text, flex: 1 }}>{col.title}</Text>
                                     <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: statusBg }}>
-                                        <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor }}>
+                                        <Text style={{ fontSize: 11, fontFamily: FONTS.bold, color: statusColor }}>
                                             {colState.totalCount ?? colState.tasks.length}
                                         </Text>
                                     </View>
@@ -1318,7 +1318,7 @@ export default function MyBoardScreen() {
                                     <Text style={[
                                         s.viewTabLabel,
                                         { color: active ? colors.primary : colors.textDim },
-                                        active && { fontWeight: "700" }
+                                        active && { fontFamily: FONTS.bold }
                                     ]}>
                                         {opt.label}
                                     </Text>
@@ -1351,7 +1351,7 @@ export default function MyBoardScreen() {
                             accessibilityLabel="Clear all filters"
                             style={{ marginLeft: 4 }}
                         >
-                            <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>Clear All</Text>
+                            <Text style={{ color: colors.error, fontSize: 12, fontFamily: FONTS.bold }}>Clear All</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </View>
@@ -1431,31 +1431,31 @@ export default function MyBoardScreen() {
 const s = StyleSheet.create({
     safe: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 14, padding: SPACING.xl },
-    emptyT: { fontSize: 18, fontWeight: "700" },
+    emptyT: { fontSize: 18, fontFamily: FONTS.bold },
 
     appHeader: { justifyContent: "center", height: 60, borderBottomWidth: 1, ...Platform.select({ ios: { zIndex: 10 }, android: { elevation: 4 } }) },
     headerTitleArea: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10 },
     headerIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: "center", alignItems: "center" },
     headerTextCol: { flex: 1, justifyContent: "center" },
     headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    headerTitle: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
-    headerSubtitle: { fontSize: 10, fontWeight: "500", marginTop: -1 },
+    headerTitle: { fontSize: 16, fontFamily: FONTS.bold, letterSpacing: -0.3 },
+    headerSubtitle: { fontSize: 10, fontFamily: FONTS.medium, marginTop: -1 },
 
     checkboxContainer: { flexDirection: "row", alignItems: "center", gap: 6 },
     checkbox: { width: 14, height: 14, borderRadius: 4, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
-    checkboxLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.3 },
+    checkboxLabel: { fontSize: 11, fontFamily: FONTS.bold, textTransform: "uppercase", letterSpacing: 0.3 },
 
     headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
     actionBtn: { width: 32, height: 32, borderRadius: 10, justifyContent: "center", alignItems: "center", position: "relative" },
     filterBadge: { position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
-    filterBadgeText: { color: "#fff", fontSize: 7, fontWeight: "800" },
+    filterBadgeText: { color: "#fff", fontSize: 7, fontFamily: FONTS.extrabold },
     searchBarArea: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#f3f4f615", borderRadius: 10, paddingHorizontal: 10, height: 36, marginRight: 8 },
     headerSearchInput: { flex: 1, fontSize: 14, paddingHorizontal: 8, height: "100%" },
 
     // Column header row
     colHRow: { flexDirection: "row", borderBottomWidth: 1 },
     colHCell: { justifyContent: "center", alignItems: "center", paddingHorizontal: 8, borderRightWidth: StyleSheet.hairlineWidth },
-    colHTxt: { fontSize: 9, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center" },
+    colHTxt: { fontSize: 9, fontFamily: FONTS.bold, textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center" },
 
     // Section row (data side)
     secRow: { flexDirection: "row", borderBottomWidth: StyleSheet.hairlineWidth },
@@ -1488,37 +1488,37 @@ const s = StyleSheet.create({
     // Frozen name cells
     secFrozen: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, gap: 5, borderBottomWidth: StyleSheet.hairlineWidth },
     secDot: { width: 7, height: 7, borderRadius: 4 },
-    secTitle: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
+    secTitle: { fontSize: 10, fontFamily: FONTS.bold, textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
     secBadge: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8 },
-    secBadgeTxt: { fontSize: 9, fontWeight: "700" },
+    secBadgeTxt: { fontSize: 9, fontFamily: FONTS.bold },
     nameCell: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 10, paddingVertical: 6, gap: 7, borderBottomWidth: StyleSheet.hairlineWidth },
     statusDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0, marginTop: 5 },
-    taskName: { fontSize: 12, fontWeight: "600", lineHeight: 17 },
+    taskName: { fontSize: 12, fontFamily: FONTS.semibold, lineHeight: 17 },
     projRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
     projDot: { width: 5, height: 5, borderRadius: 3 },
-    projTxt: { fontSize: 10, fontWeight: "600" },
+    projTxt: { fontSize: 10, fontFamily: FONTS.semibold },
 
     // Data cells
     badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    badgeTxt: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+    badgeTxt: { fontSize: 9, fontFamily: FONTS.extrabold, textTransform: "uppercase" },
     dateTxt: { fontSize: 11 },
     mem: { flexDirection: "row", alignItems: "center", gap: 4 },
     av: { width: 20, height: 20, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-    avTxt: { fontSize: 8, fontWeight: "700" },
-    memTxt: { fontSize: 10, fontWeight: "500", flexShrink: 1 },
+    avTxt: { fontSize: 8, fontFamily: FONTS.bold },
+    memTxt: { fontSize: 10, fontFamily: FONTS.medium, flexShrink: 1 },
     urgB: { flexDirection: "row", alignItems: "center", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, gap: 3 },
     urgDot: { width: 5, height: 5, borderRadius: 3 },
-    urgTxt: { fontSize: 9, fontWeight: "700" },
+    urgTxt: { fontSize: 9, fontFamily: FONTS.bold },
     tagB: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, minWidth: 40, alignItems: "center" },
-    tagTxt: { fontSize: 8, fontWeight: "700", textTransform: "uppercase" },
+    tagTxt: { fontSize: 8, fontFamily: FONTS.bold, textTransform: "uppercase" },
     dash: { fontSize: 13 },
 
     // Picker
     dropdown: { position: "absolute", width: 248, borderRadius: BORDER_RADIUS.xl, borderWidth: 1, padding: SPACING.sm, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 10 },
     pItem: { flexDirection: "row", alignItems: "center", padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, marginBottom: 2, gap: 10 },
     pIcon: { width: 27, height: 27, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    pInit: { fontSize: 12, fontWeight: "700" },
-    pTxt: { flex: 1, fontSize: 14, fontWeight: "500" },
+    pInit: { fontSize: 12, fontFamily: FONTS.bold },
+    pTxt: { flex: 1, fontSize: 14, fontFamily: FONTS.medium },
 
     viewSwitcher: {
         height: 56,
@@ -1555,7 +1555,7 @@ const s = StyleSheet.create({
     },
     viewTabLabel: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     activeFiltersBar: {
         paddingVertical: SPACING.sm,
@@ -1573,7 +1573,7 @@ const s = StyleSheet.create({
     },
     removableChipText: {
         fontSize: 11,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         flexShrink: 1,
     },
 });
@@ -1609,7 +1609,7 @@ const BoardCell = React.memo(function BoardCell({ task, col, colors, tags }: Boa
         case "start":
             return <Text style={[s.dateTxt, { color: colors.text }]}>{fmtDate(task.startDate)}</Text>;
         case "due":
-            return <Text style={[s.dateTxt, { color: colors.text, fontWeight: "700" }]}>{fmtDate(task.dueDate)}</Text>;
+            return <Text style={[s.dateTxt, { color: colors.text, fontFamily: FONTS.bold }]}>{fmtDate(task.dueDate)}</Text>;
         case "assignee":
             return task.assignee ? (
                 <View style={s.mem}>
@@ -1733,7 +1733,7 @@ const BoardNameCol = React.memo(function BoardNameCol({
                             <View style={{ flex: 1 }}>
                                 {(task.project?.name || task.parentTask?.name) ? (
                                     <Text
-                                        style={{ fontSize: 10, fontWeight: "500", color: colors.textDim }}
+                                        style={{ fontSize: 10, fontFamily: FONTS.medium, color: colors.textDim }}
                                         numberOfLines={1}
                                         ellipsizeMode="tail"
                                     >
@@ -1754,7 +1754,7 @@ const BoardNameCol = React.memo(function BoardNameCol({
                                 <Text
                                     style={{
                                         fontSize: 13,
-                                        fontWeight: "700",
+                                        fontFamily: FONTS.bold,
                                         color: colors.text,
                                         marginTop: (task.project?.name || task.parentTask?.name) ? 2 : 0,
                                     }}

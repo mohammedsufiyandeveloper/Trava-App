@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import { Task } from "../../types";
 import { getStatusHex } from "../../utils/taskColors";
+import { FONTS } from "../../constants/theme";
 
 const STATUS_LABELS: Record<string, string> = {
     TO_DO: "To Do",
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     label: {
         color:      "#fff",
         fontSize:   9,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         letterSpacing: 0.2,
         textShadowColor: "rgba(0,0,0,0.4)",
         textShadowOffset: { width: 0, height: 1 },

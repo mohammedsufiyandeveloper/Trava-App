@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { Task } from "../types";
 import { formatGanttDateRange, calculateDuration } from "../utils/ganttUtils";
@@ -125,7 +125,7 @@ export default function GanttTaskRow({
                                 <Text
                                     style={[
                                         styles.taskName,
-                                        { color: colors.text, fontWeight: isSubtask ? "500" : "700" }
+                                        { color: colors.text, fontFamily: isSubtask ? FONTS.medium : FONTS.bold }
                                     ]}
                                     numberOfLines={1}
                                 >
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     },
     taskName: {
         fontSize: 15,
-        fontWeight: '700',
+        fontFamily: FONTS.bold,
         letterSpacing: 0.1,
     },
     headerArea: {
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     },
     detailButtonText: {
         fontSize: 12,
-        fontWeight: '700',
+        fontFamily: FONTS.bold,
     },
     parentRow: {
         flexDirection: 'row',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     },
     countText: {
         fontSize: 10,
-        fontWeight: '700',
+        fontFamily: FONTS.bold,
     },
     mainRow: {
         flexDirection: 'row',
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     },
     breadcrumbText: {
         fontSize: 10,
-        fontWeight: '600',
+        fontFamily: FONTS.semibold,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 2,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     },
     statusBadgeText: {
         fontSize: 9,
-        fontWeight: '700',
+        fontFamily: FONTS.bold,
         textTransform: 'uppercase',
     },
     avatar: {
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         fontSize: 10,
-        fontWeight: "bold",
+        fontFamily: FONTS.bold,
     },
     detailsGrid: {
         flexDirection: 'row',
@@ -414,12 +414,12 @@ const styles = StyleSheet.create({
     },
     colLabel: {
         fontSize: 8,
-        fontWeight: '700',
+        fontFamily: FONTS.bold,
         opacity: 0.6,
         marginBottom: 2,
     },
     colValue: {
         fontSize: 11,
-        fontWeight: '600',
+        fontFamily: FONTS.semibold,
     },
 });

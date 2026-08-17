@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
-import { BORDER_RADIUS, SPACING } from "../constants/theme";
+import { BORDER_RADIUS, SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 
 export type StatusKind =
@@ -85,6 +85,6 @@ const styles = StyleSheet.create({
     sm: { paddingHorizontal: SPACING.sm, paddingVertical: 3 },
     md: { paddingHorizontal: SPACING.sm + 2, paddingVertical: 5 },
     dot: { width: 6, height: 6, borderRadius: 3 },
-    label: { fontSize: 12, fontWeight: "700" },
+    label: { fontSize: 12, fontFamily: FONTS.bold },
     labelSm: { fontSize: 11 },
 });

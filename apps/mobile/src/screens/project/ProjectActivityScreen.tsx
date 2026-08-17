@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, TOUCH_TARGET } from "../../constants/theme";
+import { SPACING, TOUCH_TARGET, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     backBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, justifyContent: "center", alignItems: "flex-start" },
     titleContainer: { flex: 1, flexDirection: "row", alignItems: "center", marginLeft: SPACING.sm },
     colorDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
-    title: { fontSize: 18, fontWeight: "700" },
+    title: { fontSize: 18, fontFamily: FONTS.bold },
     content: { paddingVertical: SPACING.md },
     activityList: { paddingHorizontal: SPACING.lg, gap: SPACING.sm },
     activityItem: {
@@ -188,5 +188,5 @@ const styles = StyleSheet.create({
     activityIconBox: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
     activityTime: { fontSize: 10, opacity: 0.7 },
     activityText: { fontSize: 13, lineHeight: 18 },
-    activityTaskName: { fontSize: 10, fontWeight: "600", opacity: 0.8 },
+    activityTaskName: { fontSize: 10, fontFamily: FONTS.semibold, opacity: 0.8 },
 });

@@ -18,7 +18,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList, UserProfile } from "../types";
 import { useTheme } from "../context/ThemeContext";
 import { getProfile, updateProfile } from "../services/api";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
 import AppCard from "../components/AppCard";
 import PressableScale from "../components/PressableScale";
@@ -225,9 +225,9 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    headerTitle: { fontSize: 18, fontWeight: "700" },
+    headerTitle: { fontSize: 18, fontFamily: FONTS.bold },
     saveHeaderBtn: { paddingHorizontal: 12, paddingVertical: 6 },
-    saveHeaderText: { fontSize: 16, fontWeight: "600" },
+    saveHeaderText: { fontSize: 16, fontFamily: FONTS.semibold },
     scrollContent: { paddingBottom: SPACING.bottomTabBar },
 
     avatarSection: { alignItems: "center", marginTop: 24 },
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
         height: "100%",
         borderRadius: 47,
     },
-    avatarText: { color: "#fff", fontSize: 40, fontWeight: "700" },
+    avatarText: { color: "#fff", fontSize: 40, fontFamily: FONTS.bold },
     editBadge: {
         position: "absolute",
         bottom: 0,
@@ -265,19 +265,19 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: "#fff",
     },
-    profileName: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
-    profileRole: { fontSize: 14, fontWeight: "500", opacity: 0.7 },
+    profileName: { fontSize: 22, fontFamily: FONTS.bold, marginBottom: 4 },
+    profileRole: { fontSize: 14, fontFamily: FONTS.medium, opacity: 0.7 },
 
 
     formContainer: { paddingHorizontal: SPACING.lg, marginTop: 32 },
-    sectionTitle: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 12, marginLeft: 4 },
+    sectionTitle: { fontSize: 11, fontFamily: FONTS.bold, letterSpacing: 1, marginBottom: 12, marginLeft: 4 },
     formGroup: { borderRadius: BORDER_RADIUS.lg, borderWidth: 1, overflow: "hidden" },
     inputItem: { paddingHorizontal: 16, paddingVertical: 12 },
-    inputLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4 },
+    inputLabel: { fontSize: 12, fontFamily: FONTS.semibold, marginBottom: 4 },
     input: { fontSize: 16, padding: 0, height: 24 },
     divider: { height: 1, width: "100%" },
     menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 },
     menuLeft: { flexDirection: "row", alignItems: "center" },
     iconBox: { width: 32, height: 32, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    menuLabel: { marginLeft: 12, fontSize: 15, fontWeight: "500" },
+    menuLabel: { marginLeft: 12, fontSize: 15, fontFamily: FONTS.medium },
 });

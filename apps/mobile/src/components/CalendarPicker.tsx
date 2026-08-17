@@ -25,7 +25,7 @@ import {
     startOfToday,
     isWithinInterval,
 } from "date-fns";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 
 interface CalendarPickerProps {
@@ -167,8 +167,8 @@ export default function CalendarPicker({
                         style={[
                             styles.cellText,
                             { color: isCurrentMonth ? colors.text : colors.textDim + "40" },
-                            isSelected && { color: "#fff", fontWeight: "700" },
-                            isInRange && !isSelected && { color: colors.primary, fontWeight: "600" },
+                            isSelected && { color: "#fff", fontFamily: FONTS.bold },
+                            isInRange && !isSelected && { color: colors.primary, fontFamily: FONTS.semibold },
                             isDisabled && { color: colors.textDim + "20" },
                         ]}
                     >
@@ -221,7 +221,7 @@ export default function CalendarPicker({
                                 onPress={handleApply}
                                 disabled={!rangeStart || !rangeEnd}
                             >
-                                <Text style={{ color: "#fff", fontWeight: "700" }}>Apply Range</Text>
+                                <Text style={{ color: "#fff", fontFamily: FONTS.bold }}>Apply Range</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity 
@@ -231,7 +231,7 @@ export default function CalendarPicker({
                                     onClose();
                                 }}
                             >
-                                <Text style={{ color: colors.primary, fontWeight: "600" }}>Today</Text>
+                                <Text style={{ color: colors.primary, fontFamily: FONTS.semibold }}>Today</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     header: {
         flexDirection: "row",
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     },
     monthText: {
         fontSize: 16,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     daysRow: {
         flexDirection: "row",
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: "center",
         fontSize: 12,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     cellsContainer: {
         width: "100%",

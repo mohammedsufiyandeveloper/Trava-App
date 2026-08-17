@@ -5,7 +5,7 @@ import {
     StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
 import Sheet from "./Sheet";
@@ -91,7 +91,7 @@ export default function StatusPickerModal({
                             <Text style={[
                                 styles.statusLabel,
                                 { color: colors.text },
-                                isSelected && { color: colors.primary, fontWeight: "700" }
+                                isSelected && { color: colors.primary, fontFamily: FONTS.bold }
                             ]}>
                                 {opt.label}
                             </Text>
@@ -106,7 +106,7 @@ export default function StatusPickerModal({
 
 const styles = StyleSheet.create({
     headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: SPACING.md, paddingBottom: 12 },
-    title: { fontSize: 18, fontWeight: "700" },
+    title: { fontSize: 18, fontFamily: FONTS.bold },
     moreButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
 
     content: { paddingHorizontal: SPACING.md, paddingTop: 4 },
@@ -118,5 +118,5 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: SPACING.md },
-    statusLabel: { flex: 1, fontSize: 16, fontWeight: "500" },
+    statusLabel: { flex: 1, fontSize: 16, fontFamily: FONTS.medium },
 });

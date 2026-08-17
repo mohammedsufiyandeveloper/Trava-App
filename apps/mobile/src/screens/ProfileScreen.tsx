@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useFocusEffect } from "@react-navigation/native";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { getHapticsEnabled, setHapticsEnabled, haptics } from "../services/haptics";
 import { useNotifications } from "../context/NotificationContext";
@@ -100,6 +100,11 @@ export default function ProfileScreen({ navigation }: Props) {
     const [signingOut, setSigningOut] = useState(false);
     const { colors, isDark, toggleTheme } = useTheme();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+
+    const onToggleTheme = () => {
+        haptics.selection();
+        toggleTheme();
+    };
 
     const onToggleHaptics = (next: boolean) => {
         setHapticsOn(next);
@@ -203,10 +208,11 @@ export default function ProfileScreen({ navigation }: Props) {
                 <View style={styles.section}>
                     <Text style={[styles.sectionLabel, { color: colors.textDim }]}>PREFERENCES</Text>
                     <AppCard padded={false} style={styles.menuCard}>
-                        <MenuItem
-                            icon={{ name: isDark ? "sunny-outline" : "moon-outline", color: "#8b5cf6", bg: "#8b5cf615" }}
-                            label={`Appearance: ${isDark ? "Dark" : "Light"}`}
-                            onPress={toggleTheme}
+                        <ToggleItem
+                            icon={{ name: isDark ? "moon" : "sunny", color: colors.primary, bg: colors.primary + "1f" }}
+                            label="Dark mode"
+                            value={isDark}
+                            onValueChange={onToggleTheme}
                         />
                         <ToggleItem
                             icon={{ name: "phone-portrait-outline", color: "#10b981", bg: "#10b98115" }}
@@ -288,19 +294,19 @@ const styles = StyleSheet.create({
 
     profileHeader: { alignItems: "center", paddingVertical: SPACING.xxl, paddingHorizontal: SPACING.lg },
     avatarLarge: { width: 80, height: 80, borderRadius: 40, justifyContent: "center", alignItems: "center", marginBottom: SPACING.md },
-    avatarTextLarge: { color: "#fff", fontSize: 32, fontWeight: "700" },
-    userNameLarge: { fontSize: 20, fontWeight: "700" },
+    avatarTextLarge: { color: "#fff", fontSize: 32, fontFamily: FONTS.bold },
+    userNameLarge: { fontSize: 20, fontFamily: FONTS.bold },
     userEmailLarge: { fontSize: 14, marginTop: 4 },
     editBtn: { marginTop: SPACING.lg, paddingHorizontal: SPACING.lg, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
-    editBtnText: { fontWeight: "600", fontSize: 13 },
+    editBtnText: { fontFamily: FONTS.semibold, fontSize: 13 },
 
     section: { paddingHorizontal: SPACING.lg, marginTop: SPACING.xl },
-    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: SPACING.sm, paddingLeft: 4 },
+    sectionLabel: { fontSize: 11, fontFamily: FONTS.bold, letterSpacing: 1, marginBottom: SPACING.sm, paddingLeft: 4 },
     menuCard: { borderRadius: BORDER_RADIUS.lg, borderWidth: 1, overflow: "hidden" },
     menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: SPACING.md, borderBottomWidth: 1 },
     menuLeft: { flexDirection: "row", alignItems: "center" },
     iconBox: { width: 32, height: 32, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    menuLabel: { marginLeft: SPACING.md, fontSize: 15, fontWeight: "500" },
+    menuLabel: { marginLeft: SPACING.md, fontSize: 15, fontFamily: FONTS.medium },
 
     versionText: { marginTop: SPACING.xl, textAlign: "center", fontSize: 12 },
 });

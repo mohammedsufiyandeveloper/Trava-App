@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import {
     getIndentRequest,
     getVendors,
@@ -266,7 +266,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                     </TouchableOpacity>
                     <View style={{ flex: 1, marginLeft: SPACING.sm }}>
                         <Text style={[styles.title, { color: colors.text }]}>{indent.indentId || "IND-RAW"}</Text>
-                        <Text style={{ fontSize: 11, color: colors.textDim, fontWeight: "600" }}>REQUEST DETAILS</Text>
+                        <Text style={{ fontSize: 11, color: colors.textDim, fontFamily: FONTS.semibold }}>REQUEST DETAILS</Text>
                     </View>
                     
                     {/* Delete button for drafts or admins */}
@@ -453,7 +453,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                                     {isQuoteApproved && (
                                                         <View style={styles.approvedQuoteBadge}>
                                                             <Ionicons name="checkmark-circle" size={18} color="#166534" />
-                                                            <Text style={{ color: "#166534", fontSize: 10, fontWeight: "800", marginLeft: 2 }}>APPROVED</Text>
+                                                            <Text style={{ color: "#166534", fontSize: 10, fontFamily: FONTS.extrabold, marginLeft: 2 }}>APPROVED</Text>
                                                         </View>
                                                     )}
                                                 </View>
@@ -491,7 +491,7 @@ export default function IndentDetailScreen({ route, navigation }: any) {
                                             onPress={() => setSelectedVendor(v)}
                                         >
                                             <Text style={{
-                                                fontWeight: "700",
+                                                fontFamily: FONTS.bold,
                                                 fontSize: 12,
                                                 color: selectedVendor?.id === v.id ? "#fff" : colors.text
                                             }}>{v.name}</Text>
@@ -620,54 +620,54 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: { flexDirection: "row", alignItems: "center", paddingVertical: SPACING.md },
     backBtn: { width: 40, height: 40, justifyContent: "center" },
-    title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+    title: { fontSize: 24, fontFamily: FONTS.extrabold, letterSpacing: -0.5 },
     deleteBtn: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
     
     scrollContent: { paddingBottom: 60 },
-    sectionTitle: { fontSize: 15, fontWeight: "700", marginTop: SPACING.xl, marginBottom: SPACING.sm },
+    sectionTitle: { fontSize: 15, fontFamily: FONTS.bold, marginTop: SPACING.xl, marginBottom: SPACING.sm },
     
     mainCard: { padding: 16, borderRadius: BORDER_RADIUS.lg, borderWidth: 1 },
     cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
-    indentName: { fontSize: 18, fontWeight: "700", flex: 1, marginRight: 8 },
+    indentName: { fontSize: 18, fontFamily: FONTS.bold, flex: 1, marginRight: 8 },
     indentDesc: { fontSize: 13, lineHeight: 18, marginTop: 4 },
     statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    statusText: { fontSize: 10, fontWeight: "800" },
+    statusText: { fontSize: 10, fontFamily: FONTS.extrabold },
     cardDivider: { height: 1, marginVertical: 14, opacity: 0.3 },
     
     gridRow: { flexDirection: "row", justifyContent: "space-between" },
     gridCol: { flex: 1 },
-    gridLabel: { fontSize: 9, fontWeight: "800", letterSpacing: 0.5, marginBottom: 2 },
-    gridValue: { fontSize: 13, fontWeight: "700" },
+    gridLabel: { fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 0.5, marginBottom: 2 },
+    gridValue: { fontSize: 13, fontFamily: FONTS.bold },
     
     itemCard: { padding: 16, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: 12 },
     itemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
-    itemNameText: { fontSize: 15, fontWeight: "700" },
-    itemQtyText: { fontSize: 12, fontWeight: "600", marginTop: 2 },
+    itemNameText: { fontSize: 15, fontFamily: FONTS.bold },
+    itemQtyText: { fontSize: 12, fontFamily: FONTS.semibold, marginTop: 2 },
     itemStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    itemStatusText: { fontSize: 9, fontWeight: "800" },
-    itemSpecText: { fontSize: 12, fontWeight: "500", marginTop: 4, fontStyle: "italic" },
-    itemRejectionText: { fontSize: 12, fontWeight: "700", marginTop: 6, fontStyle: "italic" },
+    itemStatusText: { fontSize: 9, fontFamily: FONTS.extrabold },
+    itemSpecText: { fontSize: 12, fontFamily: FONTS.medium, marginTop: 4, fontStyle: "italic" },
+    itemRejectionText: { fontSize: 12, fontFamily: FONTS.bold, marginTop: 6, fontStyle: "italic" },
     
     actionRow: { flexDirection: "row", gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)" },
     actionBtn: { flex: 1, height: 38, borderRadius: 8, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 4 },
-    actionBtnText: { fontSize: 12, fontWeight: "700" },
+    actionBtnText: { fontSize: 12, fontFamily: FONTS.bold },
     
     quotesSection: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)" },
-    quotesTitle: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5, marginBottom: 8 },
+    quotesTitle: { fontSize: 10, fontFamily: FONTS.extrabold, letterSpacing: 0.5, marginBottom: 8 },
     quoteRow: { flexDirection: "row", alignItems: "center", padding: 10, borderRadius: 8, borderWidth: 1, marginBottom: 8 },
-    quoteVendorText: { fontSize: 13, fontWeight: "700" },
-    quotePriceText: { fontSize: 11, fontWeight: "500", marginTop: 2 },
+    quoteVendorText: { fontSize: 13, fontFamily: FONTS.bold },
+    quotePriceText: { fontSize: 11, fontFamily: FONTS.medium, marginTop: 2 },
     quoteNotesText: { fontSize: 11, fontStyle: "italic", marginTop: 2 },
     miniApproveBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-    miniApproveBtnText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+    miniApproveBtnText: { color: "#fff", fontSize: 10, fontFamily: FONTS.extrabold },
     approvedQuoteBadge: { flexDirection: "row", alignItems: "center" },
     
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
     modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: SPACING.xl, maxHeight: "90%" },
     modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SPACING.lg },
-    modalTitle: { fontSize: 18, fontWeight: "700" },
+    modalTitle: { fontSize: 18, fontFamily: FONTS.bold },
     form: { marginBottom: SPACING.xl },
-    label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
+    label: { fontSize: 12, fontFamily: FONTS.semibold, marginBottom: 6 },
     modalInput: { height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, paddingHorizontal: 12, fontSize: 15, marginBottom: 12 },
     textArea: { height: 80, textAlignVertical: "top", paddingVertical: 8 },
     
@@ -676,5 +676,5 @@ const styles = StyleSheet.create({
     
     row: { flexDirection: "row" },
     modalAddBtn: { marginTop: SPACING.lg, height: 48, borderRadius: BORDER_RADIUS.md, justifyContent: "center", alignItems: "center" },
-    modalAddBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    modalAddBtnText: { color: "#fff", fontSize: 15, fontFamily: FONTS.bold },
 });

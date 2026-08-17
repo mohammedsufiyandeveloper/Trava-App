@@ -1,28 +1,42 @@
-import React, { useCallback, useState } from "react";
-import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated";
 
-import { MOTION, SPACING } from "../constants/theme";
+import { MOTION, SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import PressableScale from "../components/PressableScale";
-import GlassSurface from "../components/GlassSurface";
 
 interface TabMeta {
     iconActive: string;
     iconInactive: string;
     label: string;
-    iconFamily?: "Ionicons" | "MaterialCommunityIcons" | "Feather";
+    iconFamily?: "Ionicons" | "MaterialCommunityIcons";
 }
 
 const TAB_META: Record<string, TabMeta> = {
     Home: { iconActive: "home", iconInactive: "home-outline", label: "Home" },
-    Projects: { iconActive: "briefcase", iconInactive: "briefcase-outline", label: "Projects" },
-    MyTasks: { iconActive: "trello", iconInactive: "trello", label: "Board", iconFamily: "Feather" },
-    Profile: { iconActive: "person", iconInactive: "person-outline", label: "Profile" },
+    Projects: {
+        iconActive: "book-open-page-variant",
+        iconInactive: "book-open-page-variant-outline",
+        label: "Projects",
+        iconFamily: "MaterialCommunityIcons",
+    },
+    MyTasks: {
+        iconActive: "format-list-checks",
+        iconInactive: "format-list-checks",
+        label: "Board",
+        iconFamily: "MaterialCommunityIcons",
+    },
+    Profile: {
+        iconActive: "cog",
+        iconInactive: "cog-outline",
+        label: "Profile",
+        iconFamily: "MaterialCommunityIcons",
+    },
 };
 
 function TabButton({
@@ -36,18 +50,21 @@ function TabButton({
     onPress: () => void;
     reducedMotion: boolean;
 }) {
-    const iconStyle = useAnimatedStyle(() => ({
+    const { colors, isDark } = useTheme();
+
+    const pillStyle = useAnimatedStyle(() => ({
         transform: [
-            { scale: reducedMotion ? 1 : withSpring(focused ? 1.05 : 1, MOTION.spring.snappy) },
+            { scale: reducedMotion ? 1 : withSpring(focused ? 1 : 0.9, MOTION.spring.snappy) },
         ],
     }));
 
-    const IconComponent = 
-        meta.iconFamily === "MaterialCommunityIcons" 
-            ? MaterialCommunityIcons 
-            : meta.iconFamily === "Feather"
-            ? Feather
-            : Ionicons;
+    const IconComponent = meta.iconFamily === "MaterialCommunityIcons" ? MaterialCommunityIcons : Ionicons;
+
+    // Active pill carries the brand primary in both themes; its content is dark
+    // ink because white on #fbb54a fails contrast.
+    const pillBg = colors.primary;
+    const activeContent = "#2b1c04";
+    const inactiveContent = isDark ? "#6b7280" : "#9ca3af";
 
     return (
         <PressableScale
@@ -57,26 +74,25 @@ function TabButton({
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={meta.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", height: "100%" }}
+            style={styles.tabPressable}
         >
-            <Animated.View style={[{ alignItems: "center", justifyContent: "center", width: "100%" }, iconStyle]}>
-                <View style={{ height: 32, width: 56, borderRadius: 16, justifyContent: "center", alignItems: "center" }}>
-                    <IconComponent
-                        name={focused ? (meta.iconActive as any) : (meta.iconInactive as any)}
-                        size={20}
-                        color={focused ? "#000000" : "#888888"}
-                    />
-                </View>
-                <Text
-                    style={{
-                        fontSize: 10,
-                        fontWeight: focused ? "700" : "500",
-                        color: focused ? "#ffffff" : "#888888",
-                        marginTop: 4,
-                    }}
-                >
-                    {meta.label}
-                </Text>
+            <Animated.View
+                style={[
+                    styles.tabInner,
+                    focused && { backgroundColor: pillBg, ...styles.tabInnerActive },
+                    pillStyle,
+                ]}
+            >
+                <IconComponent
+                    name={(focused ? meta.iconActive : meta.iconInactive) as any}
+                    size={focused ? 20 : 24}
+                    color={focused ? activeContent : inactiveContent}
+                />
+                {focused && (
+                    <Text style={[styles.tabLabel, { color: activeContent }]} numberOfLines={1}>
+                        {meta.label}
+                    </Text>
+                )}
             </Animated.View>
         </PressableScale>
     );
@@ -96,26 +112,6 @@ export default function AnimatedTabBar({
     const reducedMotion = useReducedMotion();
     const routes = state.routes;
 
-    const [tabsWidth, setTabsWidth] = useState(0);
-    const onTabsLayout = useCallback((e: LayoutChangeEvent) => {
-        setTabsWidth(e.nativeEvent.layout.width);
-    }, []);
-
-    const tabWidth = tabsWidth > 0 ? tabsWidth / routes.length : 0;
-    const indicatorWidth = 56;
-
-    const indicatorStyle = useAnimatedStyle(() => {
-        const x = state.index * tabWidth + (tabWidth - indicatorWidth) / 2;
-        return {
-            width: indicatorWidth,
-            transform: [
-                { translateX: reducedMotion ? withTiming(x, { duration: 0 }) : withSpring(x, MOTION.spring.snappy) },
-            ],
-        };
-    });
-
-    const allowTabBarBlur = Platform.OS !== "android" || Platform.Version >= 28;
-
     const handlePress = (route: any, index: number) => {
         const isFocused = state.index === index;
         const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
@@ -124,6 +120,28 @@ export default function AnimatedTabBar({
             navigation.navigate(route.name, { screen: "_Base" });
         }
     };
+
+    const renderTab = (route: any, index: number) => {
+        const meta = TAB_META[route.name] ?? {
+            iconActive: "ellipse",
+            iconInactive: "ellipse-outline",
+            label: route.name,
+        };
+        return (
+            <TabButton
+                key={route.key}
+                focused={state.index === index}
+                meta={meta}
+                onPress={() => handlePress(route, index)}
+                reducedMotion={reducedMotion}
+            />
+        );
+    };
+
+    // The FAB sits in the middle of the bar, splitting the tabs into two halves.
+    const splitAt = Math.ceil(routes.length / 2);
+    const leftRoutes = routes.slice(0, splitAt);
+    const rightRoutes = routes.slice(splitAt);
 
     return (
         <View
@@ -134,104 +152,92 @@ export default function AnimatedTabBar({
                 paddingTop: SPACING.sm,
             }}
         >
-            <GlassSurface
-                level="elevated"
-                intensity="header"
-                radius="xl"
-                elevation="md"
-                allowBlur={allowTabBarBlur}
-                style={{ 
-                    backgroundColor: "#111111", 
-                    borderRadius: 24, 
-                    borderWidth: 1, 
-                    borderColor: "rgba(255,255,255,0.04)" 
-                }}
-            >
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        height: 64,
-                        paddingHorizontal: 8,
-                    }}
-                >
-                    {/* Tabs Container */}
-                    <View
-                        onLayout={onTabsLayout}
-                        accessibilityRole="tablist"
-                        style={{
-                            flex: 1,
-                            flexDirection: "row",
-                            height: "100%",
-                            alignItems: "center",
-                            position: "relative",
-                        }}
-                    >
-                        {tabsWidth > 0 && (
-                            <Animated.View
-                                pointerEvents="none"
-                                style={[
-                                    {
-                                        position: "absolute",
-                                        top: 8, // Centered vertically in 64px height: (64 - 48)/2 = 8px
-                                        height: 32,
-                                        borderRadius: 16,
-                                        backgroundColor: "#ffffff",
-                                        shadowColor: "#000",
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.15,
-                                        shadowRadius: 4,
-                                        elevation: 3,
-                                    },
-                                    indicatorStyle,
-                                ]}
-                            />
-                        )}
-                        {routes.map((route: any, index: number) => {
-                            const meta = TAB_META[route.name] ?? {
-                                iconActive: "ellipse",
-                                iconInactive: "ellipse-outline",
-                                label: route.name,
-                            };
-                            return (
-                                <TabButton
-                                    key={route.key}
-                                    focused={state.index === index}
-                                    meta={meta}
-                                    onPress={() => handlePress(route, index)}
-                                    reducedMotion={reducedMotion}
-                                />
-                            );
-                        })}
-                    </View>
-
-                    {/* Spacing between tabs and FAB */}
-                    <View style={{ width: 4 }} />
-
-                    {/* FAB "+" Button */}
-                    <View style={{ justifyContent: "center", alignItems: "center" }}>
-                        <PressableScale
-                            haptic="medium"
-                            onPress={onOpenMenu}
-                            accessibilityRole="button"
-                            accessibilityLabel="Create"
-                            accessibilityHint="Opens the create menu"
-                            style={{ 
-                                width: 44, 
-                                height: 44, 
-                                borderRadius: 22, 
-                                borderColor: "#f59e0b", 
-                                borderWidth: 1, 
-                                backgroundColor: "#111111", 
-                                justifyContent: "center", 
-                                alignItems: "center" 
-                            }}
-                        >
-                            <Ionicons name="add" size={24} color="#f59e0b" />
-                        </PressableScale>
-                    </View>
+            <View style={styles.bar} accessibilityRole="tablist">
+                <View style={styles.tabGroup}>
+                    {leftRoutes.map((route: any, i: number) => renderTab(route, i))}
                 </View>
-            </GlassSurface>
+
+                {/* Center FAB */}
+                <View style={styles.fabSlot}>
+                    <PressableScale
+                        haptic="medium"
+                        onPress={onOpenMenu}
+                        accessibilityRole="button"
+                        accessibilityLabel="Create"
+                        accessibilityHint="Opens the create menu"
+                        style={[
+                            styles.fab,
+                            { backgroundColor: colors.primary, shadowColor: "#e0972a" },
+                        ]}
+                    >
+                        <Ionicons name="add" size={28} color="#2b1c04" />
+                    </PressableScale>
+                </View>
+
+                <View style={styles.tabGroup}>
+                    {rightRoutes.map((route: any, i: number) => renderTab(route, splitAt + i))}
+                </View>
+            </View>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    bar: {
+        flexDirection: "row",
+        alignItems: "center",
+        height: 60,
+    },
+    tabGroup: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-around",
+        height: "100%",
+    },
+    tabPressable: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+    },
+    tabInner: {
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 24,
+        minHeight: 44,
+    },
+    tabInnerActive: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    tabLabel: {
+        fontSize: 10,
+        fontFamily: FONTS.bold,
+        letterSpacing: 0.2,
+        marginTop: 2,
+    },
+    fabSlot: {
+        width: 72,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    fab: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: "center",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+        elevation: 10,
+    },
+});

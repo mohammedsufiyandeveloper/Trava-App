@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { signIn } from "../services/api";
 import { RootStackParamList } from "../types";
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     },
     logoText: {
         fontSize: 15,
-        fontWeight: "800",
+        fontFamily: FONTS.extrabold,
         letterSpacing: 2
     },
     card: {
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 22,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         marginBottom: 6
     },
     cardDesc: {
@@ -230,19 +230,19 @@ const styles = StyleSheet.create({
     errorBannerText: {
         flex: 1,
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         lineHeight: 18,
     },
     fieldErrorText: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         marginBottom: 16,
         marginTop: -12,
     },
     label: {
         fontSize: 13,
         marginBottom: 8,
-        fontWeight: "600"
+        fontFamily: FONTS.semibold
     },
     labelRow: {
         flexDirection: "row",
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     },
     forgotText: {
         fontSize: 13,
-        fontWeight: "600"
+        fontFamily: FONTS.semibold
     },
     input: {
         borderWidth: 1,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     },
     footerLink: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textDecorationLine: "underline"
     },
     terms: {

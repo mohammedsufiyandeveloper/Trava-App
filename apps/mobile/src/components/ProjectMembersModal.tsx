@@ -12,7 +12,7 @@ import {
     Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import {
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     subtitle: {
         fontSize: 12,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
         letterSpacing: 1,
     },
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     addBtnText: {
         color: "#fff",
         fontSize: 13,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     memberList: { flex: 1 },
     memberCard: {
@@ -454,12 +454,12 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     userDetails: { gap: 2 },
     memberName: {
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     roleBadge: {
         flexDirection: "row",
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     },
     roleText: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
     },
     removeBtn: {
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     },
     subTitle: {
         fontSize: 17,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     searchBox: {
         flexDirection: "row",
@@ -554,11 +554,11 @@ const styles = StyleSheet.create({
     },
     subAvatarText: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     subName: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     subEmail: {
         fontSize: 11,

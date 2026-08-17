@@ -15,13 +15,14 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNotifications, NotificationItem } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { RootStackParamList } from "../types";
 import { format, isToday, isYesterday } from "date-fns";
 import { useResponsive } from "../hooks/useResponsive";
 import { getTaskById } from "../services/api";
 import PressableScale from "../components/PressableScale";
 import EmptyState from "../components/EmptyState";
+import AmbientBackground from "../components/AmbientBackground";
 
 type NotifRow =
     | { rowType: "header"; key: string; label: string }
@@ -180,54 +181,60 @@ export default function NotificationScreen({ navigation }: Props) {
         }
     };
 
-    const getIcon = (action?: string) => {
-        switch (action) {
-            case "COMMENT_CREATED": return { name: "chatbubble-ellipses", color: colors.info };
-            case "TASK_CREATED":
-            case "SUBTASK_CREATED": return { name: "add-circle", color: colors.success };
-            case "TASK_UPDATED":
-            case "SUBTASK_UPDATED": return { name: "sync-circle", color: colors.warning };
-            case "MEMBER_INVITED": return { name: "person-add", color: colors.success };
-            case "MEMBER_REMOVED": return { name: "person-remove", color: "#ef4444" };
-            default: return { name: "notifications", color: colors.primary };
+    const formatNotifTime = (dateStr: string) => {
+        const d = new Date(dateStr);
+        if (isToday(d) || isYesterday(d)) {
+            return format(d, "h:mm a");
         }
+        return format(d, "MMM d");
     };
 
     const renderNotification = (item: NotificationItem) => {
-        const icon = getIcon(item.data?.action);
+        const isUnread = !item.isRead;
+        
         return (
             <PressableScale
                 haptic="selection"
                 style={[
                     styles.notifItem,
-                    { backgroundColor: item.isRead ? colors.surfaceSolid : colors.surfaceSolidRaised, borderColor: colors.border },
-                    !item.isRead && { borderLeftColor: colors.primary, borderLeftWidth: 3 }
+                    isUnread ? {
+                        backgroundColor: "rgba(251, 191, 36, 0.02)",
+                        borderColor: "rgba(251, 191, 36, 0.25)",
+                    } : {
+                        backgroundColor: colors.surfaceSolid ?? "rgba(255, 255, 255, 0.03)",
+                        borderColor: colors.border ?? "rgba(255, 255, 255, 0.05)",
+                    }
                 ]}
                 onPress={() => handlePress(item)}
-                accessibilityLabel={`${item.isRead ? "" : "Unread. "}${item.title}`}
+                accessibilityLabel={`${isUnread ? "Unread. " : ""}${item.title}`}
             >
-                <View style={[styles.iconContainer, { backgroundColor: icon.color + "15" }]}>
-                    <Ionicons name={icon.name as any} size={22} color={icon.color} />
+                {/* Minimalist dot indicator wrapper */}
+                <View style={[
+                    styles.indicatorWrapper, 
+                    { backgroundColor: isUnread ? "rgba(251, 191, 36, 0.12)" : "rgba(255, 255, 255, 0.05)" }
+                ]}>
+                    <View style={[
+                        styles.indicatorDot, 
+                        { backgroundColor: isUnread ? "#fbbf24" : "#555555" }
+                    ]} />
                 </View>
 
                 <View style={styles.notifContent}>
                     <View style={styles.notifHeader}>
                         <Text
-                            style={[styles.notifTitle, { color: colors.text, fontWeight: item.isRead ? "600" : "800" }]}
+                            style={[styles.notifTitle, { color: colors.text, fontFamily: isUnread ? FONTS.bold : FONTS.semibold }]}
                             numberOfLines={1}
                         >
                             {item.title}
                         </Text>
                         <Text style={[styles.notifTime, { color: colors.textDim }]}>
-                            {format(new Date(item.receivedAt), 'MMM d, h:mm a')}
+                            {formatNotifTime(item.receivedAt)}
                         </Text>
                     </View>
-                    <Text style={[styles.notifBody, { color: item.isRead ? colors.textMuted : colors.text }]} numberOfLines={2}>
+                    <Text style={[styles.notifBody, { color: isUnread ? colors.textDim : colors.textMuted }]} numberOfLines={2}>
                         {item.body}
                     </Text>
                 </View>
-
-                {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
             </PressableScale>
         );
     };
@@ -244,16 +251,17 @@ export default function NotificationScreen({ navigation }: Props) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <AmbientBackground />
 
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                 {/* Header */}
-                <View style={[styles.header, { borderBottomColor: colors.border, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
+                <View style={[styles.header, { borderBottomColor: "rgba(255,255,255,0.06)", paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
                     <PressableScale onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
                         <Ionicons name="chevron-back" size={26} color={colors.text} />
                     </PressableScale>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
-                    <TouchableOpacity onPress={clearAll} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 15 }}>Clear all</Text>
+                    <TouchableOpacity onPress={markAllAsRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={{ color: "#fbbf24", fontFamily: FONTS.bold, fontSize: 15 }}>Mark all read</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -271,14 +279,6 @@ export default function NotificationScreen({ navigation }: Props) {
                                 colors={[colors.primary]}
                             />
                         }
-                        ListHeaderComponent={() => (
-                            <View style={styles.listHeader}>
-                                <Text style={[styles.sectionTitle, { color: colors.textDim }]}>RECENT ACTIVITY</Text>
-                                <TouchableOpacity onPress={markAllAsRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Mark all as read</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
                     />
                 ) : (
                     <EmptyState
@@ -303,34 +303,35 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center", alignItems: "flex-start" },
-    headerTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5 },
+    headerTitle: { fontSize: 20, fontFamily: FONTS.extrabold, letterSpacing: -0.5 },
 
     listContent: { padding: SPACING.md, paddingBottom: 40 },
-    listHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SPACING.md, paddingHorizontal: 4 },
-    sectionTitle: { fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
-    groupHeader: { fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: SPACING.sm, marginBottom: SPACING.xs, paddingHorizontal: 4 },
+    groupHeader: { fontSize: 12, fontFamily: FONTS.extrabold, letterSpacing: 1.2, marginTop: SPACING.md, marginBottom: SPACING.xs, paddingHorizontal: 4 },
 
     notifItem: {
         flexDirection: "row",
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
+        padding: 14,
+        borderRadius: 16,
         borderWidth: 1,
-        marginBottom: SPACING.sm,
+        marginBottom: 10,
         alignItems: "center",
     },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+    indicatorWrapper: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         justifyContent: "center",
         alignItems: "center",
-        marginRight: SPACING.md,
+        marginRight: 12,
+    },
+    indicatorDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     notifContent: { flex: 1 },
-    notifHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
-    notifTitle: { fontSize: 15, fontWeight: "800", flex: 1, marginRight: 8 },
-    notifTime: { fontSize: 10, fontWeight: "500" },
+    notifHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+    notifTitle: { fontSize: 14, fontFamily: FONTS.bold, flex: 1, marginRight: 8 },
+    notifTime: { fontSize: 11, fontFamily: FONTS.medium },
     notifBody: { fontSize: 13, lineHeight: 18 },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
 });
-

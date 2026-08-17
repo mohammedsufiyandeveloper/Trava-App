@@ -156,6 +156,7 @@ export default function ProjectDetailScreen({ route, navigation }: Props) {
         tasks: projectTasks,
         loading: projectLoading,
         onRefresh: fetchTasks,
+        refreshData: fetchTasks,
         navigation,
         onEditTask: (task: Task) => {
             setEditingTask(task);

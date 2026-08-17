@@ -27,7 +27,7 @@ import {
     getCachedSession,
     sendTypingIndicator
 } from "../services/api";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useResponsive } from "../hooks/useResponsive";
 import { isToday, isYesterday, isSameDay, format as formatDate } from "date-fns";
 import GlassSurface from "../components/GlassSurface";
@@ -446,8 +446,8 @@ const styles = StyleSheet.create({
     },
     backBtn: { width: TOUCH_TARGET.min, height: TOUCH_TARGET.min, justifyContent: "center" },
     headerInfo: { alignItems: "center" },
-    headerName: { fontSize: 16, fontWeight: "700" },
-    headerStatus: { fontSize: 10, fontWeight: "600", marginTop: 2 },
+    headerName: { fontSize: 16, fontFamily: FONTS.bold },
+    headerStatus: { fontSize: 10, fontFamily: FONTS.semibold, marginTop: 2 },
 
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     listContent: { padding: 16, paddingTop: 20 },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     daySeparatorRow: { alignItems: "center", marginVertical: 10 },
     daySeparatorText: {
         fontSize: 11,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: BORDER_RADIUS.full,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         borderWidth: 1,
     },
-    retryText: { fontSize: 12, fontWeight: "600", flexShrink: 1 },
+    retryText: { fontSize: 12, fontFamily: FONTS.semibold, flexShrink: 1 },
 
     inputArea: {
         flexDirection: "row",

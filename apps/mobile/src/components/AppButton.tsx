@@ -9,7 +9,7 @@ import {
     ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BORDER_RADIUS, SPACING, TOUCH_TARGET } from "../constants/theme";
+import { BORDER_RADIUS, SPACING, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import PressableScale from "./PressableScale";
 import type { HapticKind } from "../services/haptics";
@@ -64,7 +64,8 @@ export default function AppButton({
     const isDisabled = disabled || loading;
 
     const palette: Record<Variant, { bg: string; fg: string; border?: string }> = {
-        primary: { bg: colors.primary, fg: isDark ? "#1a1a1a" : "#1a1a1a" },
+        // Dark ink on amber in both themes — white on #fbb54a fails contrast.
+        primary: { bg: colors.primary, fg: "#2b1c04" },
         secondary: { bg: colors.surfaceHighlight, fg: colors.text },
         ghost: { bg: "transparent", fg: colors.primary },
         destructive: { bg: colors.error, fg: "#ffffff" },
@@ -136,7 +137,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
     },
     label: {
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
+        letterSpacing: 0.2,
         textAlign: "center",
     },
     loaderCenter: {

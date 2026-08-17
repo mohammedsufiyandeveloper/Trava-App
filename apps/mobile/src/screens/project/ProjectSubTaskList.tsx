@@ -8,7 +8,7 @@ import { BlurView } from "expo-blur";
 const { width: SCREEN_W } = Dimensions.get("window");
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace, DEFAULT_FILTERS } from "../../context/WorkspaceContext";
 import { RootStackParamList, Task } from "../../types";
@@ -265,7 +265,7 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                         </View>
                         <View style={styles.dateInfo}>
                             <Text style={[styles.label, { color: colors.textDim }]}>Due</Text>
-                            <Text style={[styles.dateText, { color: colors.text, fontWeight: "700" }]}>
+                            <Text style={[styles.dateText, { color: colors.text, fontFamily: FONTS.bold }]}>
                                 {item.dueDate ? new Date(item.dueDate).toLocaleDateString([], { month: "short", day: "numeric" }) : "-"}
                             </Text>
                         </View>
@@ -510,7 +510,7 @@ export default function ProjectSubTaskList({ route, navigation }: Props) {
                                 >
                                     <View style={styles.projectOptionRow}>
                                         <View style={[styles.projectDot, { backgroundColor: t.id === parentId ? colors.primary : colors.textDim }]} />
-                                        <Text style={[styles.projectOptionText, { color: colors.text }, t.id === parentId && { fontWeight: "700" }]}>
+                                        <Text style={[styles.projectOptionText, { color: colors.text }, t.id === parentId && { fontFamily: FONTS.bold }]}>
                                             {t.name}
                                         </Text>
                                         {t.id === parentId && (
@@ -557,12 +557,12 @@ const styles = StyleSheet.create({
     backBtn: { padding: 4 },
     titleContainer: { marginLeft: SPACING.md, flex: 1 },
     titleRow: { flexDirection: "row", alignItems: "center" },
-    title: { fontSize: 17, fontWeight: "700" },
+    title: { fontSize: 17, fontFamily: FONTS.bold },
     subtitle: { fontSize: 12, marginTop: 2 },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
     switchModal: { width: "80%", maxHeight: "60%", borderRadius: BORDER_RADIUS.lg, borderWidth: 1, padding: SPACING.lg, elevation: 5, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
-    switchTitle: { fontSize: 18, fontWeight: "800", marginBottom: SPACING.md },
+    switchTitle: { fontSize: 18, fontFamily: FONTS.extrabold, marginBottom: SPACING.md },
     switchList: { width: "100%" },
     projectOption: { paddingVertical: 14, borderBottomWidth: 1 },
     projectOptionRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     },
     modalTitleCompact: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     viewOptionsCompact: {
         marginTop: 4,
@@ -611,43 +611,43 @@ const styles = StyleSheet.create({
     },
     viewLabelCompact: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
         flex: 1,
     },
 
     viewModal: { width: "90%", padding: SPACING.lg, borderRadius: BORDER_RADIUS.xl, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
     modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: "800" },
+    modalTitle: { fontSize: 20, fontFamily: FONTS.extrabold },
     viewOptions: { gap: 12 },
     viewOption: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, gap: 16 },
     viewIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-    viewLabel: { fontSize: 16, fontWeight: "600", flex: 1 },
+    viewLabel: { fontSize: 16, fontFamily: FONTS.semibold, flex: 1 },
 
 
     filterBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", marginRight: SPACING.md },
     filterBadge: { position: "absolute", top: -2, right: -2, width: 14, height: 14, borderRadius: 7, justifyContent: "center", alignItems: "center", borderWidth: 1 },
-    filterBadgeText: { color: "#fff", fontSize: 8, fontWeight: "800" },
+    filterBadgeText: { color: "#fff", fontSize: 8, fontFamily: FONTS.extrabold },
 
     activeFiltersBar: { paddingVertical: SPACING.sm, borderBottomWidth: 1 },
     activeFiltersScroll: { paddingHorizontal: SPACING.md, alignItems: "center", gap: 8 },
     filterChip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 4, borderWidth: 1 },
-    filterChipText: { fontSize: 11, fontWeight: "600" },
-    clearAllText: { color: "#ef4444", fontSize: 12, fontWeight: "600", marginLeft: 8 },
+    filterChipText: { fontSize: 11, fontFamily: FONTS.semibold },
+    clearAllText: { color: "#ef4444", fontSize: 12, fontFamily: FONTS.semibold, marginLeft: 8 },
 
     list: { padding: SPACING.md, paddingBottom: SPACING.bottomTabBar },
     card: { padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md },
     cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
     nameContainer: { flex: 1, flexDirection: "row", alignItems: "flex-start", paddingRight: 8 },
-    taskTitle: { fontSize: 15, fontWeight: "700", flex: 1, lineHeight: 22 },
+    taskTitle: { fontSize: 15, fontFamily: FONTS.bold, flex: 1, lineHeight: 22 },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, alignSelf: "flex-start" },
-    statusText: { fontSize: 10, fontWeight: "800" },
+    statusText: { fontSize: 10, fontFamily: FONTS.extrabold },
 
     description: { fontSize: 13, lineHeight: 18, marginBottom: 12, opacity: 0.8 },
 
-    label: { fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+    label: { fontSize: 10, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.5 },
     avatar: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
-    avatarText: { fontSize: 10, fontWeight: "700" },
-    memberName: { fontSize: 11, fontWeight: "500", maxWidth: 80 },
+    avatarText: { fontSize: 10, fontFamily: FONTS.bold },
+    memberName: { fontSize: 11, fontFamily: FONTS.medium, maxWidth: 80 },
 
     footer: { flexDirection: "row", alignItems: "flex-end", paddingTop: 12, borderTopWidth: 1, gap: 12 },
     datesContainer: { flexDirection: "row", gap: 12 },
@@ -657,20 +657,20 @@ const styles = StyleSheet.create({
     flexFiller: { flex: 1 },
     bottomMembers: { flexDirection: "row", gap: 16, alignItems: "flex-end" },
     memberGroup: { gap: 2, alignItems: "flex-start" },
-    microLabel: { fontSize: 9, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.3, opacity: 0.7 },
+    microLabel: { fontSize: 9, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.3, opacity: 0.7 },
     compactMember: { flexDirection: "row", alignItems: "center", gap: 6 },
 
     secondaryInfo: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
 
     urgencyRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     urgencyDot: { width: 6, height: 6, borderRadius: 3 },
-    urgencyText: { fontSize: 10, fontWeight: "700" },
+    urgencyText: { fontSize: 10, fontFamily: FONTS.bold },
 
     tagBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, minWidth: 40, alignItems: "center" },
-    tagText: { fontSize: 8, fontWeight: "700", textTransform: "uppercase" },
+    tagText: { fontSize: 8, fontFamily: FONTS.bold, textTransform: "uppercase" },
 
     empty: { marginTop: 100, alignItems: "center", paddingHorizontal: SPACING.xl },
-    emptyTitle: { fontSize: 20, fontWeight: "700", marginTop: SPACING.lg },
+    emptyTitle: { fontSize: 20, fontFamily: FONTS.bold, marginTop: SPACING.lg },
     emptySub: { fontSize: 15, textAlign: "center", marginTop: SPACING.sm, lineHeight: 22 },
     emptyCreateBtn: {
         marginTop: 24,
@@ -683,5 +683,5 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4
     },
-    emptyCreateBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    emptyCreateBtnText: { color: "#fff", fontFamily: FONTS.bold, fontSize: 15 },
 });

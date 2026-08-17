@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import Sheet from "./Sheet";
 import AppButton from "./AppButton";
@@ -74,6 +74,6 @@ export default function ConfirmationSheet({
 const styles = StyleSheet.create({
     content: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, alignItems: "center" },
     iconWrap: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: SPACING.md },
-    title: { fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 6 },
+    title: { fontSize: 18, fontFamily: FONTS.bold, textAlign: "center", marginBottom: 6 },
     description: { fontSize: 14, textAlign: "center", lineHeight: 20 },
 });

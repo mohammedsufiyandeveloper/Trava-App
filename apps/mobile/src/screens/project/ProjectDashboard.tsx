@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, DeviceEventEmitter } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
 import { haptics } from "../../services/haptics";
 import { useWorkspace } from "../../context/WorkspaceContext";
@@ -295,7 +295,7 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
                             accessibilityRole="button"
                             accessibilityLabel="View all activity"
                         >
-                            <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>
+                            <Text style={{ color: colors.primary, fontFamily: FONTS.semibold, fontSize: 14 }}>
                                 View All Activity
                             </Text>
                         </PressableScale>
@@ -310,7 +310,7 @@ export default function ProjectDashboard({ projectId, tasks, isManagerOfProject,
 const styles = StyleSheet.create({
     container: { flex: 1 },
     content: { paddingVertical: 0 },
-    sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: SPACING.sm, marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
+    sectionTitle: { fontSize: 18, fontFamily: FONTS.extrabold, marginBottom: SPACING.sm, marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
 
     statsScrollWrapper: { marginVertical: 0 },
     statsScroll: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.lg },
@@ -324,8 +324,8 @@ const styles = StyleSheet.create({
     },
     iconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
     textContainer: { flex: 1, justifyContent: "center" },
-    statValue: { fontSize: 20, fontWeight: "800", lineHeight: 22 },
-    statLabel: { fontSize: 11, fontWeight: "600", marginTop: 0, opacity: 0.8 },
+    statValue: { fontSize: 20, fontFamily: FONTS.extrabold, lineHeight: 22 },
+    statLabel: { fontSize: 11, fontFamily: FONTS.semibold, marginTop: 0, opacity: 0.8 },
 
     activityCard: { marginHorizontal: SPACING.lg, flexDirection: "row", alignItems: "center", padding: SPACING.lg, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, gap: SPACING.md },
     activityList: { paddingHorizontal: SPACING.lg, gap: SPACING.sm },
@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
         minHeight: TOUCH_TARGET.min,
     },
     activityIconBox: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
-    activityAuthor: { fontSize: 13, fontWeight: "700" },
+    activityAuthor: { fontSize: 13, fontFamily: FONTS.bold },
     activityTime: { fontSize: 10, opacity: 0.7 },
     activityText: { fontSize: 13, lineHeight: 18 },
-    activityTaskName: { fontSize: 10, fontWeight: "600", opacity: 0.8 },
+    activityTaskName: { fontSize: 10, fontFamily: FONTS.semibold, opacity: 0.8 },
 });

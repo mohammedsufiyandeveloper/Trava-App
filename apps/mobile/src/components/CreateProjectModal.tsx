@@ -12,7 +12,7 @@ import {
     Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { createProject, getWorkspaceMembers } from "../services/api";
@@ -21,6 +21,9 @@ import PressableScale from "./PressableScale";
 import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+/** Dark ink for content sitting on the amber primary — white fails contrast on #fbb54a. */
+const INK_ON_PRIMARY = "#2b1c04";
 
 // Premium curated color palette (matches web)
 const PROJECT_COLORS = [
@@ -115,7 +118,11 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
             setSelectedManagerId(null);
             setIsInternal(false);
         }
-    }, [visible, activeWorkspace, projects]);
+        // Keyed on open/close only. Including `projects` re-ran this whenever
+        // workspace data refreshed, which re-rolled the auto colour (its fallback
+        // is random) and reset the chosen manager to the first in the list —
+        // silently discarding the user's selection mid-form.
+    }, [visible, activeWorkspace?.id]);
 
     const loadMembers = async () => {
         if (!activeWorkspace) return;
@@ -198,8 +205,12 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
+                {/* Android resizes the window itself under edge-to-edge; adding the
+                    "height" behaviour on top animates the sheet a second time, which
+                    is the wobble you get as the keyboard and its suggestion strip
+                    appear. Let the OS handle it there. */}
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
                     style={styles.container}
                 >
                     <View style={[styles.sheet, { backgroundColor: colors.surfaceSolid }]}>
@@ -208,19 +219,20 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                             <View style={[styles.handle, { backgroundColor: colors.border }]} />
                             <View style={styles.titleRow}>
                                 <View style={styles.titleLeft}>
-                                    <View style={[styles.iconBox, { backgroundColor: selectedColor + "25" }]}>
-                                        <Ionicons name="layers-outline" size={18} color={selectedColor} />
+                                    <View style={[styles.iconBox, { backgroundColor: colors.primary + "22" }]}>
+                                        <Ionicons name="layers-outline" size={19} color={colors.primary} />
                                     </View>
                                     <Text style={[styles.title, { color: colors.text }]}>Create Project</Text>
                                 </View>
                                 <PressableScale
+                                    haptic="selection"
                                     onPress={onClose}
-                                    style={styles.closeBtn}
+                                    style={[styles.closeBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
                                     accessibilityLabel="Close"
                                     accessibilityRole="button"
                                     hitSlop={8}
                                 >
-                                    <Ionicons name="close" size={22} color={colors.textDim} />
+                                    <Ionicons name="close" size={20} color={colors.text} />
                                 </PressableScale>
                             </View>
                         </View>
@@ -241,26 +253,26 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                             {/* Project Type Toggle */}
                             <View style={[styles.typeSelector, { backgroundColor: colors.background, borderColor: colors.border }]}>
                                 <PressableScale
-                                    style={[styles.typeBtn, !isInternal && { backgroundColor: selectedColor }]}
+                                    style={[styles.typeBtn, !isInternal && { backgroundColor: colors.primary }]}
                                     onPress={() => setIsInternal(false)}
                                     haptic="selection"
                                     accessibilityRole="button"
                                     accessibilityLabel="Client project"
                                     accessibilityState={{ selected: !isInternal }}
                                 >
-                                    <Ionicons name="people-outline" size={16} color={!isInternal ? "#fff" : colors.textDim} />
-                                    <Text style={[styles.typeBtnText, { color: !isInternal ? "#fff" : colors.textDim }]}>Client Project</Text>
+                                    <Ionicons name="people-outline" size={16} color={!isInternal ? INK_ON_PRIMARY : colors.textDim} />
+                                    <Text style={[styles.typeBtnText, { color: !isInternal ? INK_ON_PRIMARY : colors.textDim }]}>Client Project</Text>
                                 </PressableScale>
                                 <PressableScale
-                                    style={[styles.typeBtn, isInternal && { backgroundColor: selectedColor }]}
+                                    style={[styles.typeBtn, isInternal && { backgroundColor: colors.primary }]}
                                     onPress={() => setIsInternal(true)}
                                     haptic="selection"
                                     accessibilityRole="button"
                                     accessibilityLabel="Internal project"
                                     accessibilityState={{ selected: isInternal }}
                                 >
-                                    <Ionicons name="business-outline" size={16} color={isInternal ? "#fff" : colors.textDim} />
-                                    <Text style={[styles.typeBtnText, { color: isInternal ? "#fff" : colors.textDim }]}>Internal Project</Text>
+                                    <Ionicons name="business-outline" size={16} color={isInternal ? INK_ON_PRIMARY : colors.textDim} />
+                                    <Text style={[styles.typeBtnText, { color: isInternal ? INK_ON_PRIMARY : colors.textDim }]}>Internal Project</Text>
                                 </PressableScale>
                             </View>
 
@@ -392,54 +404,62 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                 <Text style={[styles.label, { color: colors.primary, marginLeft: 4 }]}>*</Text>
                             </View>
                             {fetchingMembers ? (
-                                <ActivityIndicator size="small" color={selectedColor} style={{ alignSelf: "flex-start", marginTop: 8 }} />
+                                <ActivityIndicator size="small" color={colors.primary} style={{ alignSelf: "flex-start", marginTop: 8 }} />
                             ) : (
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                                    {members.map((member) => (
-                                        <PressableScale
-                                            key={member.userId}
-                                            onPress={() => setSelectedManagerId(member.userId)}
-                                            haptic="selection"
-                                            accessibilityRole="button"
-                                            accessibilityLabel={member.user.surname || member.user.name}
-                                            accessibilityState={{ selected: selectedManagerId === member.userId }}
-                                            style={[
-                                                styles.memberItem,
-                                                selectedManagerId === member.userId && { borderColor: selectedColor, backgroundColor: selectedColor + "10" }
-                                            ]}
-                                        >
-                                            <View style={[styles.avatar, { backgroundColor: selectedColor + "20" }]}>
-                                                <Text style={[styles.avatarText, { color: selectedColor }]}>
-                                                    {(member.user.surname?.[0] || member.user.name.charAt(0)).toUpperCase()}
-                                                </Text>
-                                            </View>
-                                            <Text 
+                                    {members.map((member) => {
+                                        const selected = selectedManagerId === member.userId;
+                                        return (
+                                            <PressableScale
+                                                key={member.userId}
+                                                onPress={() => setSelectedManagerId(member.userId)}
+                                                haptic="selection"
+                                                accessibilityRole="button"
+                                                accessibilityLabel={member.user.surname || member.user.name}
+                                                accessibilityState={{ selected }}
                                                 style={[
-                                                    styles.memberName, 
-                                                    { color: colors.textDim },
-                                                    selectedManagerId === member.userId && { color: selectedColor, fontWeight: "700" }
-                                                ]} 
-                                                numberOfLines={1}
+                                                    styles.memberItem,
+                                                    selected && { borderColor: colors.primary, backgroundColor: colors.primary + "14" }
+                                                ]}
                                             >
-                                                {member.user.surname || member.user.name}
-                                            </Text>
-                                            {selectedManagerId === member.userId && (
-                                                <View style={[styles.selectedBadge, { backgroundColor: selectedColor, borderColor: colors.surface }]}>
-                                                    <Ionicons name="checkmark" size={10} color="#fff" />
+                                                <View style={[styles.avatar, { backgroundColor: colors.primary + "22" }]}>
+                                                    <Text style={[styles.avatarText, { color: colors.primary }]}>
+                                                        {(member.user.surname?.[0] || member.user.name.charAt(0)).toUpperCase()}
+                                                    </Text>
                                                 </View>
-                                            )}
-                                        </PressableScale>
-                                    ))}
+                                                <Text
+                                                    style={[
+                                                        styles.memberName,
+                                                        { color: colors.textDim },
+                                                        selected && { color: colors.primary, fontFamily: FONTS.bold }
+                                                    ]}
+                                                    numberOfLines={1}
+                                                >
+                                                    {member.user.surname || member.user.name}
+                                                </Text>
+                                                {selected && (
+                                                    <View style={[styles.selectedBadge, { backgroundColor: colors.primary, borderColor: colors.surfaceSolid }]}>
+                                                        <Ionicons name="checkmark" size={10} color={INK_ON_PRIMARY} />
+                                                    </View>
+                                                )}
+                                            </PressableScale>
+                                        );
+                                    })}
                                 </ScrollView>
                             )}
 
-                             {/* Preview */}
-                             {name.trim().length > 0 && (
-                                 <View style={[styles.preview, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                                     <View style={[styles.previewDot, { backgroundColor: selectedColor }]} />
-                                     <Text style={[styles.previewText, { color: colors.text }]} numberOfLines={1}>{name.trim()}</Text>
-                                 </View>
-                             )}
+                            {/* Preview — always mounted. Toggling it on the first
+                                keystroke changed the scroll content height and made
+                                the form jump while typing. */}
+                            <View style={[styles.preview, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                                <View style={[styles.previewDot, { backgroundColor: selectedColor }]} />
+                                <Text
+                                    style={[styles.previewText, { color: name.trim() ? colors.text : colors.textDim }]}
+                                    numberOfLines={1}
+                                >
+                                    {name.trim() || "Project preview"}
+                                </Text>
+                            </View>
 
                         </ScrollView>
 
@@ -457,8 +477,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                 icon="layers-outline"
                                 haptic="medium"
                                 fullWidth
-                                style={{ backgroundColor: selectedColor, height: 52 }}
-                                textStyle={{ color: "#fff" }}
+                                size="lg"
                             />
                         </View>
                     </View>
@@ -479,17 +498,18 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: BORDER_RADIUS.xl,
         borderTopRightRadius: BORDER_RADIUS.xl,
         maxHeight: "90%",
+        overflow: "hidden",
     },
     header: {
         alignItems: "center",
-        paddingTop: 12,
-        paddingBottom: 8,
+        paddingTop: 10,
+        paddingBottom: 6,
     },
     handle: {
         width: 40,
         height: 4,
         borderRadius: 2,
-        marginBottom: 12,
+        marginBottom: 14,
     },
     titleRow: {
         flexDirection: "row",
@@ -501,40 +521,42 @@ const styles = StyleSheet.create({
     titleLeft: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: 12,
+        flex: 1,
     },
     iconBox: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         justifyContent: "center",
         alignItems: "center",
     },
     title: {
         fontSize: SCREEN_WIDTH < 380 ? 17 : 19,
-        fontWeight: "700",
+        fontFamily: FONTS.extrabold,
+        letterSpacing: -0.3,
     },
-    closeBtn: { minWidth: TOUCH_TARGET.min, minHeight: TOUCH_TARGET.min, alignItems: "flex-end", justifyContent: "center" },
-    content: { padding: SPACING.lg },
+    closeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+    content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 
     workspaceChip: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        borderRadius: 20,
+        borderRadius: BORDER_RADIUS.full,
         paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingVertical: 7,
         alignSelf: "flex-start",
         marginBottom: 4,
         borderWidth: 1,
     },
-    workspaceChipText: { fontSize: 12, fontWeight: "500" },
+    workspaceChipText: { fontSize: 12, fontFamily: FONTS.semibold },
     typeSelector: {
         flexDirection: "row",
         padding: 4,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
-        marginTop: 16,
+        marginTop: 18,
         marginBottom: 8,
     },
     typeBtn: {
@@ -542,13 +564,13 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 10,
-        borderRadius: BORDER_RADIUS.sm,
+        paddingVertical: 11,
+        borderRadius: BORDER_RADIUS.md,
         gap: 8,
     },
     typeBtnText: {
         fontSize: 13,
-        fontWeight: "600",
+        fontFamily: FONTS.bold,
     },
 
     memberList: {
@@ -560,7 +582,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingVertical: 10,
         paddingHorizontal: 4,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 2,
         borderColor: "transparent",
         marginRight: 8,
@@ -575,7 +597,7 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     memberName: {
         fontSize: 11,
@@ -595,18 +617,21 @@ const styles = StyleSheet.create({
     },
 
     label: {
-        fontSize: 13,
-        fontWeight: "600",
+        fontSize: 12,
+        fontFamily: FONTS.bold,
         marginBottom: 8,
-        marginTop: 16,
+        marginTop: 18,
         textTransform: "uppercase",
-        letterSpacing: 0.5,
+        letterSpacing: 0.7,
     },
     input: {
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        fontSize: 16,
+        borderRadius: BORDER_RADIUS.lg,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 14,
+        fontSize: 15.5,
+        fontFamily: FONTS.medium,
         borderWidth: 1,
+        minHeight: 52,
     },
 
     colorGrid: {
@@ -635,13 +660,13 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
-        marginTop: 20,
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.md,
+        marginTop: 22,
+        padding: 14,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
     },
     previewDot: { width: 12, height: 12, borderRadius: 6 },
-    previewText: { fontSize: 15, fontWeight: "600", flex: 1 },
+    previewText: { fontSize: 15, fontFamily: FONTS.semibold, flex: 1 },
 
     footer: {
         padding: SPACING.lg,
@@ -656,7 +681,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     createBtnDisabled: { opacity: 0.45 },
-    createBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    createBtnText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
     errorText: { color: "#ef4444", fontSize: 12, marginTop: 12, textAlign: "center" },
 
     textArea: {
@@ -671,7 +696,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 14,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
         letterSpacing: 1,
     },

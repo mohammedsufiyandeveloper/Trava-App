@@ -65,6 +65,8 @@ export default function AppCard({
 const styles = StyleSheet.create({
     card: {
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: StyleSheet.hairlineWidth,
+        // Full 1px rather than hairline, matching the Home widget cards — a
+        // hairline all but disappears against colors.surface in dark mode.
+        borderWidth: 1,
     },
 });

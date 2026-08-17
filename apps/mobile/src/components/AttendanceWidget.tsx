@@ -4,7 +4,7 @@ import BlurView from './BlurView';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { SPACING, BORDER_RADIUS } from '../constants/theme';
+import { SPACING, BORDER_RADIUS, FONTS } from '../constants/theme';
 import { haptics } from '../services/haptics';
 import { getTodayAttendance, submitCheckIn, submitCheckOut, getWorkspaces, getTeamAttendance, getCachedSession } from '../services/api';
 
@@ -98,6 +98,7 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
     const hasData = isPersonalLoaded && isTeamLoaded;
 
     if (!hasData) {
+      setLoading(true);
       fetchStatus();
     }
 
@@ -185,7 +186,7 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
   if (loading) {
     if (variant === "mini") {
       return (
-        <View style={[styles.miniBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.miniBox, { backgroundColor: colors.surface, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
           <ActivityIndicator color={colors.primary} />
         </View>
       );
@@ -234,27 +235,29 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
     }
 
     return (
-      <TouchableOpacity
+      <View
         ref={ref}
-        style={[styles.miniBox, { backgroundColor: colors.surface, borderColor: colors.border, paddingRight: 0 }]}
-        activeOpacity={0.85}
-        delayLongPress={300}
-        onLongPress={onLongPress}
-        onPress={() => {
-          if (showTeam) return;
-          if (isCheckedOut) return;
-          if (actionType === 'check-out') {
-            confirmAndCheckOut();
-          } else {
-            handleAction(actionType);
-          }
-        }}
-        disabled={actionLoading || isCheckedOut && !onLongPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${titleText}, ${valueText}`}
-        accessibilityState={{ disabled: actionLoading || (isCheckedOut && !onLongPress), busy: actionLoading }}
+        style={[styles.miniBox, { backgroundColor: colors.surface, borderColor: colors.border }]}
       >
-        <View style={{ flex: 1, width: '100%', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <TouchableOpacity
+          style={{ flex: 1, padding: 14, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', height: '100%' }}
+          activeOpacity={0.85}
+          delayLongPress={300}
+          onLongPress={onLongPress}
+          onPress={() => {
+            if (showTeam) return;
+            if (isCheckedOut) return;
+            if (actionType === 'check-out') {
+              confirmAndCheckOut();
+            } else {
+              handleAction(actionType);
+            }
+          }}
+          disabled={actionLoading || (isCheckedOut && !onLongPress)}
+          accessibilityRole="button"
+          accessibilityLabel={`${titleText}, ${valueText}`}
+          accessibilityState={{ disabled: actionLoading || (isCheckedOut && !onLongPress), busy: actionLoading }}
+        >
           <View style={[styles.miniIcon, { backgroundColor: "rgba(234, 179, 8, 0.15)" }]}>
             {actionLoading ? (
               <ActivityIndicator color={iconColor} size="small" />
@@ -280,11 +283,11 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
               {titleText}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {isAdmin && (
           <TouchableOpacity
-            style={styles.toggleBtn}
+            style={[styles.toggleBtn, { borderLeftColor: colors.border }]}
             onPress={() => setViewMode(viewMode === 'team' ? 'personal' : 'team')}
             accessibilityRole="button"
             accessibilityLabel={viewMode === 'team' ? "Switch to personal attendance view" : "Switch to team attendance view"}
@@ -296,7 +299,7 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
             />
           </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     );
   }
 
@@ -321,7 +324,7 @@ const AttendanceWidget = forwardRef<any, Props>(({ workspaceId, variant = "full"
                   style={[styles.smallToggle, { backgroundColor: colors.border + "40" }]}
                   onPress={() => setViewMode(viewMode === 'team' ? 'personal' : 'team')}
                 >
-                  <Text style={{ fontSize: 10, color: colors.text, fontWeight: '600' }}>
+                  <Text style={{ fontSize: 10, color: colors.text, fontFamily: FONTS.semibold }}>
                     {viewMode === 'team' ? "Switch to Personal" : "Switch to Team"}
                   </Text>
                 </TouchableOpacity>
@@ -410,12 +413,10 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: 115,
-    padding: 14,
     borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    flexDirection: "row",
+    alignItems: "stretch",
   },
   miniIcon: {
     width: 36,
@@ -430,12 +431,12 @@ const styles = StyleSheet.create({
   },
   miniValue: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     marginBottom: 2,
   },
   miniTitle: {
     fontSize: 12,
-    fontWeight: "500",
+    fontFamily: FONTS.medium,
   },
 
   glassInner: {
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   statusRow: {
     flexDirection: 'row',
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.medium,
   },
   actions: {
     marginTop: SPACING.xs,
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
   toggleBtn: {
     paddingHorizontal: 12,
@@ -498,7 +499,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(0,0,0,0.05)',
   },
   smallToggle: {
     paddingHorizontal: 8,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   deniedText: {
     flex: 1,
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.semibold,
     color: '#ef4444',
   },
 });

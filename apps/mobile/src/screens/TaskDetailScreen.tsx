@@ -9,7 +9,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 import { Ionicons } from "@expo/vector-icons";
 import { format, isBefore, isSameDay, startOfToday } from "date-fns";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -531,7 +531,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                             {/* High-Fidelity Details Card */}
                             <View style={[styles.archiveCardContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                                 <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, marginBottom: 12 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 11, fontFamily: FONTS.bold, color: colors.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
                                         {isSubtaskPreview ? "Subtask Title" : "Task Title"}
                                     </Text>
                                     <Text style={[styles.archiveTaskName, { color: colors.text }]}>{previewName}</Text>
@@ -540,21 +540,21 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                                 <View style={{ gap: 12 }}>
                                     {isSubtaskPreview && previewParentTaskName && (
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.textDim }}>Parent Task</Text>
-                                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>{previewParentTaskName}</Text>
+                                            <Text style={{ fontSize: 13, fontFamily: FONTS.medium, color: colors.textDim }}>Parent Task</Text>
+                                            <Text style={{ fontSize: 13, fontFamily: FONTS.semibold, color: colors.text }} numberOfLines={1}>{previewParentTaskName}</Text>
                                         </View>
                                     )}
 
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.textDim }}>Project Source</Text>
+                                        <Text style={{ fontSize: 13, fontFamily: FONTS.medium, color: colors.textDim }}>Project Source</Text>
                                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: previewProjectColor }} />
-                                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{previewProjectName}</Text>
+                                            <Text style={{ fontSize: 13, fontFamily: FONTS.semibold, color: colors.text }}>{previewProjectName}</Text>
                                         </View>
                                     </View>
 
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.textDim }}>Last Known Status</Text>
+                                        <Text style={{ fontSize: 13, fontFamily: FONTS.medium, color: colors.textDim }}>Last Known Status</Text>
                                         <View style={[
                                             styles.statusBadge, 
                                             { 
@@ -572,9 +572,9 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                                     </View>
 
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.textDim }}>Archive Level</Text>
+                                        <Text style={{ fontSize: 13, fontFamily: FONTS.medium, color: colors.textDim }}>Archive Level</Text>
                                         <View style={{ backgroundColor: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
-                                            <Text style={{ fontSize: 11, fontWeight: "700", color: "#ef4444" }}>READ ONLY PREVIEW</Text>
+                                            <Text style={{ fontSize: 11, fontFamily: FONTS.bold, color: "#ef4444" }}>READ ONLY PREVIEW</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -595,7 +595,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                                             </View>
                                             
                                             <View style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, lineHeight: 20 }}>
+                                                <Text style={{ fontSize: 14, fontFamily: FONTS.semibold, color: colors.text, lineHeight: 20 }}>
                                                     {notificationBody}
                                                 </Text>
                                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
@@ -630,7 +630,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                     <View style={styles.center}>
                         <View style={[styles.center, { paddingHorizontal: 40, gap: 12 }]}>
                             <Ionicons name="alert-circle-outline" size={48} color={colors.textDim} />
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text, textAlign: "center" }}>Task Not Found</Text>
+                            <Text style={{ fontSize: 16, fontFamily: FONTS.semibold, color: colors.text, textAlign: "center" }}>Task Not Found</Text>
                             <Text style={{ fontSize: 14, color: colors.textDim, textAlign: "center" }}>
                                 This task could not be loaded. It may have been deleted or is not accessible.
                             </Text>
@@ -686,7 +686,7 @@ export default function TaskDetailScreen({ route, navigation }: Props) {
                                             style={{
                                                 color: colors.textDim,
                                                 fontSize: 10,
-                                                fontWeight: "600",
+                                                fontFamily: FONTS.semibold,
                                                 letterSpacing: 0.5,
                                                 flex: 1
                                             }}
@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
     },
     archiveBannerTitle: {
         fontSize: 15,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         marginBottom: 4,
     },
     archiveBannerText: {
@@ -1542,7 +1542,7 @@ const styles = StyleSheet.create({
     },
     archiveTaskName: {
         fontSize: 18,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         lineHeight: 24,
     },
     activityTimelineCard: {
@@ -1554,47 +1554,47 @@ const styles = StyleSheet.create({
     header: { flexDirection: "row", paddingHorizontal: SPACING.md, paddingVertical: SPACING.md, borderBottomWidth: 1, alignItems: "flex-start" },
     backBtn: { padding: 4, marginRight: 12 },
     titleContainer: { flex: 1 },
-    breadcrumbText: { fontSize: 18, fontWeight: "700", lineHeight: 26 },
-    title: { fontSize: 12, fontWeight: "700", letterSpacing: 0.5, marginTop: 1, textTransform: "uppercase" },
-    subtaskTitleText: { fontSize: 18, fontWeight: "700", lineHeight: 24 },
+    breadcrumbText: { fontSize: 18, fontFamily: FONTS.bold, lineHeight: 26 },
+    title: { fontSize: 12, fontFamily: FONTS.bold, letterSpacing: 0.5, marginTop: 1, textTransform: "uppercase" },
+    subtaskTitleText: { fontSize: 18, fontFamily: FONTS.bold, lineHeight: 24 },
     moreBtn: { padding: 4, marginLeft: 12 },
 
     content: { paddingBottom: SPACING.bottomTabBar },
     taskDescription: { fontSize: 15, lineHeight: 22, paddingHorizontal: SPACING.lg, marginTop: SPACING.lg, opacity: 0.9 },
 
-    sectionTitle: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginTop: SPACING.xl, marginBottom: SPACING.sm, paddingHorizontal: SPACING.lg },
+    sectionTitle: { fontSize: 11, fontFamily: FONTS.bold, letterSpacing: 1, marginTop: SPACING.xl, marginBottom: SPACING.sm, paddingHorizontal: SPACING.lg },
 
     detailsBox: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg },
     detailRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1 },
     detailLabelBox: { width: 120, flexDirection: "row", alignItems: "center", gap: 10 },
-    detailLabel: { fontSize: 14, fontWeight: "500" },
+    detailLabel: { fontSize: 14, fontFamily: FONTS.medium },
     detailValueBox: { flex: 1 },
     detailValueText: { fontSize: 14 },
 
     assigneeLine: { flexDirection: "row", alignItems: "center", gap: 8 },
     avatar: { width: 24, height: 24, borderRadius: 12 },
     avatarFallback: { width: 24, height: 24, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-    avatarInitial: { fontSize: 12, fontWeight: "700" },
+    avatarInitial: { fontSize: 12, fontFamily: FONTS.bold },
 
     tagBadge: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
-    tagBadgeText: { fontSize: 12, fontWeight: "600", textTransform: "uppercase" },
+    tagBadgeText: { fontSize: 12, fontFamily: FONTS.semibold, textTransform: "uppercase" },
 
     statusBadge: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, borderWidth: 1, backgroundColor: "transparent" },
-    statusBadgeText: { fontSize: 12, fontWeight: "700", textTransform: "capitalize" },
+    statusBadgeText: { fontSize: 12, fontFamily: FONTS.bold, textTransform: "capitalize" },
 
     subtasksBtn: { flexDirection: "row", alignItems: "center", marginHorizontal: SPACING.lg, marginBottom: SPACING.lg, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, gap: 8 },
-    subtasksBtnText: { fontSize: 14, fontWeight: "600" },
+    subtasksBtnText: { fontSize: 14, fontFamily: FONTS.semibold },
 
     collapseBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 8, paddingHorizontal: SPACING.md, gap: 4, zIndex: 20 },
-    collapseBtnText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+    collapseBtnText: { fontSize: 11, fontFamily: FONTS.bold, textTransform: "uppercase", letterSpacing: 0.5 },
 
     tabBar: { flexDirection: "row", paddingHorizontal: SPACING.md, borderBottomWidth: 1 },
     tabBtn: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: SPACING.md, gap: 6, borderBottomWidth: 2, borderBottomColor: "transparent" },
     tabBtnActive: {},
-    tabText: { fontSize: 14, fontWeight: "600" },
+    tabText: { fontSize: 14, fontFamily: FONTS.semibold },
     tabTextActive: {},
     countPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginLeft: 4 },
-    countPillText: { fontSize: 10, fontWeight: "700" },
+    countPillText: { fontSize: 10, fontFamily: FONTS.bold },
 
     tabContentArea: { padding: SPACING.xl, alignItems: "center" },
     emptyContentText: { fontSize: 14 },
@@ -1603,11 +1603,11 @@ const styles = StyleSheet.create({
     messageMineRow: { justifyContent: "flex-end" },
     messageOtherRow: { justifyContent: "flex-start" },
     messageAvatar: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center", marginRight: 8 },
-    messageAvatarText: { fontSize: 12, fontWeight: "600" },
+    messageAvatarText: { fontSize: 12, fontFamily: FONTS.semibold },
     messageBubble: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, maxWidth: "80%", elevation: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
     messageMineBubble: { borderBottomRightRadius: 2 },
     messageOtherBubble: { borderBottomLeftRadius: 2, borderWidth: 1 },
-    messageAuthor: { fontSize: 10, fontWeight: "600", marginBottom: 2 },
+    messageAuthor: { fontSize: 10, fontFamily: FONTS.semibold, marginBottom: 2 },
     messageText: { fontSize: 14, lineHeight: 20 },
     messageTime: { fontSize: 9, marginTop: 4, alignSelf: "flex-end" },
 
@@ -1620,20 +1620,20 @@ const styles = StyleSheet.create({
 
     emptyTabBox: { padding: 40, alignItems: "center", justifyContent: "center" },
     createDeliverableBtn: { marginTop: 20, paddingHorizontal: 20, paddingVertical: 10, borderRadius: BORDER_RADIUS.md, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-    createDeliverableBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    createDeliverableBtnText: { color: "#fff", fontFamily: FONTS.bold, fontSize: 14 },
 
     subtasksList: { padding: SPACING.md, gap: 10 },
     subtaskCard: { padding: 12, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
     subtaskMain: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-    subtaskName: { fontSize: 14, fontWeight: "600", flex: 1 },
+    subtaskName: { fontSize: 14, fontFamily: FONTS.semibold, flex: 1 },
     miniStatus: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    miniStatusText: { fontSize: 9, fontWeight: "800" },
+    miniStatusText: { fontSize: 9, fontFamily: FONTS.extrabold },
     subtaskFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     subtaskMeta: { fontSize: 11 },
     addSubtaskSmallBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 12, borderRadius: BORDER_RADIUS.md, borderStyle: "dashed", borderWidth: 1, marginTop: 4 },
-    addSubtaskSmallText: { fontSize: 13, fontWeight: "600", marginLeft: 4 },
+    addSubtaskSmallText: { fontSize: 13, fontFamily: FONTS.semibold, marginLeft: 4 },
     dateSeparatorBox: { alignItems: "center", justifyContent: "center", marginVertical: 16, width: "100%" },
-    dateSeparatorText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", opacity: 0.7 },
+    dateSeparatorText: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 0.5, textTransform: "uppercase", opacity: 0.7 },
     subtaskBottomBar: {
         flexDirection: "row",
         alignItems: "center",
@@ -1657,7 +1657,7 @@ const styles = StyleSheet.create({
     },
     subtaskBottomBarTabText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     subtaskBottomBarArrowBtn: {
         width: 40,
@@ -1702,7 +1702,7 @@ const styles = StyleSheet.create({
     subtaskSheetTabBtnActive: {},
     subtaskSheetTabText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     subtaskSheetCloseBtn: {
         width: 40,
@@ -1737,14 +1737,14 @@ const styles = StyleSheet.create({
     },
     activityAvatarText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     activityMeta: {
         flex: 1,
     },
     activityAuthorText: {
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     activityDateText: {
         fontSize: 11,
@@ -1759,7 +1759,7 @@ const styles = StyleSheet.create({
     },
     activityBadgeText: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     activityContent: {
         marginTop: 4,
@@ -1781,7 +1781,7 @@ const styles = StyleSheet.create({
     },
     statusBubbleText: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         textTransform: "uppercase",
     },
     pickerOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: SPACING.xl },
@@ -1800,7 +1800,7 @@ const styles = StyleSheet.create({
     pickerHeader: { alignItems: "center", paddingTop: 12, paddingBottom: 16 },
     pickerHandle: { width: 40, height: 4, borderRadius: 2, marginBottom: 16 },
     pickerHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: SPACING.md },
-    pickerTitle: { fontSize: 18, fontWeight: "700" },
+    pickerTitle: { fontSize: 18, fontFamily: FONTS.bold },
     pickerContent: { paddingHorizontal: SPACING.md },
     pickerMemberItem: { 
         flexDirection: "row", 
@@ -1811,8 +1811,8 @@ const styles = StyleSheet.create({
         gap: 12
     },
     pickerAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
-    pickerAvatarText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-    pickerMemberName: { flex: 1, fontSize: 15, fontWeight: "500" },
+    pickerAvatarText: { color: "#fff", fontFamily: FONTS.bold, fontSize: 13 },
+    pickerMemberName: { flex: 1, fontSize: 15, fontFamily: FONTS.medium },
 });
 
 // --- Picker Modals ---
@@ -1868,7 +1868,7 @@ function AssigneePickerModal({ visible, onClose, currentAssigneeId, members, onS
                             <Text style={[
                                 styles.pickerMemberName,
                                 { color: colors.text },
-                                !currentAssigneeId && { color: colors.primary, fontWeight: "700" }
+                                !currentAssigneeId && { color: colors.primary, fontFamily: FONTS.bold }
                             ]}>
                                 Unassigned
                             </Text>
@@ -1907,7 +1907,7 @@ function AssigneePickerModal({ visible, onClose, currentAssigneeId, members, onS
                                         <Text style={[
                                             styles.pickerMemberName,
                                             { color: colors.text },
-                                            isSelected && { color: colors.primary, fontWeight: "700" }
+                                            isSelected && { color: colors.primary, fontFamily: FONTS.bold }
                                         ]}>
                                             {displayName}
                                         </Text>
@@ -1979,7 +1979,7 @@ function TagPickerModal({ visible, onClose, currentTagId, tags, onSelect }: TagP
                             <Text style={[
                                 styles.pickerMemberName,
                                 { color: colors.text },
-                                !currentTagId && { color: colors.primary, fontWeight: "700" }
+                                !currentTagId && { color: colors.primary, fontFamily: FONTS.bold }
                             ]}>
                                 No Tag
                             </Text>
@@ -2006,7 +2006,7 @@ function TagPickerModal({ visible, onClose, currentTagId, tags, onSelect }: TagP
                                     <Text style={[
                                         styles.pickerMemberName,
                                         { color: colors.text },
-                                        isSelected && { color: colors.primary, fontWeight: "700" }
+                                        isSelected && { color: colors.primary, fontFamily: FONTS.bold }
                                     ]}>
                                         {tag.name}
                                     </Text>

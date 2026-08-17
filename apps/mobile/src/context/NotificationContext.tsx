@@ -71,10 +71,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             console.error("[NotificationContext] Error parsing notification metadata:", e);
                         }
                     }
+
+                    let title = n.title;
+                    let body = n.body;
+                    if (n.type === "CHECKED_IN" || n.title === "CHECKED IN") {
+                        title = "Check-In Update";
+                        if (body && !body.includes("for work")) {
+                            body = body.replace(/checked in$/, "checked in for work");
+                        }
+                    } else if (n.type === "CHECKED_OUT" || n.title === "CHECKED OUT") {
+                        title = "Check-Out Update";
+                    }
+
                     return {
                         id: n.id,
-                        title: n.title,
-                        body: n.body,
+                        title,
+                        body,
                         receivedAt: n.createdAt,
                         isRead: n.isRead,
                         data: {
@@ -107,10 +119,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                                 console.error("[NotificationContext] Error parsing activity metadata:", e);
                             }
                         }
+
+                        let title = act.text;
+                        let body = "Workspace Activity";
+
+                        if (act.action === "CHECKED_IN") {
+                            title = "Check-In Update";
+                            body = act.text;
+                            if (body && !body.includes("for work")) {
+                                body = body.replace(/checked in$/, "checked in for work");
+                            }
+                        } else if (act.action === "CHECKED_OUT") {
+                            title = "Check-Out Update";
+                            body = act.text;
+                        }
+
                         allItems.push({
                             id: act.id,
-                            title: act.text,
-                            body: "Workspace Activity", // Fallback text for audit logs
+                            title,
+                            body,
                             receivedAt: act.createdAt,
                             isRead: true, // Audit logs are implicitly read
                             data: {

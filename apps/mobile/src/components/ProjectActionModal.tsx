@@ -5,7 +5,7 @@ import {
     StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import Sheet from "./Sheet";
 import PressableScale from "./PressableScale";
@@ -106,13 +106,13 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 10,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
         letterSpacing: 1.5,
         marginBottom: 4,
     },
     projectName: {
         fontSize: 16,
-        fontWeight: "700",
+        fontFamily: FONTS.bold,
     },
     actionsList: {
         paddingVertical: SPACING.sm,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     },
     actionLabel: {
         fontSize: 15,
-        fontWeight: "500",
+        fontFamily: FONTS.medium,
     },
     cancelBtn: {
         margin: SPACING.lg,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     },
     cancelText: {
         fontSize: 15,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
     separator: {
         height: 1,

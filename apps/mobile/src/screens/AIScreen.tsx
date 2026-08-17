@@ -29,7 +29,7 @@ import {
     type TravisHistoryMessage,
 } from "../services/ai";
 import { useResponsive } from "../hooks/useResponsive";
-import { SPACING } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import PressableScale from "../components/PressableScale";
 import StatusChip from "../components/StatusChip";
 
@@ -77,7 +77,7 @@ function renderMarkdown(text: string, textColor: string) {
         const parts = cleanLine.split(/(\*\*[^*]+\*\*)/g);
         const nodes = parts.map((part, i) =>
             part.startsWith("**") && part.endsWith("**") ? (
-                <Text key={i} style={{ fontWeight: "700", color: textColor }}>
+                <Text key={i} style={{ fontFamily: FONTS.bold, color: textColor }}>
                     {part.slice(2, -2)}
                 </Text>
             ) : (
@@ -655,8 +655,8 @@ const styles = StyleSheet.create({
     headerTitle: { flexDirection: "row", alignItems: "center" },
     headerLeft: { flexDirection: "row", alignItems: "center" },
     backButton: { marginRight: 12, paddingVertical: 4 },
-    headerText: { fontSize: 18, fontWeight: "700" },
-    workspaceName: { fontSize: 12, fontWeight: "500" },
+    headerText: { fontSize: 18, fontFamily: FONTS.bold },
+    workspaceName: { fontSize: 12, fontFamily: FONTS.medium },
 
     listContent: { padding: 16, paddingBottom: 24 },
     messageRow: { flexDirection: "row", marginBottom: 16, alignItems: "flex-start" },
@@ -691,43 +691,43 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     cardIcon: { width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    cardTitle: { fontSize: 14, fontWeight: "600" },
+    cardTitle: { fontSize: 14, fontFamily: FONTS.semibold },
     cardSub: { fontSize: 12, marginTop: 1 },
-    cardStatus: { fontSize: 10, fontWeight: "600", borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6 },
+    cardStatus: { fontSize: 10, fontFamily: FONTS.semibold, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6 },
 
     // Confirmation card
     confirmCard: { borderWidth: 1.5, borderLeftWidth: 4, borderRadius: 14, padding: 14, marginTop: 10 },
     confirmEyebrowRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-    confirmEyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4 },
+    confirmEyebrow: { fontSize: 11, fontFamily: FONTS.extrabold, letterSpacing: 0.4 },
     confirmHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
     confirmIconWrap: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-    confirmTitle: { fontSize: 15, fontWeight: "700", flex: 1 },
-    confirmWarn: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
+    confirmTitle: { fontSize: 15, fontFamily: FONTS.bold, flex: 1 },
+    confirmWarn: { fontSize: 12, fontFamily: FONTS.semibold, marginBottom: 8 },
     confirmRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, gap: 12 },
     confirmLabel: { fontSize: 13, flexShrink: 0 },
-    confirmValue: { fontSize: 13, fontWeight: "500", flex: 1, textAlign: "right" },
+    confirmValue: { fontSize: 13, fontFamily: FONTS.medium, flex: 1, textAlign: "right" },
     confirmActions: { flexDirection: "row", gap: 8, marginTop: 12 },
     confirmBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-    confirmBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    confirmBtnText: { color: "#fff", fontFamily: FONTS.bold, fontSize: 14 },
     confirmBtnOutline: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
-    confirmBtnOutlineText: { fontWeight: "600", fontSize: 14 },
-    confirmResolved: { fontSize: 13, fontWeight: "600", marginTop: 10 },
+    confirmBtnOutlineText: { fontFamily: FONTS.semibold, fontSize: 14 },
+    confirmResolved: { fontSize: 13, fontFamily: FONTS.semibold, marginTop: 10 },
 
     openBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginTop: 8, alignSelf: "flex-start" },
-    openBtnText: { fontSize: 13, fontWeight: "600" },
+    openBtnText: { fontSize: 13, fontFamily: FONTS.semibold },
     retryBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-    retryText: { fontSize: 13, fontWeight: "600" },
+    retryText: { fontSize: 13, fontFamily: FONTS.semibold },
 
     suggestionsContainer: { marginBottom: 24, marginTop: 10 },
-    suggestionsTitle: { fontSize: 13, fontWeight: "600", marginBottom: 12, marginLeft: 4 },
+    suggestionsTitle: { fontSize: 13, fontFamily: FONTS.semibold, marginBottom: 12, marginLeft: 4 },
     suggestionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     suggestionChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
-    suggestionText: { fontSize: 13, fontWeight: "500" },
+    suggestionText: { fontSize: 13, fontFamily: FONTS.medium },
 
     loadingContainer: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 10, gap: 8 },
     loadingText: { fontSize: 12, fontStyle: "italic" },
     stopBtn: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: "auto" },
-    stopText: { fontSize: 12, fontWeight: "600" },
+    stopText: { fontSize: 12, fontFamily: FONTS.semibold },
 
     emptyState: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, padding: 24 },
     emptyText: { fontSize: 14, textAlign: "center" },

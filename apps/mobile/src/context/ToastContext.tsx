@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
 
-import { BORDER_RADIUS, ELEVATION, SPACING, Z_INDEX } from "../constants/theme";
+import { BORDER_RADIUS, ELEVATION, SPACING, Z_INDEX, FONTS } from "../constants/theme";
 import { useTheme } from "./ThemeContext";
 import { haptics } from "../services/haptics";
 
@@ -137,6 +137,6 @@ const styles = StyleSheet.create({
     message: {
         flex: 1,
         fontSize: 14,
-        fontWeight: "600",
+        fontFamily: FONTS.semibold,
     },
 });

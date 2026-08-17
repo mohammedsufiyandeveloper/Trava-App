@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { requestEmailOtp } from "../services/api";
 import { RootStackParamList } from "../types";
@@ -203,13 +203,13 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     backBtn: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, minHeight: TOUCH_TARGET.min, marginBottom: 32 },
-    backText: { fontSize: 14, fontWeight: "500" },
+    backText: { fontSize: 14, fontFamily: FONTS.medium },
 
     logoRow: { marginBottom: 24, alignItems: "center" },
-    logoText: { fontSize: 15, fontWeight: "800", letterSpacing: 2 },
+    logoText: { fontSize: 15, fontFamily: FONTS.extrabold, letterSpacing: 2 },
 
     card: { borderRadius: BORDER_RADIUS.lg, borderWidth: 1, padding: SPACING.lg, width: "100%", marginBottom: 20 },
-    cardTitle: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
+    cardTitle: { fontSize: 22, fontFamily: FONTS.bold, marginBottom: 6 },
     cardDesc: { fontSize: 14, marginBottom: 24 },
 
     errorBanner: {
@@ -221,12 +221,12 @@ const styles = StyleSheet.create({
         padding: SPACING.sm,
         marginBottom: 16,
     },
-    errorBannerText: { flex: 1, fontSize: 13, fontWeight: "600", lineHeight: 18 },
-    fieldErrorText: { fontSize: 13, fontWeight: "600", marginBottom: 16, marginTop: -8 },
+    errorBannerText: { flex: 1, fontSize: 13, fontFamily: FONTS.semibold, lineHeight: 18 },
+    fieldErrorText: { fontSize: 13, fontFamily: FONTS.semibold, marginBottom: 16, marginTop: -8 },
 
     nameRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
     nameField: { flex: 1 },
-    label: { fontSize: 13, marginBottom: 8, fontWeight: "600" },
+    label: { fontSize: 13, marginBottom: 8, fontFamily: FONTS.semibold },
     input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, marginBottom: 16 },
     inputFull: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, marginBottom: 24, width: "100%" },
 
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
 
     footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
     footerText: { fontSize: 14 },
-    footerLink: { fontSize: 14, fontWeight: "700", textDecorationLine: "underline" },
+    footerLink: { fontSize: 14, fontFamily: FONTS.bold, textDecorationLine: "underline" },
 
     terms: { fontSize: 12, textAlign: "center", marginTop: 20 },
 });

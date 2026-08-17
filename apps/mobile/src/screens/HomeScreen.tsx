@@ -7,31 +7,38 @@ import {
     TouchableOpacity,
     StatusBar,
     RefreshControl,
-    Pressable,
     Animated,
     ActivityIndicator,
+    Alert,
+    Platform,
+    Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { format } from "date-fns";
+import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useNotifications } from "../context/NotificationContext";
 import { MainTabParamList, RootStackParamList, Workspace, Task } from "../types";
 import WidgetPreviewModal from "../components/WidgetPreviewModal";
+import HeaderMenu from "../components/HeaderMenu";
 import PressableScale from "../components/PressableScale";
 import { haptics } from "../services/haptics";
-import AttendanceWidget from "../components/AttendanceWidget";
 import { useResponsive } from "../hooks/useResponsive";
-import AmbientBackground from "../components/AmbientBackground";
-import GlassSurface from "../components/GlassSurface";
 import Sheet from "../components/Sheet";
+import ConfirmationSheet from "../components/ConfirmationSheet";
+import { getProfile, submitCheckIn, submitCheckOut } from "../services/api";
+
+/** Card top margin (SPACING.md) + card padding + header row height + gap. */
+const MENU_TOP_OFFSET = SPACING.md + 16 + 42 + 8;
 
 type Props = CompositeScreenProps<
     BottomTabScreenProps<MainTabParamList, "Home">,
@@ -53,10 +60,12 @@ export default function HomeScreen({ navigation }: Props) {
         workspaces,
         activeWorkspace,
         stats,
-        tasks,
         loading: wsLoading,
         refreshWorkspaces,
         switchWorkspace,
+        todayAttendance,
+        teamAttendance,
+        setTodayAttendance,
     } = useWorkspace();
     const { colors, isDark, toggleTheme } = useTheme();
     const { unreadCount } = useNotifications();
@@ -70,10 +79,93 @@ export default function HomeScreen({ navigation }: Props) {
     const [previewPos, setPreviewPos] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
 
+    const [profile, setProfile] = useState<any>(null);
+    const [actionLoading, setActionLoading] = useState<boolean>(false);
+    const [checkOutSheetVisible, setCheckOutSheetVisible] = useState<boolean>(false);
+
     const projRef = React.useRef<any>(null);
     const teamRef = React.useRef<any>(null);
     const attRef = React.useRef<any>(null);
     const shimmerAnim = React.useRef(new Animated.Value(0.3)).current;
+
+    const fetchProfile = async () => {
+        try {
+            const data = await getProfile();
+            if (data?.success) {
+                setProfile(data.user);
+            }
+        } catch (err) {
+            console.error("Failed to fetch profile on home screen:", err);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
+    }, []);
+
+    const openLocationSettings = () => {
+        if (Platform.OS === 'ios') {
+            Linking.openURL('app-settings:');
+        } else {
+            Linking.openSettings();
+        }
+    };
+
+    const handleCheckAction = async (type: 'check-in' | 'check-out') => {
+        if (!activeWorkspace) return;
+        setActionLoading(true);
+        try {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                haptics.error();
+                Alert.alert(
+                    'Location access needed',
+                    'Trava needs location access to record attendance. Enable it for this app in your device settings, then try again.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: openLocationSettings },
+                    ]
+                );
+                setActionLoading(false);
+                return;
+            }
+
+            let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+
+            const todayString = new Date().toISOString().split('T')[0];
+            const latitude = location.coords.latitude;
+            const longitude = location.coords.longitude;
+
+            let addressString = "";
+            try {
+                const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+                if (geocode && geocode.length > 0) {
+                    const place = geocode[0];
+                    addressString = [place.name || place.streetNumber, place.street, place.city || place.subregion, place.region].filter(Boolean).join(", ");
+                }
+            } catch (err) {
+                console.warn("Reverse geocoding failed", err);
+            }
+
+            if (type === 'check-in') {
+                const result = await submitCheckIn(activeWorkspace.id, latitude, longitude, addressString, todayString);
+                setTodayAttendance(result);
+                haptics.success();
+                Alert.alert('Checked In', 'Checked in successfully!');
+            } else {
+                const result = await submitCheckOut(activeWorkspace.id, latitude, longitude, addressString, todayString);
+                setTodayAttendance(result);
+                setCheckOutSheetVisible(false);
+                haptics.success();
+                Alert.alert('Checked Out', 'Checked out successfully!');
+            }
+        } catch (error: any) {
+            haptics.error();
+            Alert.alert('Error', error.message || 'Something went wrong');
+        } finally {
+            setActionLoading(false);
+        }
+    };
 
     useEffect(() => {
         let animation: Animated.CompositeAnimation | null = null;
@@ -103,6 +195,18 @@ export default function HomeScreen({ navigation }: Props) {
         };
     }, [wsLoading]);
 
+    /**
+     * The menu renders in a Modal (nested in the card it would sit under any
+     * full-screen dismiss layer, which swallows its taps) but is placed by
+     * layout, not by measureInWindow — under Android edge-to-edge the modal's
+     * window and the measured coordinates don't share an origin, which pushed
+     * the menu up over the header by the status bar height.
+     */
+    const openMenu = () => {
+        haptics.selection();
+        setIsMenuOpen(true);
+    };
+
     const openPreview = (target: "projects" | "teams" | "attendance", ref: React.RefObject<any>) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         ref.current?.measureInWindow?.((x: number, y: number, w: number, h: number) => {
@@ -123,6 +227,7 @@ export default function HomeScreen({ navigation }: Props) {
         setRefreshing(true);
         try {
             await refreshWorkspaces();
+            await fetchProfile();
         } finally {
             setRefreshing(false);
         }
@@ -145,387 +250,287 @@ export default function HomeScreen({ navigation }: Props) {
         }
     };
 
-    // Calculate dynamic "on track" percentage from actual stats or fallback to 68
-    const totalTasks = stats.totalTasks;
-    const completedOrInProgress = stats.completedTasks + stats.inProgressTasks;
-    const onTrackPercentage = totalTasks > 0 ? Math.round((completedOrInProgress / totalTasks) * 100) : 68;
 
-    // Filter due soon tasks or fallback to screenshot mock tasks
-    const activeTasks = (tasks || []).filter(
-        (t) => t.workspaceId === activeWorkspace?.id && t.status !== "COMPLETED" && t.status !== "CANCELLED" && t.dueDate
-    );
 
-    const dueSoonTasks: TaskDisplayItem[] = activeTasks.length > 0
-        ? [...activeTasks]
-            .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-            .slice(0, 3)
-            .map((task) => {
-                const date = new Date(task.dueDate!);
-                const dueDateStr = format(date, "MMM d");
-                
-                // Color mapping based on urgency/priority
-                let color = "#10b981"; // Green
-                let badgeBg = "rgba(16, 185, 129, 0.15)";
-                let badgeText = "#34d399";
+    const isCheckedIn = !!(todayAttendance && todayAttendance.checkIn);
+    const isCheckedOut = !!(todayAttendance && todayAttendance.checkOut);
 
-                if (task.priority === "URGENT" || task.priority === "HIGH") {
-                    color = "#ef4444"; // Red
-                    badgeBg = "rgba(239, 68, 68, 0.15)";
-                    badgeText = "#f87171";
-                } else if (task.priority === "NORMAL") {
-                    color = "#fbbf24"; // Orange/Gold
-                    badgeBg = "rgba(245, 158, 11, 0.15)";
-                    badgeText = "#fbbf24";
-                }
+    const getCheckInStatusText = () => {
+        if (isCheckedOut) return "Shift Done";
+        if (isCheckedIn) return "Check Out";
+        return "Check In";
+    };
 
-                return {
-                    id: task.id,
-                    name: task.name,
-                    projectName: task.project?.name || activeWorkspace?.name || "Project",
-                    dueDateStr,
-                    color,
-                    badgeBg,
-                    badgeText
-                };
-            })
-        : [
-            {
-                id: "mock-1",
-                name: "Draft onboarding checklist for GulfT...",
-                projectName: "Dubai Client Onboarding",
-                dueDateStr: "Aug 8",
-                color: "#ef4444",
-                badgeBg: "rgba(239, 68, 68, 0.15)",
-                badgeText: "#fca5a5"
-            },
-            {
-                id: "mock-2",
-                name: "Source venue options for kickoff e...",
-                projectName: "Dubai Client Onboarding",
-                dueDateStr: "Aug 12",
-                color: "#10b981",
-                badgeBg: "rgba(16, 185, 129, 0.15)",
-                badgeText: "#6ee7b7"
-            },
-            {
-                id: "mock-3",
-                name: "Build lifecycle email sequence for Q3",
-                projectName: "Q3 Growth Campaign",
-                dueDateStr: "Aug 6",
-                color: "#ef4444",
-                badgeBg: "rgba(239, 68, 68, 0.15)",
-                badgeText: "#fca5a5"
-            }
-        ];
+    const getLocationText = () => {
+        if (isCheckedIn && todayAttendance?.checkInAddress) {
+            return `Location : ${todayAttendance.checkInAddress}`;
+        }
+        if (isCheckedIn && todayAttendance?.checkInLatitude) {
+            return `Location : ${todayAttendance.checkInLatitude.toFixed(4)}, ${todayAttendance.checkInLongitude.toFixed(4)}`;
+        }
+        return "Location : You are not in office";
+    };
+
+    const handleBigButtonPress = () => {
+        if (isCheckedOut) return;
+        if (isCheckedIn) {
+            haptics.warning();
+            setCheckOutSheetVisible(true);
+        } else {
+            handleCheckAction('check-in');
+        }
+    };
 
     return (
-        <SafeAreaView style={styles.container} edges={["top"]}>
-            <StatusBar barStyle="light-content" />
-            <AmbientBackground />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-            {isMenuOpen && (
-                <Pressable
-                    style={[StyleSheet.absoluteFill, { zIndex: 10 }]}
-                    onPress={() => setIsMenuOpen(false)}
-                />
-            )}
+            <View style={[styles.mainContentContainer, { maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center', flex: 1, paddingHorizontal: value(SPACING.md, SPACING.lg, SPACING.xl), paddingBottom: SPACING.md }]}>
 
-            {/* Header */}
-            <View style={[styles.header, { zIndex: 20, paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                <View style={[styles.headerContent, { maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }]}>
-                    {/* Left side: Workspace switcher */}
-                    <PressableScale
-                        haptic="selection"
-                        onPress={() => setWsSwitcherVisible(true)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Switch workspace, current: ${activeWorkspace?.name ?? "Trava Tasks"}`}
-                        accessibilityHint="Opens the workspace switcher"
-                        style={{ flex: 1, marginRight: SPACING.md, minHeight: TOUCH_TARGET.min, justifyContent: "center" }}
-                    >
-                        {wsLoading && !activeWorkspace ? (
-                            <Animated.View style={{ width: 140, height: 24, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.08)", marginVertical: 4, opacity: shimmerAnim }} />
-                        ) : (
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                <Text style={[styles.workspaceNameSimple, { color: colors.text }]} numberOfLines={1}>
-                                    {activeWorkspace?.name ?? "Trava Tasks"}
-                                </Text>
-                                <Ionicons name="chevron-down" size={18} color="#888888" style={{ marginTop: 2 }} />
-                            </View>
-                        )}
-                        <Text style={{ color: "#888888", fontSize: 13, fontWeight: "500", marginTop: 2 }}>
-                            {format(currentTime, 'EEEE d MMM • HH:mm')}
-                        </Text>
-                    </PressableScale>
-
-                    {/* Right side: Actions */}
-                    <View style={{ flexDirection: "row", gap: SPACING.sm, position: 'relative' }}>
-                        <TouchableOpacity
-                            style={styles.actionCircleBtn}
-                            onPress={() => (navigation as any)?.navigate("Notifications")}
-                            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-                        >
-                            <Ionicons name="notifications-outline" size={20} color="#ffffff" />
-                            {unreadCount > 0 && (
-                                <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                                    <Text style={styles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionCircleBtn}
-                            onPress={() => setIsMenuOpen(!isMenuOpen)}
-                            accessibilityLabel="More options"
-                            accessibilityState={{ expanded: isMenuOpen }}
-                        >
-                            <Ionicons name="ellipsis-horizontal" size={20} color="#ffffff" />
-                        </TouchableOpacity>
-
-                        {/* Dropdown Menu */}
-                        {isMenuOpen && (
-                            <GlassSurface level="elevated" intensity="sheet" radius="md" elevation="md" style={styles.dropdownMenu}>
-                                <PressableScale
-                                    haptic="selection"
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        toggleTheme();
-                                        setIsMenuOpen(false);
-                                    }}
-                                    accessibilityLabel={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                                >
-                                    <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={20} color={colors.text} />
-                                    <Text style={[styles.dropdownText, { color: colors.text }]}>{isDark ? "Light Mode" : "Dark Mode"}</Text>
-                                </PressableScale>
-                                <PressableScale
-                                    haptic="selection"
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        setIsMenuOpen(false);
-                                        (navigation as any)?.navigate("AI");
-                                    }}
-                                    accessibilityLabel="Trava AI"
-                                >
-                                    <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
-                                    <Text style={[styles.dropdownText, { color: colors.primary }]}>Trava AI</Text>
-                                </PressableScale>
-                                <PressableScale
-                                    haptic="selection"
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        setIsMenuOpen(false);
-                                        (navigation as any)?.navigate("Attendance");
-                                    }}
-                                    accessibilityLabel="Attendance"
-                                >
-                                    <Ionicons name="time-outline" size={20} color={colors.text} />
-                                    <Text style={[styles.dropdownText, { color: colors.text }]}>Attendance</Text>
-                                </PressableScale>
-                                <PressableScale
-                                    haptic="selection"
-                                    style={styles.dropdownItem}
-                                    onPress={() => {
-                                        setIsMenuOpen(false);
-                                        (navigation as any)?.navigate("Leave");
-                                    }}
-                                    accessibilityLabel="Leaves"
-                                >
-                                    <Ionicons name="calendar-outline" size={20} color={colors.text} />
-                                    <Text style={[styles.dropdownText, { color: colors.text }]}>Leaves</Text>
-                                </PressableScale>
-                            </GlassSurface>
-                        )}
-                    </View>
-                </View>
-            </View>
-
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-                onScrollBeginDrag={() => { if (isMenuOpen) setIsMenuOpen(false); }}
-            >
-                <View style={{ width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }}>
-
-                    {/* Progress Card ("This Week") */}
-                    <View style={styles.progressCard}>
-                        <View style={styles.progressLeft}>
-                            <Text style={styles.progressLabel}>THIS WEEK</Text>
-                            <Text style={styles.progressValue}>{onTrackPercentage}% on track</Text>
-                        </View>
-                        <View style={styles.progressRight}>
-                            <View style={{
-                                width: 38,
-                                height: 38,
-                                borderRadius: 19,
-                                borderWidth: 3.5,
-                                borderColor: "#f59e0b",
-                                borderTopColor: "rgba(255, 255, 255, 0.08)",
-                                transform: [{ rotate: "45deg" }],
-                            }} />
-                        </View>
-                    </View>
-
-
-                    {wsLoading ? (
-                        <View style={{ gap: SPACING.md, marginBottom: SPACING.xl }}>
-                            <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-                                <Animated.View style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)", opacity: shimmerAnim }]} />
-                                <Animated.View style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)", opacity: shimmerAnim }]} />
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-                                <Animated.View style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)", opacity: shimmerAnim }]} />
-                                <Animated.View style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)", opacity: shimmerAnim }]} />
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={{ gap: SPACING.md, marginBottom: SPACING.lg }}>
-                            <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-                                {activeWorkspace?.id ? (
-                                    <AttendanceWidget
-                                        ref={attRef}
-                                        workspaceId={activeWorkspace.id}
-                                        variant="mini"
-                                        onLongPress={() => openPreview("attendance", attRef)}
-                                    />
-                                ) : (
-                                    <View style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)" }]} />
-                                )}
-                                <TouchableOpacity
-                                    ref={projRef}
-                                    style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)" }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate("Projects", { screen: "_Base" } as any)}
-                                    onLongPress={() => openPreview("projects", projRef)}
-                                    delayLongPress={300}
-                                >
-                                    <View style={[styles.statIcon, { backgroundColor: "rgba(59, 130, 246, 0.15)" }]}>
-                                        <Ionicons name="grid" size={20} color="#3b82f6" />
-                                    </View>
-                                    <View style={styles.statTextContent}>
-                                        <Text
-                                            style={[styles.statValue, { color: colors.text }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.65}
-                                        >
-                                            {stats.totalProjects}
-                                        </Text>
-                                        <Text
-                                            style={[styles.statTitle, { color: "#888888" }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.7}
-                                        >
-                                            Projects
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-                                <TouchableOpacity
-                                    style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)" }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => (navigation as any).navigate("MySpace")}
-                                >
-                                    <View style={[styles.statIcon, { backgroundColor: "rgba(168, 85, 247, 0.15)" }]}>
-                                        <Ionicons name="person" size={20} color="#a855f7" />
-                                    </View>
-                                    <View style={styles.statTextContent}>
-                                        <Text
-                                            style={[styles.statValue, { color: colors.text }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.65}
-                                        >
-                                            My Space
-                                        </Text>
-                                        <Text
-                                            style={[styles.statTitle, { color: "#888888" }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.7}
-                                        >
-                                            Personal
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    ref={teamRef}
-                                    style={[styles.statBox, { backgroundColor: "#111111", borderColor: "rgba(255,255,255,0.04)" }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => (navigation as any).navigate("TeamList")}
-                                    onLongPress={() => openPreview("teams", teamRef)}
-                                    delayLongPress={300}
-                                >
-                                    <View style={[styles.statIcon, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
-                                        <Ionicons name="chatbubble" size={20} color="#10b981" />
-                                    </View>
-                                    <View style={styles.statTextContent}>
-                                        <Text
-                                            style={[styles.statValue, { color: colors.text }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.65}
-                                        >
-                                            Teams
-                                        </Text>
-                                        <Text
-                                            style={[styles.statTitle, { color: "#888888" }]}
-                                            numberOfLines={1}
-                                            adjustsFontSizeToFit
-                                            minimumFontScale={0.7}
-                                        >
-                                            Messaging
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Hint text */}
-                    <Text style={styles.hintText}>Long-press a tile for a quick preview</Text>
-
-                    {/* Due Soon Section */}
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Due soon</Text>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate("MyTasks", { screen: "_Base" } as any)}
-                        >
-                            <Text style={styles.viewAllBtn}>View board</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{ gap: 4, marginBottom: SPACING.xl }}>
-                        {dueSoonTasks.map((task) => (
-                            <TouchableOpacity
-                                key={task.id}
-                                style={styles.taskCard}
-                                activeOpacity={0.8}
-                                onPress={() => navigation.navigate("TaskDetail", { taskId: task.id } as any)}
+                {/* Top Main Card */}
+                <View style={[styles.mainCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {/* Card Header: Workspace Name, Notification Bell, User Avatar */}
+                    <View style={styles.cardHeaderRow}>
+                        <View style={StyleSheet.absoluteFill}>
+                            <TouchableOpacity 
+                                style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+                                onPress={() => setWsSwitcherVisible(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Switch workspace, current: ${activeWorkspace?.name ?? "Trava Tasks"}`}
                             >
-                                <View style={[styles.taskIndicatorBar, { backgroundColor: task.color }]} />
-                                <View style={styles.taskMain}>
-                                    <Text style={styles.taskTitle} numberOfLines={1}>
-                                        {task.name}
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                    <Text style={[styles.workspaceNameHeader, { color: colors.text }]} numberOfLines={1}>
+                                        {activeWorkspace?.name ?? "Trava Tasks"}
                                     </Text>
-                                    <Text style={styles.taskSubtitle} numberOfLines={1}>
-                                        {task.projectName}
-                                    </Text>
-                                </View>
-                                <View style={[styles.taskBadge, { backgroundColor: task.badgeBg }]}>
-                                    <Text style={[styles.taskBadgeText, { color: task.badgeText }]}>
-                                        {task.dueDateStr}
-                                    </Text>
+                                    <Ionicons name="chevron-down" size={14} color={colors.textDim} style={{ marginTop: 2 }} />
                                 </View>
                             </TouchableOpacity>
-                        ))}
+                        </View>
+                        
+                        <View style={{ flex: 1 }} />
+
+                        <View style={{ flexDirection: "row", gap: SPACING.sm, alignItems: "center", zIndex: 10 }}>
+                            <TouchableOpacity
+                                style={[styles.bellBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
+                                onPress={() => (navigation as any)?.navigate("Notifications")}
+                                accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                            >
+                                <Ionicons name="notifications-outline" size={20} color={colors.text} />
+                                {unreadCount > 0 && (
+                                    <View style={[styles.blackBadge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+                                        <Text style={styles.blackBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity
+                                style={[styles.bellBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
+                                onPress={openMenu}
+                                accessibilityLabel="More options"
+                                accessibilityRole="button"
+                                accessibilityState={{ expanded: isMenuOpen }}
+                            >
+                                <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
+                    {/* Welcome Back & Name */}
+                    <View style={{ paddingHorizontal: SPACING.xs, marginTop: -10 }}>
+                        <Text style={[styles.welcomeText, { color: colors.textDim }]}>Welcome back,</Text>
+                        <Text style={[styles.profileNameText, { color: colors.text }]}>
+                            {profile?.name ?? "Sufiyan"}
+                        </Text>
+                    </View>
+
+                    {/* Day and Date */}
+                    <View style={{ alignItems: "center", marginTop: SPACING.sm }}>
+                        <Text style={[styles.dayText, { color: colors.text }]}>
+                            {format(currentTime, 'EEEE')}
+                        </Text>
+                        <Text style={[styles.dateText, { color: colors.textDim }]}>
+                            {format(currentTime, 'MMM d - yyyy')}
+                        </Text>
+                    </View>
+
+                    {/* Big Liquid Circular Button */}
+                    <View style={{ alignItems: "center", marginVertical: SPACING.sm }}>
+                        <View style={[styles.circularCheckShadow, isCheckedOut && { opacity: 0.6 }]}>
+                            <TouchableOpacity
+                                style={styles.circularCheckButton}
+                                activeOpacity={0.85}
+                                onPress={handleBigButtonPress}
+                                disabled={actionLoading || isCheckedOut}
+                                accessibilityRole="button"
+                                accessibilityLabel={getCheckInStatusText()}
+                                accessibilityState={{ disabled: actionLoading || isCheckedOut, busy: actionLoading }}
+                            >
+                                {/* Liquid glass body — brand primary #fbb54a */}
+                                <LinearGradient
+                                    colors={["#ffd694", "#fbb54a", "#e0972a"]}
+                                    locations={[0, 0.55, 1]}
+                                    start={{ x: 0.15, y: 0 }}
+                                    end={{ x: 0.85, y: 1 }}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                                {/* Top-left specular sheen */}
+                                <View style={styles.circleSheenTop} pointerEvents="none" />
+                                {/* Bottom-right soft bounce light */}
+                                <View style={styles.circleSheenBottom} pointerEvents="none" />
+                                {/* Rim highlight */}
+                                <View style={styles.circleRim} pointerEvents="none" />
+
+                                {actionLoading ? (
+                                    <ActivityIndicator size="large" color="#2b1c04" />
+                                ) : (
+                                    <Text style={styles.circularButtonText}>
+                                        {getCheckInStatusText()}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Bottom Location Indicator */}
+                    <View style={styles.locationContainer}>
+                        <Ionicons name="location-outline" size={18} color={colors.textMuted} />
+                        <Text style={[styles.locationText, { color: colors.textMuted }]} numberOfLines={1}>
+                            {getLocationText()}
+                        </Text>
+                    </View>
                 </View>
-            </ScrollView>
+
+                {/* Spacing spacer */}
+                <View style={{ height: 12 }} />
+
+                {/* Bottom grid (2x2) */}
+                <View style={styles.gridContainer}>
+                    {/* Row 1 */}
+                    <View style={styles.gridRow}>
+                        {/* Card 1: Team Roster */}
+                        <TouchableOpacity
+                            ref={attRef}
+                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            activeOpacity={0.8}
+                            onPress={() => navigation.navigate("Attendance")}
+                            onLongPress={() => openPreview("attendance", attRef)}
+                            delayLongPress={300}
+                        >
+                            <View style={styles.gridCardHeader}>
+                                <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.text} />
+                            </View>
+                            <Text style={[styles.gridCardValue, { color: colors.text }]}>
+                                {teamAttendance ? `${teamAttendance.filter((r: any) => !!r.attendance?.checkIn).length} / ${teamAttendance.length}` : "32 / 38"}
+                            </Text>
+                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Team Roster</Text>
+                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Card 2: Projects */}
+                        <TouchableOpacity
+                            ref={projRef}
+                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            activeOpacity={0.8}
+                            onPress={() => navigation.navigate("Projects", { screen: "_Base" } as any)}
+                            onLongPress={() => openPreview("projects", projRef)}
+                            delayLongPress={300}
+                        >
+                            <View style={styles.gridCardHeader}>
+                                <MaterialCommunityIcons name="view-dashboard-outline" size={20} color={colors.text} />
+                            </View>
+                            <Text style={[styles.gridCardValue, { color: colors.text }]}>
+                                {stats.totalProjects}
+                            </Text>
+                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Projects</Text>
+                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Row 2 */}
+                    <View style={styles.gridRow}>
+                        {/* Card 3: Teams */}
+                        <TouchableOpacity
+                            ref={teamRef}
+                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            activeOpacity={0.8}
+                            onPress={() => (navigation as any).navigate("TeamList")}
+                            onLongPress={() => openPreview("teams", teamRef)}
+                            delayLongPress={300}
+                        >
+                            <View style={styles.gridCardHeader}>
+                                <MaterialCommunityIcons name="forum-outline" size={20} color={colors.text} />
+                            </View>
+                            <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                Teams
+                            </Text>
+                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Messaging</Text>
+                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Card 4: My Space */}
+                        <TouchableOpacity
+                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            activeOpacity={0.8}
+                            onPress={() => (navigation as any).navigate("MySpace")}
+                        >
+                            <View style={styles.gridCardHeader}>
+                                <View style={{ position: "relative", width: 22, height: 22, justifyContent: "center", alignItems: "center" }}>
+                                    <MaterialCommunityIcons name="hexagon-outline" size={22} color={colors.text} style={{ position: "absolute" }} />
+                                    <MaterialCommunityIcons name="account-outline" size={12} color={colors.text} style={{ position: "absolute" }} />
+                                </View>
+                            </View>
+                            <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                My Space
+                            </Text>
+                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Personal</Text>
+                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Trailing spacer — keeps the card + widgets grouped at the top */}
+                <View style={{ flex: 1 }} />
+
+            </View>
+
+            <HeaderMenu
+                visible={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
+                top={MENU_TOP_OFFSET}
+                right={value(SPACING.md, SPACING.lg, SPACING.xl) + 16}
+                items={[
+                    {
+                        icon: isDark ? "sunny-outline" : "moon-outline",
+                        label: isDark ? "Light Mode" : "Dark Mode",
+                        accessibilityLabel: isDark ? "Switch to light mode" : "Switch to dark mode",
+                        onPress: () => { toggleTheme(); setIsMenuOpen(false); },
+                    },
+                    {
+                        icon: "sparkles-outline",
+                        label: "Trava AI",
+                        color: colors.primary,
+                        onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("AI"); },
+                    },
+                    {
+                        icon: "time-outline",
+                        label: "Attendance",
+                        onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("Attendance"); },
+                    },
+                    {
+                        icon: "calendar-outline",
+                        label: "Leaves",
+                        onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("Leave"); },
+                    },
+                ]}
+            />
 
             <WidgetPreviewModal
                 target={previewTarget}
@@ -568,165 +573,212 @@ export default function HomeScreen({ navigation }: Props) {
                     })}
                 </View>
             </Sheet>
+
+            <ConfirmationSheet
+                visible={checkOutSheetVisible}
+                title="Confirm Check Out"
+                description="Are you sure you want to check out? This will end your shift for today."
+                confirmLabel="Check Out"
+                cancelLabel="Cancel"
+                tone="warning"
+                loading={actionLoading}
+                onConfirm={() => handleCheckAction('check-out')}
+                onClose={() => setCheckOutSheetVisible(false)}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#000000" },
-    scrollContent: { paddingBottom: 24 },
+    container: { flex: 1 },
+    mainContentContainer: { paddingVertical: SPACING.md },
 
-    header: { paddingVertical: SPACING.sm, marginBottom: SPACING.sm },
-    headerContent: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    actionCircleBtn: { 
-        width: 42, 
-        height: 42, 
-        borderRadius: 21, 
-        borderWidth: 1, 
-        borderColor: "rgba(255,255,255,0.08)", 
-        backgroundColor: "#111111", 
-        justifyContent: "center", 
-        alignItems: "center",
-        position: "relative" 
+    mainCard: {
+        borderRadius: 28,
+        borderWidth: 1,
+        padding: 16,
+        paddingBottom: 18,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 4,
     },
-    badge: { position: "absolute", top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, justifyContent: "center", alignItems: "center", paddingHorizontal: 4 },
-    badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-
-    workspaceNameSimple: { fontSize: 24, fontWeight: "700", letterSpacing: 0.5 },
-
-    dropdownMenu: { position: 'absolute', top: 50, right: 0, width: 170, padding: SPACING.sm, zIndex: 100 },
-    dropdownItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, paddingHorizontal: SPACING.sm, gap: SPACING.md },
-    dropdownText: { fontSize: 14, fontWeight: '500' },
-
-    progressCard: {
+    cardHeaderRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        backgroundColor: "#111111",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.04)",
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
+        position: "relative",
+        height: 42,
     },
-    progressLeft: {
-        justifyContent: "center",
-    },
-    progressLabel: {
-        fontSize: 10,
-        fontWeight: "800",
-        color: "#f59e0b",
-        letterSpacing: 0.5,
-        marginBottom: 6,
-    },
-    progressValue: {
-        fontSize: 24,
-        fontWeight: "800",
-        color: "#ffffff",
-    },
-    progressRight: {
-        justifyContent: "center",
-        alignItems: "center",
-    },
-
-    statBox: { 
-        flex: 1, 
-        height: 115, 
-        padding: 14, 
-        borderRadius: BORDER_RADIUS.lg, 
-        borderWidth: 1, 
-        flexDirection: "column", 
-        alignItems: "flex-start", 
-        justifyContent: "space-between" 
-    },
-    statIcon: { 
-        width: 36, 
-        height: 36, 
-        borderRadius: 10, 
-        justifyContent: "center", 
-        alignItems: "center" 
-    },
-    statTextContent: { 
-        marginTop: "auto",
-        width: "100%"
-    },
-    statValue: { fontSize: 16, fontWeight: "700" },
-    statTitle: { fontSize: 12, fontWeight: "500" },
-
-    hintText: {
-        fontSize: 11,
-        color: "#555555",
-        fontWeight: "500",
-        textAlign: "center",
-        marginTop: 4,
-        marginBottom: 20,
-    },
-
-    sectionHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 14,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#ffffff",
-    },
-    viewAllBtn: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#f59e0b",
-    },
-
-    taskCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#111111",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.04)",
-        borderRadius: 14,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        marginBottom: 12,
-    },
-    taskIndicatorBar: {
-        width: 3,
-        height: 32,
-        borderRadius: 1.5,
-        marginRight: 12,
-    },
-    taskMain: {
-        flex: 1,
-        justifyContent: "center",
-    },
-    taskTitle: {
+    workspaceNameHeader: {
         fontSize: 15,
-        fontWeight: "600",
-        color: "#ffffff",
+        fontFamily: FONTS.bold,
+        letterSpacing: 0.3,
     },
-    taskSubtitle: {
+    bellBtn: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        justifyContent: "center",
+        alignItems: "center",
+        position: "relative",
+    },
+    blackBadge: {
+        position: "absolute",
+        top: -3,
+        right: -3,
+        minWidth: 17,
+        height: 17,
+        borderRadius: 9,
+        borderWidth: 1.5,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 4,
+    },
+    blackBadgeText: {
+        color: "#2b1c04",
+        fontSize: 9,
+        fontFamily: FONTS.bold,
+    },
+    welcomeText: {
+        fontSize: 15,
+        fontFamily: FONTS.medium,
+        letterSpacing: 0.1,
+    },
+    profileNameText: {
+        fontSize: 26,
+        fontFamily: FONTS.extrabold,
+        letterSpacing: -0.4,
+        marginTop: 1,
+    },
+    dayText: {
+        fontSize: 32,
+        fontFamily: FONTS.extrabold,
+        letterSpacing: -0.8,
+    },
+    dateText: {
+        fontSize: 14,
+        fontFamily: FONTS.medium,
+        letterSpacing: 0.2,
+        marginTop: 2,
+    },
+    circularCheckShadow: {
+        borderRadius: 62,
+        // Coloured glow rather than a neutral drop shadow, so the brand hue
+        // reads even on a white card.
+        shadowColor: "#e0972a",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.55,
+        shadowRadius: 18,
+        elevation: 12,
+    },
+    circularCheckButton: {
+        width: 124,
+        height: 124,
+        borderRadius: 62,
+        backgroundColor: "#fbb54a",
+        justifyContent: "center",
+        alignItems: "center",
+        overflow: "hidden",
+    },
+    circleSheenTop: {
+        position: "absolute",
+        top: -28,
+        left: -18,
+        width: 122,
+        height: 88,
+        borderRadius: 61,
+        backgroundColor: "rgba(255,255,255,0.32)",
+        transform: [{ rotate: "-18deg" }],
+    },
+    circleSheenBottom: {
+        position: "absolute",
+        bottom: -24,
+        right: -13,
+        width: 96,
+        height: 60,
+        borderRadius: 48,
+        backgroundColor: "rgba(255,255,255,0.14)",
+        transform: [{ rotate: "-14deg" }],
+    },
+    circleRim: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 62,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.45)",
+    },
+    circularButtonText: {
+        // Dark ink on the amber face — white would fail contrast on #fbb54a.
+        color: "#2b1c04",
+        fontSize: 18,
+        fontFamily: FONTS.extrabold,
+        letterSpacing: 0.2,
+    },
+    locationContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+    },
+    locationText: {
+        fontSize: 12.5,
+        fontFamily: FONTS.medium,
+        letterSpacing: 0.1,
+        maxWidth: "85%",
+    },
+
+    gridContainer: {
+        height: 196,
+        gap: 12,
+    },
+    gridRow: {
+        flexDirection: "row",
+        gap: 12,
+        flex: 1,
+    },
+    gridCard: {
+        flex: 1,
+        borderRadius: 20,
+        borderWidth: 1,
+        padding: 13,
+        justifyContent: "space-between",
+        position: "relative",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    gridCardHeader: {
+        alignItems: "flex-start",
+    },
+    gridCardValue: {
+        fontSize: 20,
+        fontFamily: FONTS.extrabold,
+        letterSpacing: -0.3,
+    },
+    gridCardTitle: {
         fontSize: 12,
-        color: "#888888",
-        marginTop: 3,
+        fontFamily: FONTS.medium,
+        letterSpacing: 0.1,
     },
-    taskBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+    arrowCircle: {
+        position: "absolute",
+        bottom: 13,
+        right: 13,
+        width: 24,
+        height: 24,
         borderRadius: 12,
         justifyContent: "center",
         alignItems: "center",
     },
-    taskBadgeText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
 
-    sheetTitle: { fontSize: 17, fontWeight: "700" },
+    sheetTitle: { fontSize: 17, fontFamily: FONTS.bold },
     sheetContent: { paddingHorizontal: SPACING.lg },
 
     wsItem: { flexDirection: "row", alignItems: "center", paddingVertical: SPACING.md, borderBottomWidth: 1 },
     wsAvatarSmall: { width: 36, height: 36, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-    avatarTextSmall: { color: "#fff", fontWeight: "700", fontSize: 16 },
-    wsNameSmall: { flex: 1, marginLeft: SPACING.md, fontSize: 16, fontWeight: "500" },
+    avatarTextSmall: { color: "#fff", fontFamily: FONTS.bold, fontSize: 16 },
+    wsNameSmall: { flex: 1, marginLeft: SPACING.md, fontSize: 16, fontFamily: FONTS.medium },
 });

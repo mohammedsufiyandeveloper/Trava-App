@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { SPACING, BORDER_RADIUS } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     },
     backBtn: { width: 44, height: 44, justifyContent: "center" },
     headerTitleContainer: { flex: 1, marginLeft: 4 },
-    headerTitle: { fontSize: 18, fontWeight: "700" },
+    headerTitle: { fontSize: 18, fontFamily: FONTS.bold },
     headerSubtitle: { fontSize: 12, marginTop: 1 },
     addBtn: {
         width: 44,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     },
     swatch: { width: 12, height: 12, borderRadius: 6 },
     tagInfo: { flex: 1 },
-    tagName: { fontSize: 15, fontWeight: "600" },
+    tagName: { fontSize: 15, fontFamily: FONTS.semibold },
     tagCount: { fontSize: 12, marginTop: 2 },
     tagActions: { flexDirection: "row", alignItems: "center" },
     actionIcon: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },

@@ -21,7 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { format, addDays } from "date-fns";
-import { SPACING, BORDER_RADIUS, TOUCH_TARGET } from "../constants/theme";
+import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { haptics } from "../services/haptics";
 import { useWorkspace } from "../context/WorkspaceContext";
@@ -421,7 +421,7 @@ export default function AttendanceScreen() {
                     <View style={[styles.tipCard, { backgroundColor: "#ef444412", borderColor: "#ef444440" }]}>
                         <Ionicons name="location-outline" size={18} color="#ef4444" />
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.tipText, { color: colors.text, fontWeight: "700" }]}>
+                            <Text style={[styles.tipText, { color: colors.text, fontFamily: FONTS.bold }]}>
                                 Location access is off
                             </Text>
                             <Text style={[styles.tipText, { color: colors.textDim, marginTop: 2 }]}>
@@ -433,7 +433,7 @@ export default function AttendanceScreen() {
                                 haptic="light"
                                 style={styles.enableLocationBtn}
                             >
-                                <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 12 }}>Open Settings</Text>
+                                <Text style={{ color: "#ef4444", fontFamily: FONTS.bold, fontSize: 12 }}>Open Settings</Text>
                             </PressableScale>
                         </View>
                     </View>
@@ -608,7 +608,7 @@ export default function AttendanceScreen() {
                                     <Image source={{ uri: row.member.user.image }} style={styles.avatar} />
                                 ) : (
                                     <View style={[styles.avatarFallback, { backgroundColor: colors.border }]}>
-                                        <Text style={{ color: colors.textDim, fontWeight: "600" }}>{memberName.charAt(0)}</Text>
+                                        <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{memberName.charAt(0)}</Text>
                                     </View>
                                 )}
 
@@ -832,7 +832,7 @@ export default function AttendanceScreen() {
                                             <Image source={{ uri: u.image }} style={styles.modalAvatar} />
                                         ) : (
                                             <View style={[styles.modalAvatarFallback, { backgroundColor: colors.border }]}>
-                                                <Text style={{ color: colors.textDim, fontWeight: "600" }}>{(u.surname?.[0] || u.name.charAt(0)).toUpperCase()}</Text>
+                                                <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{(u.surname?.[0] || u.name.charAt(0)).toUpperCase()}</Text>
                                             </View>
                                         )}
                                         <View>
@@ -872,7 +872,7 @@ export default function AttendanceScreen() {
                                     <Image source={{ uri: selectedStatsMember.user.image }} style={styles.statsModalAvatar} />
                                 ) : (
                                     <View style={[styles.statsModalAvatarFallback, { backgroundColor: colors.border }]}>
-                                        <Text style={{ color: colors.textDim, fontWeight: "600", fontSize: 24 }}>
+                                        <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold, fontSize: 24 }}>
                                             {(selectedStatsMember.user.surname?.[0] || selectedStatsMember.user.name.charAt(0)).toUpperCase()}
                                         </Text>
                                     </View>
@@ -929,20 +929,20 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
-    heading: { fontSize: 24, fontWeight: "700" },
+    heading: { fontSize: 24, fontFamily: FONTS.bold },
     subheading: { fontSize: 13, marginTop: 2 },
     leaveBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-    leaveBtnText: { fontSize: 13, fontWeight: "700" },
+    leaveBtnText: { fontSize: 13, fontFamily: FONTS.bold },
 
     dateNav: { flexDirection: "row", alignItems: "center", gap: 4 },
     dateNavBtn: { padding: 4 },
     dateBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
-    dateText: { fontSize: 12, fontWeight: "600" },
+    dateText: { fontSize: 12, fontFamily: FONTS.semibold },
 
     segmentContainer: { paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
     segmentTrack: { flexDirection: "row", padding: 4, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
     segmentBtn: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: BORDER_RADIUS.sm - 2 },
-    segmentText: { fontSize: 13, fontWeight: "600" },
+    segmentText: { fontSize: 13, fontFamily: FONTS.semibold },
 
     scroll: { paddingHorizontal: SPACING.lg },
     tabContent: { paddingTop: SPACING.sm },
@@ -952,24 +952,24 @@ const styles = StyleSheet.create({
     glassCardInner: { padding: 0 },
     cardHeader: { flexDirection: "row", alignItems: "center", padding: SPACING.md, paddingBottom: SPACING.sm },
     iconWrap: { width: 44, height: 44, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-    cardTitle: { fontSize: 17, fontWeight: "700" },
+    cardTitle: { fontSize: 17, fontFamily: FONTS.bold },
     statusPill: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
     statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-    statusText: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
+    statusText: { fontSize: 11, fontFamily: FONTS.extrabold, textTransform: "uppercase", letterSpacing: 0.5 },
     notChecked: { fontSize: 13, marginTop: 3 },
 
     timeRow: { flexDirection: "row", borderTopWidth: 1, paddingVertical: SPACING.md },
     timeBlock: { flex: 1, alignItems: "center" },
     timeDivider: { width: 1, height: "100%" },
-    timeLabel: { fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginBottom: 6 },
-    timeValue: { fontSize: 16, fontWeight: "700" },
+    timeLabel: { fontSize: 9, fontFamily: FONTS.bold, letterSpacing: 0.5, marginBottom: 6 },
+    timeValue: { fontSize: 16, fontFamily: FONTS.bold },
 
     locationCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md },
     locationText: { fontSize: 12, flex: 1 },
 
     actionContainer: { marginBottom: SPACING.md },
     actionBtn: { flexDirection: "row", justifyContent: "center", alignItems: "center", height: 52, borderRadius: BORDER_RADIUS.lg },
-    actionBtnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+    actionBtnText: { color: "#fff", fontSize: 17, fontFamily: FONTS.bold },
 
     tipCard: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, marginBottom: SPACING.md },
     tipText: { fontSize: 12, lineHeight: 18, flex: 1 },
@@ -977,41 +977,41 @@ const styles = StyleSheet.create({
 
     // Register UI
     empty: { marginTop: 60, alignItems: "center" },
-    emptyLabel: { marginTop: 10, fontSize: 14, fontWeight: "500" },
+    emptyLabel: { marginTop: 10, fontSize: 14, fontFamily: FONTS.medium },
 
     registerItem: { padding: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.sm },
     registerMain: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     avatar: { width: 36, height: 36, borderRadius: 18 },
     avatarFallback: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
     registerDetails: { flex: 1 },
-    registerName: { fontSize: 15, fontWeight: "600", flex: 1, marginRight: 8 },
+    registerName: { fontSize: 15, fontFamily: FONTS.semibold, flex: 1, marginRight: 8 },
     miniStatus: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-    miniStatusText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+    miniStatusText: { fontSize: 9, fontFamily: FONTS.extrabold, textTransform: "uppercase" },
 
     registerTimes: { flexDirection: "row", gap: 12, marginTop: 8 },
     registerTimeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    registerTimeText: { fontSize: 12, fontWeight: "600" },
+    registerTimeText: { fontSize: 12, fontFamily: FONTS.semibold },
 
     registerEmail: { fontSize: 11, marginTop: 2 },
     registerMapRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
     mapBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
-    mapBtnText: { fontSize: 11, fontWeight: "700" },
+    mapBtnText: { fontSize: 11, fontFamily: FONTS.bold },
 
     statRow: { flexDirection: "row", gap: 8, marginBottom: SPACING.lg },
     statBox: { flex: 1, padding: 10, borderRadius: BORDER_RADIUS.md, borderWidth: 1, alignItems: "center", gap: 4 },
     statBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-    statValue: { fontSize: 15, fontWeight: "800" },
-    statLabel: { fontSize: 10, fontWeight: "600", textTransform: "uppercase" },
+    statValue: { fontSize: 15, fontFamily: FONTS.extrabold },
+    statLabel: { fontSize: 10, fontFamily: FONTS.semibold, textTransform: "uppercase" },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
     modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "80%" },
     modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 15, borderBottomWidth: 1, marginBottom: 10 },
-    modalTitle: { fontSize: 18, fontWeight: "700" },
+    modalTitle: { fontSize: 18, fontFamily: FONTS.bold },
     modalList: { marginTop: 5 },
     modalItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1 },
     modalAvatar: { width: 40, height: 40, borderRadius: 20 },
     modalAvatarFallback: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-    modalName: { fontSize: 15, fontWeight: "600" },
+    modalName: { fontSize: 15, fontFamily: FONTS.semibold },
     modalEmail: { fontSize: 12, marginTop: 1 },
     emptyModalText: { textAlign: "center", marginTop: 40, fontSize: 14 },
 
@@ -1020,18 +1020,18 @@ const styles = StyleSheet.create({
     statsModalHeader: { alignItems: "center", width: "100%" },
     statsModalAvatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12 },
     statsModalAvatarFallback: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, justifyContent: "center", alignItems: "center" },
-    statsModalName: { fontSize: 20, fontWeight: "700", textAlign: "center" },
+    statsModalName: { fontSize: 20, fontFamily: FONTS.bold, textAlign: "center" },
     statsModalEmail: { fontSize: 13, marginTop: 4, textAlign: "center" },
     statsRow: { flexDirection: "row", gap: 12, marginTop: 24, width: "100%" },
     bigStatCard: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-    bigStatValue: { fontSize: 32, fontWeight: "800" },
-    bigStatLabel: { fontSize: 10, fontWeight: "700", marginTop: 4, letterSpacing: 0.5 },
+    bigStatValue: { fontSize: 32, fontFamily: FONTS.extrabold },
+    bigStatLabel: { fontSize: 10, fontFamily: FONTS.bold, marginTop: 4, letterSpacing: 0.5 },
 
     // Unified Dashboard Header Styles
     sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: SPACING.md },
-    sectionTitle: { fontSize: 18, fontWeight: "700" },
+    sectionTitle: { fontSize: 18, fontFamily: FONTS.bold },
     badgeCount: { backgroundColor: "#6b728020", paddingHorizontal: 10, paddingVertical: 2, borderRadius: 12 },
-    badgeCountText: { fontSize: 12, fontWeight: "700", color: "#6b7280" },
+    badgeCountText: { fontSize: 12, fontFamily: FONTS.bold, color: "#6b7280" },
 
     // Logs List Styles
     logsList: { gap: 0 },
@@ -1039,14 +1039,14 @@ const styles = StyleSheet.create({
     logMain: { flexDirection: "row", alignItems: "center" },
     logAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#ccc" },
     logTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-    logName: { fontSize: 15, fontWeight: "600", flex: 1 },
-    logDate: { fontSize: 12, fontWeight: "500" },
+    logName: { fontSize: 15, fontFamily: FONTS.semibold, flex: 1 },
+    logDate: { fontSize: 12, fontFamily: FONTS.medium },
     logMetaRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     logTimeCol: { flex: 1, gap: 2 },
     logTimeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    logTimeText: { fontSize: 11, fontWeight: "700" },
+    logTimeText: { fontSize: 11, fontFamily: FONTS.bold },
     logLocBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#3b82f615", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-    logLocText: { fontSize: 10, fontWeight: "700" },
+    logLocText: { fontSize: 10, fontFamily: FONTS.bold },
     logStatus: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-    logStatusText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+    logStatusText: { fontSize: 9, fontFamily: FONTS.extrabold, textTransform: "uppercase" },
 });
