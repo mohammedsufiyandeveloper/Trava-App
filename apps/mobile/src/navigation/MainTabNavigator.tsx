@@ -106,9 +106,9 @@ export default function MainTabNavigator() {
         } else if (id === "tag") {
             setCreateTagVisible(true);
         } else if (id === "attendance") {
-            (navigation as any).navigate("Attendance");
+            (navigation as any).navigate("Main", { screen: "Home", params: { screen: "Attendance" } });
         } else if (id === "ai") {
-            (navigation as any).navigate("AI");
+            (navigation as any).navigate("Main", { screen: "Home", params: { screen: "AI" } });
         }
     }, [navigation]);
 

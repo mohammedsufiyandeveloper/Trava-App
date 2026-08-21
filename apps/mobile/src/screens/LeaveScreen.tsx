@@ -250,324 +250,324 @@ export default function LeaveScreen({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
-            <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
-                    <Ionicons name="chevron-back" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <View>
-                    <Text style={[styles.title, { color: colors.text }]}>Leaves</Text>
-                    {activeWorkspace && (
-                        <Text style={{ fontSize: 10, color: colors.textDim, fontFamily: FONTS.bold }}>
-                            {activeWorkspace.name.toUpperCase()}
-                        </Text>
-                    )}
-                </View>
-                <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: colors.primary }]}
-                    onPress={() => setIsModalOpen(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Apply for leave"
-                >
-                    <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView
-                contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-                scrollEventThrottle={200}
-                onScroll={({ nativeEvent }) => {
-                    const remaining =
-                        nativeEvent.contentSize.height -
-                        nativeEvent.layoutMeasurement.height -
-                        nativeEvent.contentOffset.y;
-                    if (remaining < 240) loadMoreRequests();
-                }}
-            >
-                {/* Balance & Accrual Section */}
-                <View style={styles.dashboardSection}>
-                    <View style={styles.balanceRow}>
-                        <View style={[styles.balanceItem, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
-                            <View style={[styles.iconCircle, { backgroundColor: "#3b82f620" }]}>
-                                <Ionicons name="cafe-outline" size={20} color="#3b82f6" />
-                            </View>
-                            <View style={styles.balanceInfo}>
-                                <Text style={[styles.balanceVal, { color: colors.text }]}>{balance?.casualLeaveBalance ?? 0}</Text>
-                                <Text style={[styles.balanceLab, { color: colors.textDim }]}>CASUAL</Text>
-                            </View>
-                        </View>
-                        <View style={[styles.balanceItem, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
-                            <View style={[styles.iconCircle, { backgroundColor: "#ef444420" }]}>
-                                <Ionicons name="thermometer-outline" size={20} color="#ef4444" />
-                            </View>
-                            <View style={styles.balanceInfo}>
-                                <Text style={[styles.balanceVal, { color: colors.text }]}>{balance?.sickLeaveBalance ?? 0}</Text>
-                                <Text style={[styles.balanceLab, { color: colors.textDim }]}>SICK</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={[styles.accrualCard, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
-                        <View style={styles.accrualHeader}>
-                            <Ionicons name="trending-up" size={18} color="#10b981" />
-                            <Text style={[styles.accrualTitle, { color: colors.text }]}>ACCRUAL PROGRESS</Text>
-                            <Text style={[styles.accrualLabel, { color: colors.textDim }]}>
-                                {balance?.accruedDaysCount}/{balance?.casualLeaveAccrualDays} <Text style={{ fontSize: 10 }}>TOWARDS CREDIT</Text>
+                <View style={[styles.header, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
+                        <Ionicons name="chevron-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                    <View>
+                        <Text style={[styles.title, { color: colors.text }]}>Leaves</Text>
+                        {activeWorkspace && (
+                            <Text style={{ fontSize: 10, color: colors.textDim, fontFamily: FONTS.bold }}>
+                                {activeWorkspace.name.toUpperCase()}
                             </Text>
-                        </View>
-                        <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-                            <View style={[styles.progressBarFill, { backgroundColor: "#10b981", width: `${accrualProgress * 100}%` }]} />
-                        </View>
+                        )}
                     </View>
+                    <TouchableOpacity
+                        style={[styles.addButton, { backgroundColor: colors.primary }]}
+                        onPress={() => setIsModalOpen(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Apply for leave"
+                    >
+                        <Ionicons name="add" size={24} color="#fff" />
+                    </TouchableOpacity>
                 </View>
 
-                {/* Search Bar */}
-                <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <Ionicons name="search" size={18} color={colors.textDim} />
-                    <TextInput
-                        style={[styles.searchInput, { color: colors.text }]}
-                        placeholder="Search by reason..."
-                        placeholderTextColor={colors.textDim}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                </View>
-
-                {/* List Header - Optional for Cards, let's keep it simple */}
-                <View style={[styles.listHeader, { justifyContent: 'space-between' }]}>
-                    <Text style={[styles.listCol, { color: colors.textDim }]}>RECENT REQUESTS</Text>
-                    <Text style={[styles.listCol, { color: colors.textDim }]}>{filteredRequests.length} TOTAL</Text>
-                </View>
-
-                {/* Requests List */}
-                {filteredRequests.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Ionicons name="calendar-outline" size={48} color={colors.textDim} />
-                        <Text style={[styles.emptyText, { color: colors.textDim }]}>No leave requests found</Text>
-                    </View>
-                ) : (
-                    filteredRequests.map((req) => (
-                        <View key={req.id} style={[styles.requestCard, { backgroundColor: isDark ? "#1e293b" : "#fff", borderColor: colors.border }]}>
-                            {/* Card Header: Member & Status */}
-                            <View style={styles.cardHeader}>
-                                <View style={styles.memberInfo}>
-                                    <View style={[styles.avatarSmall, { backgroundColor: colors.border }]}>
-                                        {req.WorkspaceMember.user.image ? (
-                                            <Image source={{ uri: req.WorkspaceMember.user.image }} style={styles.avatarImg} />
-                                        ) : (
-                                            <Text style={[styles.avatarTxt, { color: colors.textDim }]}>{req.WorkspaceMember.user.name.charAt(0)}</Text>
-                                        )}
-                                    </View>
-                                    <View style={{ marginLeft: 10 }}>
-                                        <Text style={[styles.memberName, { color: colors.text }]} numberOfLines={1}>{req.WorkspaceMember.user.name}</Text>
-                                        <Text style={[styles.memberBal, { color: colors.textDim }]}>BAL: C:{req.WorkspaceMember.casualLeaveBalance} • S:{req.WorkspaceMember.sickLeaveBalance}</Text>
-                                    </View>
+                <ScrollView
+                    contentContainerStyle={[styles.scrollContent, { paddingHorizontal: value(SPACING.lg, SPACING.xl, SPACING.xxl) }]}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                    scrollEventThrottle={200}
+                    onScroll={({ nativeEvent }) => {
+                        const remaining =
+                            nativeEvent.contentSize.height -
+                            nativeEvent.layoutMeasurement.height -
+                            nativeEvent.contentOffset.y;
+                        if (remaining < 240) loadMoreRequests();
+                    }}
+                >
+                    {/* Balance & Accrual Section */}
+                    <View style={styles.dashboardSection}>
+                        <View style={styles.balanceRow}>
+                            <View style={[styles.balanceItem, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                                <View style={[styles.iconCircle, { backgroundColor: "#3b82f620" }]}>
+                                    <Ionicons name="cafe-outline" size={20} color="#3b82f6" />
                                 </View>
-                                <StatusChip label={req.status} kind={getStatusKind(req.status)} size="sm" />
-                            </View>
-
-                            {/* Card Body: Dates & Type */}
-                            <View style={styles.cardBody}>
-                                <View style={styles.dateInfo}>
-                                    <Ionicons name="calendar-outline" size={14} color={colors.textDim} style={{ marginRight: 6 }} />
-                                    <Text style={[styles.dateSmall, { color: colors.text }]}>
-                                        {format(new Date(req.startDate), "MMM d")} - {format(new Date(req.endDate), "MMM d, yyyy")}
-                                    </Text>
-                                </View>
-                                <View style={[styles.typeBadgeSmall, { backgroundColor: req.type === "SICK" ? "#fee2e2" : "#dcfce7" }]}>
-                                    <Text style={[styles.typeTextSmall, { color: req.type === "SICK" ? "#991b1b" : "#166534" }]}>{req.type}</Text>
+                                <View style={styles.balanceInfo}>
+                                    <Text style={[styles.balanceVal, { color: colors.text }]}>{balance?.casualLeaveBalance ?? 0}</Text>
+                                    <Text style={[styles.balanceLab, { color: colors.textDim }]}>CASUAL</Text>
                                 </View>
                             </View>
+                            <View style={[styles.balanceItem, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                                <View style={[styles.iconCircle, { backgroundColor: "#ef444420" }]}>
+                                    <Ionicons name="thermometer-outline" size={20} color="#ef4444" />
+                                </View>
+                                <View style={styles.balanceInfo}>
+                                    <Text style={[styles.balanceVal, { color: colors.text }]}>{balance?.sickLeaveBalance ?? 0}</Text>
+                                    <Text style={[styles.balanceLab, { color: colors.textDim }]}>SICK</Text>
+                                </View>
+                            </View>
+                        </View>
 
-                            {/* Reason */}
-                            {req.reason && (
-                                <Text style={[styles.rowReason, { color: colors.textDim }]} numberOfLines={2}>
-                                    "{req.reason}"
+                        <View style={[styles.accrualCard, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                            <View style={styles.accrualHeader}>
+                                <Ionicons name="trending-up" size={18} color="#10b981" />
+                                <Text style={[styles.accrualTitle, { color: colors.text }]}>ACCRUAL PROGRESS</Text>
+                                <Text style={[styles.accrualLabel, { color: colors.textDim }]}>
+                                    {balance?.accruedDaysCount}/{balance?.casualLeaveAccrualDays} <Text style={{ fontSize: 10 }}>TOWARDS CREDIT</Text>
                                 </Text>
-                            )}
-
-                            {/* Actions for Admin if Pending */}
-                            {isAdmin && req.status === "PENDING" && (
-                                <View style={styles.rowActions}>
-                                    <TouchableOpacity
-                                        style={[styles.approveActionBtn, { backgroundColor: "#dcfce7" }]}
-                                        onPress={() => requestAction(req, "APPROVED")}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Approve leave request from ${req.WorkspaceMember.user.name}`}
-                                    >
-                                        <Ionicons name="checkmark" size={18} color="#166534" />
-                                        <Text style={styles.approveActionText}>Approve</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.approveActionBtn, { backgroundColor: "#fee2e2" }]}
-                                        onPress={() => requestAction(req, "REJECTED")}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Reject leave request from ${req.WorkspaceMember.user.name}`}
-                                    >
-                                        <Ionicons name="close" size={18} color="#991b1b" />
-                                        <Text style={[styles.approveActionText, { color: "#991b1b" }]}>Reject</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
-                    ))
-                )}
-                {loadingMoreRequests && (
-                    <ActivityIndicator
-                        color={colors.primary}
-                        style={{ paddingVertical: 16 }}
-                    />
-                )}
-            </ScrollView>
-
-            {/* Request Modal */}
-            <Modal visible={isModalOpen} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>Apply for Leave</Text>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setIsModalOpen(false);
-                                    setFormError(null);
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel="Close"
-                                hitSlop={8}
-                            >
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-                            {/* Reporting Manager Card */}
-                            <View style={[styles.managerCard, { backgroundColor: isDark ? "#1e293b" : "#fff7ed", borderColor: isDark ? colors.border : "#ffedd5" }]}>
-                                <View style={[styles.managerIcon, { backgroundColor: "#fb923c20" }]}>
-                                    <Ionicons name="person-outline" size={18} color="#fb923c" />
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={[styles.managerLabel, { color: colors.textDim }]}>REPORTING MANAGER</Text>
-                                    <Text style={[styles.managerName, { color: colors.text }]}>{displayReportingManager}</Text>
-                                </View>
                             </View>
-                            <Text style={[styles.label, { color: colors.textDim }]}>Leave Type</Text>
-                            <View style={styles.typeSelector}>
-                                {(["CASUAL", "SICK"] as LeaveType[]).map((t) => (
-                                    <TouchableOpacity
-                                        key={t}
-                                        style={[
-                                            styles.typeOption,
-                                            { borderColor: colors.border },
-                                            leaveType === t && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                        ]}
-                                        onPress={() => setLeaveType(t)}
-                                    >
-                                        <Text style={[styles.typeOptionText, { color: leaveType === t ? "#fff" : colors.text }]}>{t}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                                <View style={[styles.progressBarFill, { backgroundColor: "#10b981", width: `${accrualProgress * 100}%` }]} />
                             </View>
-
-                            <Text style={[styles.label, { color: colors.textDim }]}>Start Date (DD-MM-YYYY)</Text>
-                            <TouchableOpacity
-                                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: 'center' }]}
-                                onPress={() => {
-                                    setShowStartPicker(!showStartPicker);
-                                    setShowEndPicker(false);
-                                }}
-                            >
-                                <Text style={{ color: colors.text }}>{format(startDate, "dd-MM-yyyy")}</Text>
-                            </TouchableOpacity>
-
-                            {showStartPicker && (
-                                <DateTimePicker
-                                    value={startDate}
-                                    mode="date"
-                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                    textColor={colors.text}
-                                    themeVariant={isDark ? 'dark' : 'light'}
-                                    onChange={(event, date) => {
-                                        if (Platform.OS === 'android') setShowStartPicker(false);
-                                        if (date) setStartDate(date);
-                                    }}
-                                />
-                            )}
-
-                            <Text style={[styles.label, { color: colors.textDim }]}>End Date (DD-MM-YYYY)</Text>
-                            <TouchableOpacity
-                                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: 'center' }]}
-                                onPress={() => {
-                                    setShowEndPicker(!showEndPicker);
-                                    setShowStartPicker(false);
-                                }}
-                            >
-                                <Text style={{ color: colors.text }}>{format(endDate, "dd-MM-yyyy")}</Text>
-                            </TouchableOpacity>
-
-                            {showEndPicker && (
-                                <DateTimePicker
-                                    value={endDate}
-                                    mode="date"
-                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                    textColor={colors.text}
-                                    themeVariant={isDark ? 'dark' : 'light'}
-                                    onChange={(event, date) => {
-                                        if (Platform.OS === 'android') setShowEndPicker(false);
-                                        if (date) setEndDate(date);
-                                    }}
-                                />
-                            )}
-
-                            <Text style={[styles.label, { color: colors.textDim }]}>Reason</Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    styles.textArea,
-                                    { backgroundColor: colors.background, color: colors.text, borderColor: formError ? colors.error : colors.border },
-                                ]}
-                                value={reason}
-                                onChangeText={(t) => {
-                                    setReason(t);
-                                    if (formError) setFormError(null);
-                                }}
-                                multiline
-                                numberOfLines={4}
-                                placeholder="Provide a brief reason..."
-                                placeholderTextColor={colors.textDim}
-                            />
-                            {formError && (
-                                <Text style={[styles.formErrorText, { color: colors.error }]}>{formError}</Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={[styles.submitButton, { backgroundColor: colors.primary }, submitting && { opacity: 0.7 }]}
-                                onPress={handleSubmit}
-                                disabled={submitting}
-                                accessibilityRole="button"
-                                accessibilityLabel="Submit leave request"
-                                accessibilityState={{ disabled: submitting, busy: submitting }}
-                            >
-                                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit Request</Text>}
-                            </TouchableOpacity>
-                        </ScrollView>
+                        </View>
                     </View>
-                </View>
-            </Modal>
 
-            <ConfirmationSheet
-                visible={!!actionSheet}
-                title={actionSheet?.status === "APPROVED" ? "Approve this leave request?" : "Reject this leave request?"}
-                description={
-                    actionSheet
-                        ? `${actionSheet.status === "APPROVED" ? "Approve" : "Reject"} the ${actionSheet.request.type.toLowerCase()} leave request from ${actionSheet.request.WorkspaceMember.user.name}.`
-                        : undefined
-                }
-                tone={actionSheet?.status === "REJECTED" ? "destructive" : "default"}
-                confirmLabel={actionSheet?.status === "APPROVED" ? "Approve" : "Reject"}
-                cancelLabel="Cancel"
-                loading={actionLoading}
-                onConfirm={handleAction}
-                onClose={() => setActionSheet(null)}
-            />
+                    {/* Search Bar */}
+                    <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Ionicons name="search" size={18} color={colors.textDim} />
+                        <TextInput
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholder="Search by reason..."
+                            placeholderTextColor={colors.textDim}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                    </View>
+
+                    {/* List Header - Optional for Cards, let's keep it simple */}
+                    <View style={[styles.listHeader, { justifyContent: 'space-between' }]}>
+                        <Text style={[styles.listCol, { color: colors.textDim }]}>RECENT REQUESTS</Text>
+                        <Text style={[styles.listCol, { color: colors.textDim }]}>{filteredRequests.length} TOTAL</Text>
+                    </View>
+
+                    {/* Requests List */}
+                    {filteredRequests.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="calendar-outline" size={48} color={colors.textDim} />
+                            <Text style={[styles.emptyText, { color: colors.textDim }]}>No leave requests found</Text>
+                        </View>
+                    ) : (
+                        filteredRequests.map((req) => (
+                            <View key={req.id} style={[styles.requestCard, { backgroundColor: isDark ? "#1e293b" : "#fff", borderColor: colors.border }]}>
+                                {/* Card Header: Member & Status */}
+                                <View style={styles.cardHeader}>
+                                    <View style={styles.memberInfo}>
+                                        <View style={[styles.avatarSmall, { backgroundColor: colors.border }]}>
+                                            {req.WorkspaceMember.user.image ? (
+                                                <Image source={{ uri: req.WorkspaceMember.user.image }} style={styles.avatarImg} />
+                                            ) : (
+                                                <Text style={[styles.avatarTxt, { color: colors.textDim }]}>{req.WorkspaceMember.user.name.charAt(0)}</Text>
+                                            )}
+                                        </View>
+                                        <View style={{ marginLeft: 10, flex: 1 }}>
+                                            <Text style={[styles.memberName, { color: colors.text }]} numberOfLines={1}>{req.WorkspaceMember.user.name}</Text>
+                                            <Text style={[styles.memberBal, { color: colors.textDim }]} numberOfLines={1}>BAL: C:{req.WorkspaceMember.casualLeaveBalance} • S:{req.WorkspaceMember.sickLeaveBalance}</Text>
+                                        </View>
+                                    </View>
+                                    <StatusChip label={req.status} kind={getStatusKind(req.status)} size="sm" />
+                                </View>
+
+                                {/* Card Body: Dates & Type */}
+                                <View style={styles.cardBody}>
+                                    <View style={styles.dateInfo}>
+                                        <Ionicons name="calendar-outline" size={14} color={colors.textDim} style={{ marginRight: 6 }} />
+                                        <Text style={[styles.dateSmall, { color: colors.text }]}>
+                                            {format(new Date(req.startDate), "MMM d")} - {format(new Date(req.endDate), "MMM d, yyyy")}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.typeBadgeSmall, { backgroundColor: req.type === "SICK" ? "#fee2e2" : "#dcfce7" }]}>
+                                        <Text style={[styles.typeTextSmall, { color: req.type === "SICK" ? "#991b1b" : "#166534" }]}>{req.type}</Text>
+                                    </View>
+                                </View>
+
+                                {/* Reason */}
+                                {req.reason && (
+                                    <Text style={[styles.rowReason, { color: colors.textDim }]} numberOfLines={2}>
+                                        "{req.reason}"
+                                    </Text>
+                                )}
+
+                                {/* Actions for Admin if Pending */}
+                                {isAdmin && req.status === "PENDING" && (
+                                    <View style={styles.rowActions}>
+                                        <TouchableOpacity
+                                            style={[styles.approveActionBtn, { backgroundColor: "#dcfce7" }]}
+                                            onPress={() => requestAction(req, "APPROVED")}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Approve leave request from ${req.WorkspaceMember.user.name}`}
+                                        >
+                                            <Ionicons name="checkmark" size={18} color="#166534" />
+                                            <Text style={styles.approveActionText}>Approve</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.approveActionBtn, { backgroundColor: "#fee2e2" }]}
+                                            onPress={() => requestAction(req, "REJECTED")}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Reject leave request from ${req.WorkspaceMember.user.name}`}
+                                        >
+                                            <Ionicons name="close" size={18} color="#991b1b" />
+                                            <Text style={[styles.approveActionText, { color: "#991b1b" }]}>Reject</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        ))
+                    )}
+                    {loadingMoreRequests && (
+                        <ActivityIndicator
+                            color={colors.primary}
+                            style={{ paddingVertical: 16 }}
+                        />
+                    )}
+                </ScrollView>
+
+                {/* Request Modal */}
+                <Modal visible={isModalOpen} animationType="slide" transparent>
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                            <View style={styles.modalHeader}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>Apply for Leave</Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setIsModalOpen(false);
+                                        setFormError(null);
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Close"
+                                    hitSlop={8}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+                                {/* Reporting Manager Card */}
+                                <View style={[styles.managerCard, { backgroundColor: isDark ? "#1e293b" : "#fff7ed", borderColor: isDark ? colors.border : "#ffedd5" }]}>
+                                    <View style={[styles.managerIcon, { backgroundColor: "#fb923c20" }]}>
+                                        <Ionicons name="person-outline" size={18} color="#fb923c" />
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: 12 }}>
+                                        <Text style={[styles.managerLabel, { color: colors.textDim }]}>REPORTING MANAGER</Text>
+                                        <Text style={[styles.managerName, { color: colors.text }]}>{displayReportingManager}</Text>
+                                    </View>
+                                </View>
+                                <Text style={[styles.label, { color: colors.textDim }]}>Leave Type</Text>
+                                <View style={styles.typeSelector}>
+                                    {(["CASUAL", "SICK"] as LeaveType[]).map((t) => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[
+                                                styles.typeOption,
+                                                { borderColor: colors.border },
+                                                leaveType === t && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                            ]}
+                                            onPress={() => setLeaveType(t)}
+                                        >
+                                            <Text style={[styles.typeOptionText, { color: leaveType === t ? "#fff" : colors.text }]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <Text style={[styles.label, { color: colors.textDim }]}>Start Date (DD-MM-YYYY)</Text>
+                                <TouchableOpacity
+                                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: 'center' }]}
+                                    onPress={() => {
+                                        setShowStartPicker(!showStartPicker);
+                                        setShowEndPicker(false);
+                                    }}
+                                >
+                                    <Text style={{ color: colors.text }}>{format(startDate, "dd-MM-yyyy")}</Text>
+                                </TouchableOpacity>
+
+                                {showStartPicker && (
+                                    <DateTimePicker
+                                        value={startDate}
+                                        mode="date"
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        textColor={colors.text}
+                                        themeVariant={isDark ? 'dark' : 'light'}
+                                        onChange={(event, date) => {
+                                            if (Platform.OS === 'android') setShowStartPicker(false);
+                                            if (date) setStartDate(date);
+                                        }}
+                                    />
+                                )}
+
+                                <Text style={[styles.label, { color: colors.textDim }]}>End Date (DD-MM-YYYY)</Text>
+                                <TouchableOpacity
+                                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: 'center' }]}
+                                    onPress={() => {
+                                        setShowEndPicker(!showEndPicker);
+                                        setShowStartPicker(false);
+                                    }}
+                                >
+                                    <Text style={{ color: colors.text }}>{format(endDate, "dd-MM-yyyy")}</Text>
+                                </TouchableOpacity>
+
+                                {showEndPicker && (
+                                    <DateTimePicker
+                                        value={endDate}
+                                        mode="date"
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        textColor={colors.text}
+                                        themeVariant={isDark ? 'dark' : 'light'}
+                                        onChange={(event, date) => {
+                                            if (Platform.OS === 'android') setShowEndPicker(false);
+                                            if (date) setEndDate(date);
+                                        }}
+                                    />
+                                )}
+
+                                <Text style={[styles.label, { color: colors.textDim }]}>Reason</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        styles.textArea,
+                                        { backgroundColor: colors.background, color: colors.text, borderColor: formError ? colors.error : colors.border },
+                                    ]}
+                                    value={reason}
+                                    onChangeText={(t) => {
+                                        setReason(t);
+                                        if (formError) setFormError(null);
+                                    }}
+                                    multiline
+                                    numberOfLines={4}
+                                    placeholder="Provide a brief reason..."
+                                    placeholderTextColor={colors.textDim}
+                                />
+                                {formError && (
+                                    <Text style={[styles.formErrorText, { color: colors.error }]}>{formError}</Text>
+                                )}
+
+                                <TouchableOpacity
+                                    style={[styles.submitButton, { backgroundColor: colors.primary }, submitting && { opacity: 0.7 }]}
+                                    onPress={handleSubmit}
+                                    disabled={submitting}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Submit leave request"
+                                    accessibilityState={{ disabled: submitting, busy: submitting }}
+                                >
+                                    {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit Request</Text>}
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    </View>
+                </Modal>
+
+                <ConfirmationSheet
+                    visible={!!actionSheet}
+                    title={actionSheet?.status === "APPROVED" ? "Approve this leave request?" : "Reject this leave request?"}
+                    description={
+                        actionSheet
+                            ? `${actionSheet.status === "APPROVED" ? "Approve" : "Reject"} the ${actionSheet.request.type.toLowerCase()} leave request from ${actionSheet.request.WorkspaceMember.user.name}.`
+                            : undefined
+                    }
+                    tone={actionSheet?.status === "REJECTED" ? "destructive" : "default"}
+                    confirmLabel={actionSheet?.status === "APPROVED" ? "Approve" : "Reject"}
+                    cancelLabel="Cancel"
+                    loading={actionLoading}
+                    onConfirm={handleAction}
+                    onClose={() => setActionSheet(null)}
+                />
             </View>
         </SafeAreaView>
     );
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
     addButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
     scrollContent: { paddingBottom: 40 },
 
-    dashboardSection: { padding: SPACING.lg, gap: SPACING.md },
+    dashboardSection: { paddingVertical: SPACING.lg, gap: SPACING.md },
     balanceRow: { flexDirection: "row", gap: SPACING.md },
     balanceItem: { flex: 1, flexDirection: "row", alignItems: "center", padding: 16, borderRadius: BORDER_RADIUS.lg },
     iconCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
@@ -597,17 +597,16 @@ const styles = StyleSheet.create({
     progressBarBg: { height: 6, borderRadius: 3, overflow: "hidden" },
     progressBarFill: { height: "100%", borderRadius: 3 },
 
-    searchContainer: { flexDirection: "row", alignItems: "center", marginHorizontal: SPACING.lg, paddingHorizontal: 12, height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.xl },
+    searchContainer: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, height: 44, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.xl },
     searchInput: { flex: 1, marginLeft: 8, fontSize: 14 },
 
-    listHeader: { flexDirection: "row", paddingHorizontal: SPACING.lg, marginBottom: 12 },
+    listHeader: { flexDirection: "row", marginBottom: 12 },
     listCol: { fontSize: 11, fontFamily: FONTS.bold },
 
 
     requestCard: {
         padding: 16,
         borderRadius: 16,
-        marginHorizontal: SPACING.lg,
         marginBottom: 12,
         borderWidth: 1,
         shadowColor: "#000",
@@ -625,7 +624,7 @@ const styles = StyleSheet.create({
     avatarSmall: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", overflow: "hidden" },
     avatarImg: { width: "100%", height: "100%" },
     avatarTxt: { fontSize: 14, fontFamily: FONTS.bold },
-    memberName: { fontSize: 15, fontFamily: FONTS.bold, maxWidth: width * 0.4 },
+    memberName: { fontSize: 15, fontFamily: FONTS.bold, flex: 1 },
     memberBal: { fontSize: 10, fontFamily: FONTS.semibold, marginTop: 2 },
     typeBadgeSmall: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     typeTextSmall: { fontSize: 10, fontFamily: FONTS.extrabold },

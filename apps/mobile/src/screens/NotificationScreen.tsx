@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNotifications, NotificationItem } from "../context/NotificationContext";
 import { useTheme } from "../context/ThemeContext";
+import { useWorkspace } from "../context/WorkspaceContext";
 import { haptics } from "../services/haptics";
 import { SPACING, BORDER_RADIUS, TOUCH_TARGET, FONTS } from "../constants/theme";
 import { RootStackParamList } from "../types";
@@ -33,7 +34,11 @@ type Props = NativeStackScreenProps<RootStackParamList, "Notifications">;
 export default function NotificationScreen({ navigation }: Props) {
     const { notifications, markAsRead, clearAll, markAllAsRead, refresh, loading } = useNotifications();
     const { colors, isDark } = useTheme();
+    const { activeWorkspace } = useWorkspace();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+
+    const workspaceRole = (activeWorkspace as any)?.workspaceRole;
+    const isWorkspaceAdmin = workspaceRole === "OWNER" || workspaceRole === "ADMIN";
 
     // Display-only grouping into Today / Yesterday / Earlier sections. Purely
     // derived from the existing `notifications` list — no change to fetch,
@@ -178,6 +183,23 @@ export default function NotificationScreen({ navigation }: Props) {
                 otherUserId: item.data.senderId,
                 otherUserName: item.data.senderName || "Chat"
             });
+        } else if (
+            item.data?.entityType === "LEAVE_REQUEST" ||
+            (typeof item.data?.action === "string" && item.data.action.startsWith("LEAVE_REQUEST_"))
+        ) {
+            // A submitted/pending request is addressed to reviewers; an approval or
+            // rejection is addressed to the requester. Non-admins are always sent to
+            // their own leave screen — the admin review API rejects them, so
+            // AdminLeave would render empty.
+            const action = item.data?.action;
+            const needsReview =
+                action === "LEAVE_REQUEST_SUBMITTED" || action === "LEAVE_REQUEST_PENDING";
+
+            if (needsReview && isWorkspaceAdmin) {
+                navigation.navigate("AdminLeave");
+            } else {
+                navigation.navigate("Leave");
+            }
         }
     };
 

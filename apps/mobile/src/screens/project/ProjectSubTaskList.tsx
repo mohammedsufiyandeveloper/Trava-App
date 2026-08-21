@@ -644,21 +644,21 @@ const styles = StyleSheet.create({
 
     description: { fontSize: 13, lineHeight: 18, marginBottom: 12, opacity: 0.8 },
 
-    label: { fontSize: 10, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.5 },
+    label: { fontSize: 10, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 13 },
     avatar: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
     avatarText: { fontSize: 10, fontFamily: FONTS.bold },
-    memberName: { fontSize: 11, fontFamily: FONTS.medium, maxWidth: 80 },
+    memberName: { fontSize: 11, fontFamily: FONTS.medium, flexShrink: 1 },
 
-    footer: { flexDirection: "row", alignItems: "flex-end", paddingTop: 12, borderTopWidth: 1, gap: 12 },
-    datesContainer: { flexDirection: "row", gap: 12 },
-    dateInfo: { gap: 2 },
-    dateText: { fontSize: 11 },
+    footer: { flexDirection: "row", alignItems: "flex-start", paddingTop: 12, borderTopWidth: 1, gap: 10 },
+    datesContainer: { flexDirection: "row", gap: 10 },
+    dateInfo: { gap: 3, minWidth: 52 },
+    dateText: { fontSize: 12, fontFamily: FONTS.medium, lineHeight: 22 },
 
     flexFiller: { flex: 1 },
-    bottomMembers: { flexDirection: "row", gap: 16, alignItems: "flex-end" },
-    memberGroup: { gap: 2, alignItems: "flex-start" },
-    microLabel: { fontSize: 9, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.3, opacity: 0.7 },
-    compactMember: { flexDirection: "row", alignItems: "center", gap: 6 },
+    bottomMembers: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+    memberGroup: { gap: 3, alignItems: "flex-start", minWidth: 76, maxWidth: 104 },
+    microLabel: { fontSize: 10, fontFamily: FONTS.semibold, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7, lineHeight: 13 },
+    compactMember: { flexDirection: "row", alignItems: "center", gap: 6, height: 22 },
 
     secondaryInfo: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
 

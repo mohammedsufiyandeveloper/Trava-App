@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -12,6 +12,8 @@ import {
     Alert,
     Platform,
     Linking,
+    PanResponder,
+    Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -70,6 +72,7 @@ export default function HomeScreen({ navigation }: Props) {
     const { colors, isDark, toggleTheme } = useTheme();
     const { unreadCount } = useNotifications();
     const { MAX_CONTENT_WIDTH, value } = useResponsive();
+    const isAdminOrOwner = activeWorkspace?.workspaceRole === "OWNER" || activeWorkspace?.workspaceRole === "ADMIN";
 
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -87,6 +90,65 @@ export default function HomeScreen({ navigation }: Props) {
     const teamRef = React.useRef<any>(null);
     const attRef = React.useRef<any>(null);
     const shimmerAnim = React.useRef(new Animated.Value(0.3)).current;
+
+    // Draggable AI Floating Button
+    const pan = useRef(new Animated.ValueXY()).current;
+    const [isDraggable, setIsDraggable] = useState(false);
+    const longPressTimeout = useRef<any>(null);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                return Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
+            },
+            onPanResponderGrant: (evt, gestureState) => {
+                longPressTimeout.current = setTimeout(() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setIsDraggable(true);
+                }, 400);
+
+                pan.setOffset({
+                    x: (pan.x as any)._value,
+                    y: (pan.y as any)._value
+                });
+                pan.setValue({ x: 0, y: 0 });
+            },
+            onPanResponderMove: (evt, gestureState) => {
+                if (Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10) {
+                    if (longPressTimeout.current) {
+                        clearTimeout(longPressTimeout.current);
+                        longPressTimeout.current = null;
+                    }
+                }
+
+                Animated.event(
+                    [null, { dx: pan.x, dy: pan.y }],
+                    { useNativeDriver: false }
+                )(evt, gestureState);
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                if (longPressTimeout.current) {
+                    clearTimeout(longPressTimeout.current);
+                    longPressTimeout.current = null;
+                }
+                pan.flattenOffset();
+                setIsDraggable(false);
+
+                if (Math.abs(gestureState.dx) < 8 && Math.abs(gestureState.dy) < 8) {
+                    haptics.selection();
+                    navigation.navigate("AI");
+                }
+            },
+            onPanResponderTerminate: () => {
+                if (longPressTimeout.current) {
+                    clearTimeout(longPressTimeout.current);
+                    longPressTimeout.current = null;
+                }
+                setIsDraggable(false);
+            }
+        })
+    ).current;
 
     const fetchProfile = async () => {
         try {
@@ -292,24 +354,27 @@ export default function HomeScreen({ navigation }: Props) {
                     {/* Card Header: Workspace Name, Notification Bell, User Avatar */}
                     <View style={styles.cardHeaderRow}>
                         <View style={StyleSheet.absoluteFill}>
-                            <TouchableOpacity 
-                                style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-                                onPress={() => setWsSwitcherVisible(true)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Switch workspace, current: ${activeWorkspace?.name ?? "Trava Tasks"}`}
-                            >
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                    <Text style={[styles.workspaceNameHeader, { color: colors.text }]} numberOfLines={1}>
-                                        {activeWorkspace?.name ?? "Trava Tasks"}
-                                    </Text>
-                                    <Ionicons name="chevron-down" size={14} color={colors.textDim} style={{ marginTop: 2 }} />
-                                </View>
-                            </TouchableOpacity>
+                            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                                <Text style={[styles.workspaceNameHeader, { color: colors.text }]} numberOfLines={1}>
+                                    {activeWorkspace?.name ?? "Trava Tasks"}
+                                </Text>
+                            </View>
                         </View>
-                        
                         <View style={{ flex: 1 }} />
 
                         <View style={{ flexDirection: "row", gap: SPACING.sm, alignItems: "center", zIndex: 10 }}>
+                            <TouchableOpacity
+                                style={[styles.bellBtn, { backgroundColor: "transparent" }]}
+                                onPress={() => {
+                                    haptics.light();
+                                    toggleTheme();
+                                }}
+                                accessibilityLabel={isDark ? "Switch to light theme" : "Switch to dark theme"}
+                                accessibilityRole="button"
+                            >
+                                <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={20} color={colors.text} />
+                            </TouchableOpacity>
+
                             <TouchableOpacity
                                 style={[styles.bellBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
                                 onPress={() => (navigation as any)?.navigate("Notifications")}
@@ -321,16 +386,6 @@ export default function HomeScreen({ navigation }: Props) {
                                         <Text style={styles.blackBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
                                     </View>
                                 )}
-                            </TouchableOpacity>
-                            
-                            <TouchableOpacity
-                                style={[styles.bellBtn, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
-                                onPress={openMenu}
-                                accessibilityLabel="More options"
-                                accessibilityRole="button"
-                                accessibilityState={{ expanded: isMenuOpen }}
-                            >
-                                <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -405,95 +460,173 @@ export default function HomeScreen({ navigation }: Props) {
 
                 {/* Bottom grid (2x2) */}
                 <View style={styles.gridContainer}>
-                    {/* Row 1 */}
-                    <View style={styles.gridRow}>
-                        {/* Card 1: Team Roster */}
-                        <TouchableOpacity
-                            ref={attRef}
-                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            activeOpacity={0.8}
-                            onPress={() => navigation.navigate("Attendance")}
-                            onLongPress={() => openPreview("attendance", attRef)}
-                            delayLongPress={300}
-                        >
-                            <View style={styles.gridCardHeader}>
-                                <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.text} />
-                            </View>
-                            <Text style={[styles.gridCardValue, { color: colors.text }]}>
-                                {teamAttendance ? `${teamAttendance.filter((r: any) => !!r.attendance?.checkIn).length} / ${teamAttendance.length}` : "32 / 38"}
-                            </Text>
-                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Team Roster</Text>
-                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
-                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
-                            </View>
-                        </TouchableOpacity>
+                    {isAdminOrOwner ? (
+                        <>
+                            {/* Row 1 */}
+                            <View style={styles.gridRow}>
+                                {/* Card 1: Team Roster */}
+                                <TouchableOpacity
+                                    ref={attRef}
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => navigation.navigate("Attendance")}
+                                    onLongPress={() => openPreview("attendance", attRef)}
+                                    delayLongPress={300}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.text} />
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]}>
+                                        {teamAttendance ? `${teamAttendance.filter((r: any) => !!r.attendance?.checkIn).length} / ${teamAttendance.length}` : "32 / 38"}
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Team Roster</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
 
-                        {/* Card 2: Projects */}
-                        <TouchableOpacity
-                            ref={projRef}
-                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            activeOpacity={0.8}
-                            onPress={() => navigation.navigate("Projects", { screen: "_Base" } as any)}
-                            onLongPress={() => openPreview("projects", projRef)}
-                            delayLongPress={300}
-                        >
-                            <View style={styles.gridCardHeader}>
-                                <MaterialCommunityIcons name="view-dashboard-outline" size={20} color={colors.text} />
+                                {/* Card 2: Projects */}
+                                <TouchableOpacity
+                                    ref={projRef}
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => navigation.navigate("Projects", { screen: "_Base" } as any)}
+                                    onLongPress={() => openPreview("projects", projRef)}
+                                    delayLongPress={300}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <MaterialCommunityIcons name="view-dashboard-outline" size={20} color={colors.text} />
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]}>
+                                        {stats.totalProjects}
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Projects</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={[styles.gridCardValue, { color: colors.text }]}>
-                                {stats.totalProjects}
-                            </Text>
-                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Projects</Text>
-                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
-                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
-                            </View>
-                        </TouchableOpacity>
-                    </View>
 
-                    {/* Row 2 */}
-                    <View style={styles.gridRow}>
-                        {/* Card 3: Teams */}
-                        <TouchableOpacity
-                            ref={teamRef}
-                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            activeOpacity={0.8}
-                            onPress={() => (navigation as any).navigate("TeamList")}
-                            onLongPress={() => openPreview("teams", teamRef)}
-                            delayLongPress={300}
-                        >
-                            <View style={styles.gridCardHeader}>
-                                <MaterialCommunityIcons name="forum-outline" size={20} color={colors.text} />
-                            </View>
-                            <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                                Teams
-                            </Text>
-                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Messaging</Text>
-                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
-                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
-                            </View>
-                        </TouchableOpacity>
+                            {/* Row 2 */}
+                            <View style={styles.gridRow}>
+                                {/* Card 3: Teams */}
+                                <TouchableOpacity
+                                    ref={teamRef}
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate("TeamList")}
+                                    onLongPress={() => openPreview("teams", teamRef)}
+                                    delayLongPress={300}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <MaterialCommunityIcons name="forum-outline" size={20} color={colors.text} />
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                        Teams
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Messaging</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
 
-                        {/* Card 4: My Space */}
-                        <TouchableOpacity
-                            style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            activeOpacity={0.8}
-                            onPress={() => (navigation as any).navigate("MySpace")}
-                        >
-                            <View style={styles.gridCardHeader}>
-                                <View style={{ position: "relative", width: 22, height: 22, justifyContent: "center", alignItems: "center" }}>
-                                    <MaterialCommunityIcons name="hexagon-outline" size={22} color={colors.text} style={{ position: "absolute" }} />
-                                    <MaterialCommunityIcons name="account-outline" size={12} color={colors.text} style={{ position: "absolute" }} />
-                                </View>
+                                {/* Card 4: My Space */}
+                                <TouchableOpacity
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate("MySpace")}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <View style={{ position: "relative", width: 22, height: 22, justifyContent: "center", alignItems: "center" }}>
+                                            <MaterialCommunityIcons name="hexagon-outline" size={22} color={colors.text} style={{ position: "absolute" }} />
+                                            <MaterialCommunityIcons name="account-outline" size={12} color={colors.text} style={{ position: "absolute" }} />
+                                        </View>
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                        My Space
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Personal</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
                             </View>
-                            <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-                                My Space
-                            </Text>
-                            <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Personal</Text>
-                            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
-                                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                        </>
+                    ) : (
+                        <>
+                            {/* Row 1 */}
+                            <View style={styles.gridRow}>
+                                {/* Card 2: Projects */}
+                                <TouchableOpacity
+                                    ref={projRef}
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => navigation.navigate("Projects", { screen: "_Base" } as any)}
+                                    onLongPress={() => openPreview("projects", projRef)}
+                                    delayLongPress={300}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <MaterialCommunityIcons name="view-dashboard-outline" size={20} color={colors.text} />
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]}>
+                                        {stats.totalProjects}
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Projects</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Card 3: Teams */}
+                                <TouchableOpacity
+                                    ref={teamRef}
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate("TeamList")}
+                                    onLongPress={() => openPreview("teams", teamRef)}
+                                    delayLongPress={300}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <MaterialCommunityIcons name="forum-outline" size={20} color={colors.text} />
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                        Teams
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Messaging</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
                             </View>
-                        </TouchableOpacity>
-                    </View>
+
+                            {/* Row 2 */}
+                            <View style={styles.gridRow}>
+                                {/* Card 4: My Space */}
+                                <TouchableOpacity
+                                    style={[styles.gridCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => (navigation as any).navigate("MySpace")}
+                                >
+                                    <View style={styles.gridCardHeader}>
+                                        <View style={{ position: "relative", width: 22, height: 22, justifyContent: "center", alignItems: "center" }}>
+                                            <MaterialCommunityIcons name="hexagon-outline" size={22} color={colors.text} style={{ position: "absolute" }} />
+                                            <MaterialCommunityIcons name="account-outline" size={12} color={colors.text} style={{ position: "absolute" }} />
+                                        </View>
+                                    </View>
+                                    <Text style={[styles.gridCardValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                                        My Space
+                                    </Text>
+                                    <Text style={[styles.gridCardTitle, { color: colors.textDim }]}>Personal</Text>
+                                    <View style={[styles.arrowCircle, { backgroundColor: colors.primary + "24" }]}>
+                                        <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Spacer placeholder view to keep sizes equal */}
+                                <View style={{ flex: 1 }} />
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 {/* Trailing spacer — keeps the card + widgets grouped at the top */}
@@ -519,16 +652,6 @@ export default function HomeScreen({ navigation }: Props) {
                         color: colors.primary,
                         onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("AI"); },
                     },
-                    {
-                        icon: "time-outline",
-                        label: "Attendance",
-                        onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("Attendance"); },
-                    },
-                    {
-                        icon: "calendar-outline",
-                        label: "Leaves",
-                        onPress: () => { setIsMenuOpen(false); (navigation as any)?.navigate("Leave"); },
-                    },
                 ]}
             />
 
@@ -538,41 +661,7 @@ export default function HomeScreen({ navigation }: Props) {
                 onClose={() => setPreviewTarget(null)}
             />
 
-            <Sheet
-                visible={wsSwitcherVisible}
-                onClose={() => setWsSwitcherVisible(false)}
-                accessibilityLabel="Switch workspace"
-            >
-                <View style={styles.sheetContent}>
-                    <Text style={[styles.sheetTitle, { color: colors.text, marginBottom: SPACING.md }]}>
-                        Switch Workspace
-                    </Text>
-                    {workspaces.map((ws) => {
-                        const active = ws.id === activeWorkspace?.id;
-                        return (
-                            <PressableScale
-                                key={ws.id}
-                                haptic="selection"
-                                onPress={() => handleSwitchWorkspace(ws)}
-                                accessibilityRole="button"
-                                accessibilityLabel={ws.name}
-                                accessibilityState={{ selected: active, busy: switchingId === ws.id }}
-                                style={[styles.wsItem, { borderBottomColor: colors.divider }]}
-                            >
-                                <View style={[styles.wsAvatarSmall, { backgroundColor: colors.primary }]}>
-                                    <Text style={styles.avatarTextSmall}>{ws.name.charAt(0).toUpperCase()}</Text>
-                                </View>
-                                <Text style={[styles.wsNameSmall, { color: colors.text }]} numberOfLines={1}>{ws.name}</Text>
-                                {switchingId === ws.id ? (
-                                    <ActivityIndicator size="small" color={colors.primary} />
-                                ) : active ? (
-                                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-                                ) : null}
-                            </PressableScale>
-                        );
-                    })}
-                </View>
-            </Sheet>
+
 
             <ConfirmationSheet
                 visible={checkOutSheetVisible}
@@ -585,6 +674,32 @@ export default function HomeScreen({ navigation }: Props) {
                 onConfirm={() => handleCheckAction('check-out')}
                 onClose={() => setCheckOutSheetVisible(false)}
             />
+            {/* Draggable AI Floating Button */}
+            <Animated.View
+                {...panResponder.panHandlers}
+                style={[
+                    styles.floatingAI,
+                    {
+                        transform: [
+                            { translateX: pan.x },
+                            { translateY: pan.y },
+                            { scale: isDraggable ? 1.15 : 1 }
+                        ],
+                        backgroundColor: "transparent",
+                    }
+                ]}
+            >
+                <MaterialCommunityIcons 
+                    name="robot" 
+                    size={28} 
+                    color={colors.primary} 
+                    style={{
+                        textShadowColor: colors.primary,
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 6
+                    }}
+                />
+            </Animated.View>
         </SafeAreaView>
     );
 }
@@ -781,4 +896,16 @@ const styles = StyleSheet.create({
     wsAvatarSmall: { width: 36, height: 36, borderRadius: 8, justifyContent: "center", alignItems: "center" },
     avatarTextSmall: { color: "#fff", fontFamily: FONTS.bold, fontSize: 16 },
     wsNameSmall: { flex: 1, marginLeft: SPACING.md, fontSize: 16, fontFamily: FONTS.medium },
+
+    floatingAI: {
+        position: "absolute",
+        right: 20,
+        bottom: 80,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 9999,
+    },
 });

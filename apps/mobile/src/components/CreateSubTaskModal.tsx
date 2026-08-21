@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -11,11 +11,14 @@ import {
     Platform,
     ScrollView,
     Dimensions,
-    Image
+    Image,
+    LayoutAnimation,
+    UIManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format, isBefore, isSameDay, startOfToday } from "date-fns";
 import CalendarPicker from "./CalendarPicker";
+import TimeWheelPicker from "./TimeWheelPicker";
 import { SPACING, BORDER_RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { useWorkspace } from "../context/WorkspaceContext";
@@ -24,6 +27,12 @@ import { getStatusHex, getStatusBgColor } from "../utils/taskColors";
 import AppButton from "./AppButton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+if (Platform.OS === "android") {
+    if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+}
 
 interface CreateSubTaskModalProps {
     visible: boolean;
@@ -53,6 +62,8 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
     const [dueDate, setDueDate] = useState<Date | null>(null);
     const [showStartDatePicker, setShowStartDatePicker] = useState(false);
     const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+    const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+    const [showDueTimePicker, setShowDueTimePicker] = useState(false);
     const [days, setDays] = useState("1");
 
     const [loading, setLoading] = useState(false);
@@ -65,6 +76,24 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
 
     const [fetchedTasks, setFetchedTasks] = useState<any[]>([]);
     const [loadingTasks, setLoadingTasks] = useState(false);
+    const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
+
+    const handleSelectProject = async (projId: string) => {
+        if (!activeWorkspace?.id) return;
+        setLoadingProjectId(projId);
+        try {
+            const result = await getTasks(activeWorkspace.id, { projectId: projId, hierarchyMode: "parents", limit: 200 });
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setFetchedTasks(result.tasks);
+            setSelectedProjectId(projId);
+            setSelectedParentId(null);
+        } catch (err) {
+            console.error("Failed fetching project tasks", err);
+            setError("Failed to load project tasks. Please try again.");
+        } finally {
+            setLoadingProjectId(null);
+        }
+    };
 
     const projectTasks = fetchedTasks;
 
@@ -116,6 +145,10 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
             setTagId(null);
             setStartDate(null);
             setDueDate(null);
+            setShowStartDatePicker(false);
+            setShowDueDatePicker(false);
+            setShowStartTimePicker(false);
+            setShowDueTimePicker(false);
             setDays("1");
             setStatus("TO_DO");
         }
@@ -186,6 +219,11 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                 setFetchedTasks([]);
                 return;
             }
+            // Avoid refetching if tasks are already populated for the selected project
+            const alreadyFetched = fetchedTasks.length > 0 && fetchedTasks[0].projectId === selectedProjectId;
+            if (alreadyFetched) {
+                return;
+            }
             setLoadingTasks(true);
             try {
                 // Fetch ONLY parent tasks (not subtasks) to be parents
@@ -206,9 +244,12 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
             return;
         }
 
-        // Date validation logic
-        if (startDate && isBefore(startDate, startOfToday()) && !isSameDay(startDate, startOfToday())) {
-            setError("Start date cannot be in the past");
+        // Date and Time validation logic
+        const now = new Date();
+        const validationBuffer = new Date(now.getTime() - 60000); // 1 minute buffer for slow submissions
+
+        if (!isEditing && startDate && isBefore(startDate, validationBuffer)) {
+            setError("Start date/time cannot be in the past");
             return;
         }
         if (dueDate && isBefore(dueDate, startOfToday()) && !isSameDay(dueDate, startOfToday())) {
@@ -332,7 +373,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
             <View style={styles.overlay}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
                     style={styles.container}
                     pointerEvents="box-none"
                 >
@@ -352,42 +393,62 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                             </View>
                         </View>
 
-                        <ScrollView 
-                            style={[styles.content, { flexShrink: 1 }]} 
+                        <ScrollView
+                            style={[styles.content, { flexShrink: 1 }]}
                             contentContainerStyle={{ paddingBottom: 60 }}
-                            keyboardShouldPersistTaps="handled" 
+                            keyboardShouldPersistTaps="handled"
                             showsVerticalScrollIndicator={false}
                         >
                             {/* Project Selection (Step 1 or Read Only) */}
                             {(!initialParentId && !isEditing) ? (
                                 <View style={{ marginBottom: 24 }}>
-                                    <Text style={[styles.label, { color: colors.textDim, marginTop: 0 }]}>Select Project</Text>
-                                    <View style={styles.parentList}>
-                                        {projects.map((proj) => (
-                                            <TouchableOpacity
-                                                key={proj.id}
-                                                style={[
-                                                    styles.parentItem,
-                                                    { backgroundColor: colors.background, borderColor: colors.border },
-                                                    selectedProjectId === proj.id && { borderColor: colors.primary, backgroundColor: colors.primary + "15" }
-                                                ]}
-                                                onPress={() => {
-                                                    if (selectedProjectId !== proj.id) {
-                                                        setSelectedProjectId(proj.id);
-                                                        setSelectedParentId(null);
-                                                    }
-                                                }}
-                                            >
-                                                <View style={[styles.dot, { backgroundColor: proj.color || colors.primary, width: 12, height: 12, borderRadius: 6, marginRight: 12 }]} />
-                                                <Text style={[styles.parentLabel, { color: colors.text }, selectedProjectId === proj.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
-                                                    {proj.name}
+                                    <Text style={[styles.label, { color: colors.textDim, marginTop: 0 }]}>Project</Text>
+                                    {selectedProjectId ? (
+                                        <View style={[styles.parentItem, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: "space-between" }]}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                                                <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginRight: 12 }} />
+                                                <Text style={[styles.parentLabel, { color: colors.text, fontFamily: FONTS.bold, flex: 1 }]} numberOfLines={1}>
+                                                    {projects.find(p => p.id === selectedProjectId)?.name || "Selected Project"}
                                                 </Text>
-                                                {selectedProjectId === proj.id && (
-                                                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                                                )}
+                                            </View>
+                                            <TouchableOpacity onPress={() => {
+                                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                                setSelectedProjectId(null);
+                                                setSelectedParentId(null);
+                                                setFetchedTasks([]);
+                                            }}>
+                                                <Text style={{ color: colors.primary, fontFamily: FONTS.bold, fontSize: 13, paddingLeft: 8 }}>Change</Text>
                                             </TouchableOpacity>
-                                        ))}
-                                    </View>
+                                        </View>
+                                    ) : (
+                                        <View style={styles.parentList}>
+                                            {projects.map((proj) => {
+                                                const isItemLoading = loadingProjectId === proj.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={proj.id}
+                                                        style={[
+                                                            styles.parentItem,
+                                                            { backgroundColor: colors.background, borderColor: colors.border },
+                                                            selectedProjectId === proj.id && { borderColor: colors.primary, backgroundColor: colors.primary + "15" }
+                                                        ]}
+                                                        disabled={loadingProjectId !== null}
+                                                        onPress={() => handleSelectProject(proj.id)}
+                                                    >
+                                                        <View style={[styles.dot, { backgroundColor: proj.color || colors.primary, width: 12, height: 12, borderRadius: 6, marginRight: 12 }]} />
+                                                        <Text style={[styles.parentLabel, { color: colors.text }, selectedProjectId === proj.id && { color: colors.primary, fontFamily: FONTS.bold }, loadingProjectId !== null && { opacity: 0.6 }]}>
+                                                            {proj.name}
+                                                        </Text>
+                                                        {isItemLoading ? (
+                                                            <ActivityIndicator size="small" color={colors.primary} />
+                                                        ) : selectedProjectId === proj.id ? (
+                                                            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                                                        ) : null}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    )}
                                 </View>
                             ) : (
                                 <View style={{ marginBottom: 16 }}>
@@ -404,34 +465,55 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                             {/* Parent Task Selection (Step 2 or Read Only) */}
                             {(selectedProjectId && !initialParentId && !isEditing) ? (
                                 <View style={{ marginBottom: 24 }}>
-                                    <Text style={[styles.label, { color: colors.textDim, marginTop: 0 }]}>Select Parent Task</Text>
-                                    <View style={styles.parentList}>
-                                        {loadingTasks ? (
-                                            <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8, alignSelf: 'flex-start' }} />
-                                        ) : projectTasks.length > 0 ? (
-                                            projectTasks.map((task) => (
-                                                <TouchableOpacity
-                                                    key={task.id}
-                                                    style={[
-                                                        styles.parentItem,
-                                                        selectedParentId === task.id && { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary }
-                                                    ]}
-                                                    onPress={() => setSelectedParentId(task.id)}
-                                                >
-                                                    <Ionicons
-                                                        name={selectedParentId === task.id ? "checkmark-circle" : "ellipse-outline"}
-                                                        size={20}
-                                                        color={selectedParentId === task.id ? colors.primary : colors.border}
-                                                    />
-                                                    <Text style={[styles.parentLabel, { color: colors.text }, selectedParentId === task.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
-                                                        {task.name}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))
-                                        ) : (
-                                            <Text style={{ color: colors.textDim, fontSize: 13, marginTop: 4 }}>No parent tasks found in this project.</Text>
-                                        )}
-                                    </View>
+                                    <Text style={[styles.label, { color: colors.textDim, marginTop: 0 }]}>Parent Task</Text>
+                                    {selectedParentId ? (
+                                        <View style={[styles.parentItem, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: "space-between" }]}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                                                <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginRight: 12 }} />
+                                                <Text style={[styles.parentLabel, { color: colors.text, fontFamily: FONTS.bold, flex: 1 }]} numberOfLines={1}>
+                                                    {projectTasks.find(t => t.id === selectedParentId)?.name || tasks.find(t => t.id === selectedParentId)?.name || "Selected Task"}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => {
+                                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                                setSelectedParentId(null);
+                                            }}>
+                                                <Text style={{ color: colors.primary, fontFamily: FONTS.bold, fontSize: 13, paddingLeft: 8 }}>Change</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <View style={styles.parentList}>
+                                            {loadingTasks ? (
+                                                <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8, alignSelf: 'flex-start' }} />
+                                            ) : projectTasks.length > 0 ? (
+                                                projectTasks.map((task) => (
+                                                    <TouchableOpacity
+                                                        key={task.id}
+                                                        style={[
+                                                            styles.parentItem,
+                                                            { backgroundColor: colors.background, borderColor: colors.border },
+                                                            selectedParentId === task.id && { backgroundColor: isDark ? colors.activeTab : "#e0e7ff", borderColor: colors.primary }
+                                                        ]}
+                                                        onPress={() => {
+                                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                                            setSelectedParentId(task.id);
+                                                        }}
+                                                    >
+                                                        <Ionicons
+                                                            name={selectedParentId === task.id ? "checkmark-circle" : "ellipse-outline"}
+                                                            size={20}
+                                                            color={selectedParentId === task.id ? colors.primary : colors.border}
+                                                        />
+                                                        <Text style={[styles.parentLabel, { color: colors.text }, selectedParentId === task.id && { color: colors.primary, fontFamily: FONTS.bold }]}>
+                                                            {task.name}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))
+                                            ) : (
+                                                <Text style={{ color: colors.textDim, fontSize: 13, marginTop: 4 }}>No parent tasks found in this project.</Text>
+                                            )}
+                                        </View>
+                                    )}
                                 </View>
                             ) : (initialParentId || isEditing) ? (
                                 <View style={{ marginBottom: 24 }}>
@@ -531,6 +613,7 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                     )}
 
                                     {/* Timeline */}
+                                    {/* Start Date & Time */}
                                     <View style={styles.row}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={[styles.label, { color: colors.textDim }]}>Start Date</Text>
@@ -547,9 +630,10 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                                 visible={showStartDatePicker}
                                                 onClose={() => setShowStartDatePicker(false)}
                                                 onSelect={(date) => {
-                                                    setStartDate(date);
-                                                    // If due date is now before start date, clear it or update it
-                                                    if (dueDate && isBefore(dueDate, date)) {
+                                                    const newDate = startDate ? new Date(startDate) : new Date();
+                                                    newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                                                    setStartDate(newDate);
+                                                    if (dueDate && isBefore(dueDate, newDate)) {
                                                         setDueDate(null);
                                                     }
                                                 }}
@@ -559,6 +643,35 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                             />
                                         </View>
                                         <View style={{ width: 16 }} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.label, { color: colors.textDim }]}>Start Time</Text>
+                                            <TouchableOpacity
+                                                style={[styles.datePickerBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                                onPress={() => setShowStartTimePicker(true)}
+                                            >
+                                                <Ionicons name="time-outline" size={18} color={colors.primary} />
+                                                <Text style={[styles.dateText, { color: startDate ? colors.text : colors.textDim }]}>
+                                                    {startDate ? format(startDate, "hh:mm a") : "Select Time"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TimeWheelPicker
+                                                visible={showStartTimePicker}
+                                                onClose={() => setShowStartTimePicker(false)}
+                                                value={startDate}
+                                                title="Select Start Time"
+                                                minimumDate={isEditing ? null : new Date()}
+                                                onSelect={(date) => {
+                                                    setStartDate(date);
+                                                    if (dueDate && isBefore(dueDate, date)) {
+                                                        setDueDate(null);
+                                                    }
+                                                }}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Due Date & Time */}
+                                    <View style={[styles.row, { marginTop: 16 }]}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={[styles.label, { color: colors.textDim }]}>Due Date</Text>
                                             <TouchableOpacity
@@ -573,10 +686,36 @@ export default function CreateSubTaskModal({ visible, onClose, initialParentId, 
                                             <CalendarPicker
                                                 visible={showDueDatePicker}
                                                 onClose={() => setShowDueDatePicker(false)}
-                                                onSelect={(date) => setDueDate(date)}
+                                                onSelect={(date) => {
+                                                    const newDate = dueDate ? new Date(dueDate) : new Date();
+                                                    newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                                                    setDueDate(newDate);
+                                                }}
                                                 value={dueDate}
                                                 title="Select Due Date"
                                                 minimumDate={startDate || startOfToday()}
+                                            />
+                                        </View>
+                                        <View style={{ width: 16 }} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.label, { color: colors.textDim }]}>Due Time</Text>
+                                            <TouchableOpacity
+                                                style={[styles.datePickerBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                                onPress={() => setShowDueTimePicker(true)}
+                                            >
+                                                <Ionicons name="time-outline" size={18} color="#ef4444" />
+                                                <Text style={[styles.dateText, { color: dueDate ? colors.text : colors.textDim }]}>
+                                                    {dueDate ? format(dueDate, "hh:mm a") : "Select Time"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TimeWheelPicker
+                                                visible={showDueTimePicker}
+                                                onClose={() => setShowDueTimePicker(false)}
+                                                value={dueDate}
+                                                title="Select Due Time"
+                                                accentIcon="flag-outline"
+                                                minimumDate={startDate || (isEditing ? null : new Date())}
+                                                onSelect={setDueDate}
                                             />
                                         </View>
                                     </View>

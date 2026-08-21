@@ -187,6 +187,9 @@ export type RootStackParamList = {
     IndentDetail: {
         indentId: string;
     };
+    Attendance: undefined;
+    Leave: undefined;
+    AdminLeave: undefined;
 };
 
 export type MainTabParamList = {

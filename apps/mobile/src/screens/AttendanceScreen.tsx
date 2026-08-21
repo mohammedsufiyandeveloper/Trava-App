@@ -94,6 +94,7 @@ export default function AttendanceScreen() {
 
     // Register Data
     const [teamRegister, setTeamRegister] = useState<any[]>([]);
+    const [showOnlyMe, setShowOnlyMe] = useState(false);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
@@ -144,7 +145,7 @@ export default function AttendanceScreen() {
                 getTodayAttendance(activeWorkspace.id, clientDateString),
                 getTeamAttendance(activeWorkspace.id, clientDateString)
             ]);
-            
+
             const sortedTeamAtt = [...teamAtt].sort((a: any, b: any) => {
                 const hasA = !!a.attendance?.checkIn;
                 const hasB = !!b.attendance?.checkIn;
@@ -157,7 +158,7 @@ export default function AttendanceScreen() {
                 const nameB = b.member?.user?.surname || b.member?.user?.name || "";
                 return nameA.localeCompare(nameB);
             });
-            
+
             setMyAttendance(myAtt);
             setTeamRegister(sortedTeamAtt);
 
@@ -365,7 +366,7 @@ export default function AttendanceScreen() {
                             </View>
                         </View>
 
-                    {/* Time Row */}
+                        {/* Time Row */}
                         <View style={[styles.timeRow, { borderTopColor: colors.border + "40" }]}>
                             <View style={styles.timeBlock}>
                                 <Text style={[styles.timeLabel, { color: colors.textDim }]}>CHECK IN</Text>
@@ -572,353 +573,420 @@ export default function AttendanceScreen() {
                     </View>
                 )}
 
-                {teamRegister.map((row, index) => {
-                    const memberName = row.member.user.surname || row.member.user.name || "Unknown User";
-                    const att = row.attendance;
+                {(() => {
+                    const visibleMembers = showOnlyMe 
+                        ? teamRegister.filter((row: any) => row.member.userId === user?.id)
+                        : teamRegister;
 
-                    let actualStatus = (att ? att.status : "NOT_CHECKED_IN") as AttendanceStatus | "NOT_CHECKED_IN";
-                    if (att?.checkIn) {
-                        const inTime = new Date(att.checkIn);
-                        const istIn = new Date(inTime.getTime() + (5.5 * 60 * 60 * 1000));
-                        const hours = istIn.getUTCHours();
-                        const minutes = istIn.getUTCMinutes();
-                        if ((hours > 9) || (hours === 9 && minutes > 40)) {
-                            actualStatus = "LATE";
-                        }
-                    }
-                    if (att?.checkOut) {
-                        const outTime = new Date(att.checkOut);
-                        const istOut = new Date(outTime.getTime() + (5.5 * 60 * 60 * 1000));
-                        if (istOut.getUTCHours() >= 19) {
-                            actualStatus = "OUT";
-                        }
+                    if (visibleMembers.length === 0) {
+                        return (
+                            <View style={[styles.empty, { marginTop: 24, paddingVertical: 32 }]}>
+                                <Ionicons name="people-outline" size={36} color={colors.textDim} />
+                                <Text style={[styles.emptyLabel, { color: colors.textDim, marginTop: 8 }]}>No members found.</Text>
+                            </View>
+                        );
                     }
 
-                    let sInfo = statusConfig[actualStatus];
+                    return visibleMembers.map((row, index) => {
+                        const memberName = row.member.user.surname || row.member.user.name || "Unknown User";
+                        const att = row.attendance;
 
-                    return (
-                        <TouchableOpacity
-                            key={row.member.id}
-                            style={[styles.registerItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            onPress={() => openMemberStats(row.member)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={styles.registerMain}>
-                                {row.member.user.image ? (
-                                    <Image source={{ uri: row.member.user.image }} style={styles.avatar} />
-                                ) : (
-                                    <View style={[styles.avatarFallback, { backgroundColor: colors.border }]}>
-                                        <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{memberName.charAt(0)}</Text>
-                                    </View>
-                                )}
+                        let actualStatus = (att ? att.status : "NOT_CHECKED_IN") as AttendanceStatus | "NOT_CHECKED_IN";
+                        if (att?.checkIn) {
+                            const inTime = new Date(att.checkIn);
+                            const istIn = new Date(inTime.getTime() + (5.5 * 60 * 60 * 1000));
+                            const hours = istIn.getUTCHours();
+                            const minutes = istIn.getUTCMinutes();
+                            if ((hours > 9) || (hours === 9 && minutes > 40)) {
+                                actualStatus = "LATE";
+                            }
+                        }
+                        if (att?.checkOut) {
+                            const outTime = new Date(att.checkOut);
+                            const istOut = new Date(outTime.getTime() + (5.5 * 60 * 60 * 1000));
+                            if (istOut.getUTCHours() >= 19) {
+                                actualStatus = "OUT";
+                            }
+                        }
 
-                                <View style={styles.registerDetails}>
-                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                        <View style={{ flex: 1, marginRight: 8 }}>
-                                            <Text style={[styles.registerName, { color: colors.text }]} numberOfLines={1}>{memberName}</Text>
-                                            <Text style={[styles.registerEmail, { color: colors.textDim }]} numberOfLines={1}>{row.member.user.email}</Text>
+                        let sInfo = statusConfig[actualStatus];
+
+                        return (
+                            <TouchableOpacity
+                                key={row.member.id}
+                                style={[styles.registerItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                onPress={() => openMemberStats(row.member)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.registerMain}>
+                                    {row.member.user.image ? (
+                                        <Image source={{ uri: row.member.user.image }} style={styles.avatar} />
+                                    ) : (
+                                        <View style={[styles.avatarFallback, { backgroundColor: colors.border }]}>
+                                            <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{memberName.charAt(0)}</Text>
                                         </View>
-                                        <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
-                                    </View>
+                                    )}
 
-                                    <View style={styles.registerTimes}>
-                                        <View style={styles.registerTimeRow}>
-                                            <Ionicons name="arrow-down-circle-outline" size={14} color="#10b981" />
-                                            <Text style={[styles.registerTimeText, { color: colors.text }]}>{formatTime(att?.checkIn)}</Text>
+                                    <View style={styles.registerDetails}>
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                            <View style={{ flex: 1, marginRight: 8 }}>
+                                                <Text style={[styles.registerName, { color: colors.text }]} numberOfLines={1}>{memberName}</Text>
+                                                <Text style={[styles.registerEmail, { color: colors.textDim }]} numberOfLines={1}>{row.member.user.email}</Text>
+                                            </View>
+                                            <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
                                         </View>
-                                        <View style={styles.registerTimeRow}>
-                                            <Ionicons name="arrow-up-circle-outline" size={14} color="#ef4444" />
-                                            <Text style={[styles.registerTimeText, { color: colors.text }]}>{formatTime(att?.checkOut)}</Text>
+
+                                        <View style={styles.registerTimes}>
+                                            <View style={styles.registerTimeRow}>
+                                                <Ionicons name="arrow-down-circle-outline" size={14} color="#10b981" />
+                                                <Text style={[styles.registerTimeText, { color: colors.text }]}>{formatTime(att?.checkIn)}</Text>
+                                            </View>
+                                            <View style={styles.registerTimeRow}>
+                                                <Ionicons name="arrow-up-circle-outline" size={14} color="#ef4444" />
+                                                <Text style={[styles.registerTimeText, { color: colors.text }]}>{formatTime(att?.checkOut)}</Text>
+                                            </View>
                                         </View>
-                                    </View>
 
-                                    <View style={styles.registerMapRow}>
-                                        <TouchableOpacity
-                                            style={[styles.mapBtn, { opacity: att?.checkInLatitude ? 1 : 0.3 }]}
-                                            onPress={() => openMap(att?.checkInLatitude, att?.checkInLongitude)}
-                                            disabled={!att?.checkInLatitude}
-                                        >
-                                            <Ionicons name="location-outline" size={14} color="#10b981" />
-                                            <Text style={[styles.mapBtnText, { color: "#10b981" }]}>In Map</Text>
-                                        </TouchableOpacity>
+                                        <View style={styles.registerMapRow}>
+                                            <TouchableOpacity
+                                                style={[styles.mapBtn, { opacity: att?.checkInLatitude ? 1 : 0.3 }]}
+                                                onPress={() => openMap(att?.checkInLatitude, att?.checkInLongitude)}
+                                                disabled={!att?.checkInLatitude}
+                                            >
+                                                <Ionicons name="location-outline" size={14} color="#10b981" />
+                                                <Text style={[styles.mapBtnText, { color: "#10b981" }]}>In Map</Text>
+                                            </TouchableOpacity>
 
-                                        <TouchableOpacity
-                                            style={[styles.mapBtn, { opacity: att?.checkOutLatitude ? 1 : 0.3 }]}
-                                            onPress={() => openMap(att?.checkOutLatitude, att?.checkOutLongitude)}
-                                            disabled={!att?.checkOutLatitude}
-                                        >
-                                            <Ionicons name="location-outline" size={14} color="#ef4444" />
-                                            <Text style={[styles.mapBtnText, { color: "#ef4444" }]}>Out Map</Text>
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.mapBtn, { opacity: att?.checkOutLatitude ? 1 : 0.3 }]}
+                                                onPress={() => openMap(att?.checkOutLatitude, att?.checkOutLongitude)}
+                                                disabled={!att?.checkOutLatitude}
+                                            >
+                                                <Ionicons name="location-outline" size={14} color="#ef4444" />
+                                                <Text style={[styles.mapBtnText, { color: "#ef4444" }]}>Out Map</Text>
+                                            </TouchableOpacity>
 
-                                        <View style={{ flex: 1 }} />
+                                            <View style={{ flex: 1 }} />
 
-                                        <View style={styles.registerTimeRow}>
-                                            <Ionicons name="time-outline" size={14} color={colors.textDim} />
-                                            <Text style={[styles.registerTimeText, { color: colors.textDim }]}>{calcDuration(att?.checkIn, att?.checkOut)}</Text>
+                                            <View style={styles.registerTimeRow}>
+                                                <Ionicons name="time-outline" size={14} color={colors.textDim} />
+                                                <Text style={[styles.registerTimeText, { color: colors.textDim }]}>{calcDuration(att?.checkIn, att?.checkOut)}</Text>
+                                            </View>
                                         </View>
                                     </View>
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    );
-                })}
+                            </TouchableOpacity>
+                        );
+                    });
+                })()}
             </View>
         );
     };
-
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
             <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
-            {/* Header with Date Navigator */}
-            <View style={[styles.header, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
-                <View>
-                    <Text style={[styles.heading, { color: colors.text }]}>Attendance</Text>
-                    <Text style={[styles.subheading, { color: colors.textMuted }]}>
-                        {format(currentDate, "EEEE, dd-MM-yyyy")}
-                    </Text>
-                </View>
-
-                <TouchableOpacity 
-                    style={[styles.leaveBtn, { borderColor: colors.border }]}
-                    onPress={() => (navigation as any).navigate("Leave")}
-                >
-                    <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.leaveBtnText, { color: colors.primary }]}>Leaves</Text>
-                </TouchableOpacity>
-
-                {/* Date Navigator */}
-                <View style={styles.dateNav}>
-                    <TouchableOpacity
-                        onPress={() => handleDateChange(-1)}
-                        style={styles.dateNavBtn}
-                        accessibilityRole="button"
-                        accessibilityLabel="Previous day"
-                    >
-                        <Ionicons name="chevron-back" size={20} color={colors.text} />
-                    </TouchableOpacity>
-
-                    <View style={[styles.dateBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Ionicons name="calendar-outline" size={14} color={colors.primary} />
-                        <Text style={[styles.dateText, { color: colors.text }]}>
-                            {format(currentDate, "dd-MM-yyyy")}
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        onPress={() => handleDateChange(1)}
-                        style={styles.dateNavBtn}
-                        disabled={isToday}
-                        accessibilityRole="button"
-                        accessibilityLabel="Next day"
-                        accessibilityState={{ disabled: isToday }}
-                    >
-                        <Ionicons name="chevron-forward" size={20} color={isToday ? colors.border : colors.text} />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scroll, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-            >
-                {/* 1. My Status (Action Center) */}
-                {renderMyStatus()}
-
-                {/* 2. Team Register (Today) - Only for Admins/Managers */}
-                <View style={[styles.sectionHeader, { marginTop: SPACING.md }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Team (Today)</Text>
-                    <View style={styles.badgeCount}>
-                        <Text style={styles.badgeCountText}>{teamRegister.length}</Text>
-                    </View>
-                </View>
-                {renderTeamRegister()}
-
-                {/* 3. Workspace Logs (History) - Only for Admins/Managers */}
-                {(workspaceLogs.length > 0 || loadingLogs) && (
-                    <>
-                        <View style={[styles.sectionHeader, { marginTop: SPACING.xl }]}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Workspace Logs</Text>
-                            <View style={[styles.badgeCount, { backgroundColor: colors.primary + "20" }]}>
-                                <Text style={[styles.badgeCountText, { color: colors.primary }]}>History</Text>
+                {/* Header Section */}
+                <View style={[styles.headerContainer, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}>
+                    {/* Row 1: Back + Title and Leaves Button */}
+                    <View style={styles.headerTopRow}>
+                        <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+                            {navigation.canGoBack() && (
+                                <TouchableOpacity
+                                    onPress={() => navigation.goBack()}
+                                    style={{ marginRight: 12, paddingVertical: 4, paddingRight: 4 }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Go back"
+                                >
+                                    <Ionicons name="chevron-back" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            )}
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.heading, { color: colors.text }]} numberOfLines={1}>Attendance</Text>
+                                <Text style={[styles.subheading, { color: colors.textMuted }]} numberOfLines={1}>
+                                    {format(currentDate, "EEEE, dd-MM-yyyy")}
+                                </Text>
                             </View>
                         </View>
-                        
-                        {loadingLogs ? (
-                            <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
-                        ) : (
-                            <View style={styles.logsList}>
-                                {workspaceLogs.map((log: any) => {
-                                    const u = log.workspaceMember?.user;
-                                    const name = u?.surname || u?.name || "User";
-                                    const sInfo = statusConfig[log.status as AttendanceStatus] || statusConfig.PRESENT;
 
-                                    return (
-                                        <View key={log.id} style={[styles.logRow, { borderBottomColor: colors.border + "40" }]}>
-                                            <View style={styles.logMain}>
-                                                <Image source={{ uri: u?.image || undefined }} style={styles.logAvatar} />
-                                                <View style={{ flex: 1, marginLeft: 10 }}>
-                                                    <View style={styles.logTopRow}>
-                                                        <Text style={[styles.logName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-                                                        <Text style={[styles.logDate, { color: colors.textDim }]}>{format(new Date(log.date), "dd MMM")}</Text>
-                                                    </View>
-                                                    <View style={styles.logMetaRow}>
-                                                        <View style={styles.logTimeCol}>
-                                                            <View style={styles.logTimeRow}>
-                                                                <Ionicons name="enter-outline" size={10} color="#10b981" />
-                                                                <Text style={[styles.logTimeText, { color: colors.text }]}>{formatTime(log.checkIn)}</Text>
-                                                            </View>
-                                                            <View style={styles.logTimeRow}>
-                                                                <Ionicons name="exit-outline" size={10} color="#ef4444" />
-                                                                <Text style={[styles.logTimeText, { color: colors.text }]}>{formatTime(log.checkOut)}</Text>
-                                                            </View>
+                        <TouchableOpacity
+                            style={[styles.leaveBtn, { borderColor: colors.border }]}
+                            onPress={() => (navigation as any).navigate("Leave")}
+                        >
+                            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                            <Text style={[styles.leaveBtnText, { color: colors.primary }]}>Leaves</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Row 2: Date Navigator */}
+                    <View style={styles.headerBottomRow}>
+                        <TouchableOpacity
+                            onPress={() => handleDateChange(-1)}
+                            style={[styles.dateNavBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Previous day"
+                        >
+                            <Ionicons name="chevron-back" size={20} color={colors.text} />
+                        </TouchableOpacity>
+
+                        <View style={[styles.dateBadge, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1, marginHorizontal: SPACING.sm }]}>
+                            <Ionicons name="calendar-outline" size={15} color={colors.primary} />
+                            <Text style={[styles.dateText, { color: colors.text, fontFamily: FONTS.bold }]}>
+                                {format(currentDate, "EEEE, dd MMM yyyy")}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => handleDateChange(1)}
+                            style={[styles.dateNavBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            disabled={isToday}
+                            accessibilityRole="button"
+                            accessibilityLabel="Next day"
+                            accessibilityState={{ disabled: isToday }}
+                        >
+                            <Ionicons name="chevron-forward" size={20} color={isToday ? colors.border : colors.text} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.scroll, { paddingHorizontal: value(SPACING.md, SPACING.xl, SPACING.xxl) }]}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                >
+                    {/* 1. My Status (Action Center) */}
+                    {renderMyStatus()}
+
+                    {/* 2. Team Register (Today) - Only for Admins/Managers */}
+                    <View style={[styles.sectionHeader, { marginTop: SPACING.md }]}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Team (Today)</Text>
+                            <View style={styles.badgeCount}>
+                                <Text style={styles.badgeCountText}>{teamRegister.length}</Text>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity 
+                            onPress={() => {
+                                haptics.light();
+                                setShowOnlyMe(prev => !prev);
+                            }}
+                            style={[
+                                { 
+                                    paddingHorizontal: 12, 
+                                    paddingVertical: 5, 
+                                    borderRadius: 12, 
+                                    borderWidth: 1, 
+                                    flexDirection: "row", 
+                                    alignItems: "center" 
+                                }, 
+                                showOnlyMe 
+                                    ? { backgroundColor: colors.primary, borderColor: colors.primary } 
+                                    : { backgroundColor: "transparent", borderColor: colors.border }
+                            ]}
+                        >
+                            <Ionicons 
+                                name={showOnlyMe ? "person" : "person-outline"} 
+                                size={12} 
+                                color={showOnlyMe ? "#fff" : colors.textDim} 
+                                style={{ marginRight: 4 }} 
+                            />
+                            <Text 
+                                style={{ 
+                                    fontSize: 12, 
+                                    fontFamily: FONTS.semibold, 
+                                    color: showOnlyMe ? "#fff" : colors.textDim 
+                                }}
+                            >
+                                Me
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    {renderTeamRegister()}
+
+                    {/* 3. Workspace Logs (History) - Only for Admins/Managers */}
+                    {(workspaceLogs.length > 0 || loadingLogs) && (
+                        <>
+                            <View style={[styles.sectionHeader, { marginTop: SPACING.xl }]}>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Workspace Logs</Text>
+                                <View style={[styles.badgeCount, { backgroundColor: colors.primary + "20" }]}>
+                                    <Text style={[styles.badgeCountText, { color: colors.primary }]}>History</Text>
+                                </View>
+                            </View>
+
+                            {loadingLogs ? (
+                                <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
+                            ) : (
+                                <View style={styles.logsList}>
+                                    {workspaceLogs.map((log: any) => {
+                                        const u = log.workspaceMember?.user;
+                                        const name = u?.surname || u?.name || "User";
+                                        const sInfo = statusConfig[log.status as AttendanceStatus] || statusConfig.PRESENT;
+
+                                        return (
+                                            <View key={log.id} style={[styles.logRow, { borderBottomColor: colors.border + "40" }]}>
+                                                <View style={styles.logMain}>
+                                                    <Image source={{ uri: u?.image || undefined }} style={styles.logAvatar} />
+                                                    <View style={{ flex: 1, marginLeft: 10 }}>
+                                                        <View style={styles.logTopRow}>
+                                                            <Text style={[styles.logName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                                                            <Text style={[styles.logDate, { color: colors.textDim }]}>{format(new Date(log.date), "dd MMM")}</Text>
                                                         </View>
-                                                        
-                                                        {log.checkInLatitude && (
-                                                            <TouchableOpacity onPress={() => openMap(log.checkInLatitude, log.checkInLongitude)} style={styles.logLocBtn}>
-                                                                <Ionicons name="location" size={12} color={colors.primary} />
-                                                                <Text style={[styles.logLocText, { color: colors.primary }]}>Map</Text>
-                                                            </TouchableOpacity>
-                                                        )}
+                                                        <View style={styles.logMetaRow}>
+                                                            <View style={styles.logTimeCol}>
+                                                                <View style={styles.logTimeRow}>
+                                                                    <Ionicons name="enter-outline" size={10} color="#10b981" />
+                                                                    <Text style={[styles.logTimeText, { color: colors.text }]}>{formatTime(log.checkIn)}</Text>
+                                                                </View>
+                                                                <View style={styles.logTimeRow}>
+                                                                    <Ionicons name="exit-outline" size={10} color="#ef4444" />
+                                                                    <Text style={[styles.logTimeText, { color: colors.text }]}>{formatTime(log.checkOut)}</Text>
+                                                                </View>
+                                                            </View>
 
-                                                        <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
+                                                            {log.checkInLatitude && (
+                                                                <TouchableOpacity onPress={() => openMap(log.checkInLatitude, log.checkInLongitude)} style={styles.logLocBtn}>
+                                                                    <Ionicons name="location" size={12} color={colors.primary} />
+                                                                    <Text style={[styles.logLocText, { color: colors.primary }]}>Map</Text>
+                                                                </TouchableOpacity>
+                                                            )}
+
+                                                            <StatusChip label={sInfo.label} kind={sInfo.kind} size="sm" />
+                                                        </View>
                                                     </View>
                                                 </View>
                                             </View>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        )}
-                    </>
-                )}
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </>
+                    )}
 
-                <View style={{ height: 20 }} />
-            </ScrollView>
+                    <View style={{ height: 20 }} />
+                </ScrollView>
 
-            {/* Member Modal */}
-            <Modal
-                visible={modalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <Pressable
-                    style={styles.modalOverlay}
-                    onPress={() => setModalVisible(false)}
+                {/* Member Modal */}
+                <Modal
+                    visible={modalVisible}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setModalVisible(false)}
                 >
-                    <Pressable style={[styles.modalContent, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 20 }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{modalTitle}</Text>
+                    <Pressable
+                        style={styles.modalOverlay}
+                        onPress={() => setModalVisible(false)}
+                    >
+                        <Pressable style={[styles.modalContent, { backgroundColor: colors.surface, paddingBottom: insets.bottom + 20 }]}>
+                            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>{modalTitle}</Text>
+                                <TouchableOpacity
+                                    onPress={() => setModalVisible(false)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Close"
+                                    hitSlop={8}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+                                {modalList.length === 0 ? (
+                                    <Text style={[styles.emptyModalText, { color: colors.textDim }]}>No members found.</Text>
+                                ) : (
+                                    modalList.map((u, i) => (
+                                        <View key={u.id + i} style={[styles.modalItem, { borderBottomColor: colors.border }]}>
+                                            {u.image ? (
+                                                <Image source={{ uri: u.image }} style={styles.modalAvatar} />
+                                            ) : (
+                                                <View style={[styles.modalAvatarFallback, { backgroundColor: colors.border }]}>
+                                                    <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{(u.surname?.[0] || u.name.charAt(0)).toUpperCase()}</Text>
+                                                </View>
+                                            )}
+                                            <View>
+                                                <Text style={[styles.modalName, { color: colors.text }]}>{u.surname || u.name}</Text>
+                                                <Text style={[styles.modalEmail, { color: colors.textDim }]}>{u.email}</Text>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
+                            </ScrollView>
+                        </Pressable>
+                    </Pressable>
+                </Modal>
+
+                {/* Historical Stats Modal */}
+                <Modal
+                    visible={statsModalVisible}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setStatsModalVisible(false)}
+                >
+                    <Pressable style={styles.modalOverlay} onPress={() => setStatsModalVisible(false)}>
+                        <Pressable style={[styles.statsModalCard, { backgroundColor: colors.surface }]}>
                             <TouchableOpacity
-                                onPress={() => setModalVisible(false)}
+                                style={styles.closeBtn}
+                                onPress={() => setStatsModalVisible(false)}
                                 accessibilityRole="button"
                                 accessibilityLabel="Close"
                                 hitSlop={8}
                             >
-                                <Ionicons name="close" size={24} color={colors.text} />
+                                <Ionicons name="close" size={24} color={colors.textDim} />
                             </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-                            {modalList.length === 0 ? (
-                                <Text style={[styles.emptyModalText, { color: colors.textDim }]}>No members found.</Text>
-                            ) : (
-                                modalList.map((u, i) => (
-                                    <View key={u.id + i} style={[styles.modalItem, { borderBottomColor: colors.border }]}>
-                                        {u.image ? (
-                                            <Image source={{ uri: u.image }} style={styles.modalAvatar} />
-                                        ) : (
-                                            <View style={[styles.modalAvatarFallback, { backgroundColor: colors.border }]}>
-                                                <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold }}>{(u.surname?.[0] || u.name.charAt(0)).toUpperCase()}</Text>
+
+                            {selectedStatsMember && (
+                                <View style={styles.statsModalHeader}>
+                                    {selectedStatsMember.user.image ? (
+                                        <Image source={{ uri: selectedStatsMember.user.image }} style={styles.statsModalAvatar} />
+                                    ) : (
+                                        <View style={[styles.statsModalAvatarFallback, { backgroundColor: colors.border }]}>
+                                            <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold, fontSize: 24 }}>
+                                                {(selectedStatsMember.user.surname?.[0] || selectedStatsMember.user.name.charAt(0)).toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <Text style={[styles.statsModalName, { color: colors.text }]}>
+                                        {selectedStatsMember.user.surname || selectedStatsMember.user.name}
+                                    </Text>
+                                    <Text style={[styles.statsModalEmail, { color: colors.textDim }]}>
+                                        {selectedStatsMember.user.email}
+                                    </Text>
+
+                                    {loadingStats ? (
+                                        <View style={{ paddingVertical: 40 }}>
+                                            <ActivityIndicator size="large" color={colors.primary} />
+                                        </View>
+                                    ) : historicalStats ? (
+                                        <View style={styles.statsRow}>
+                                            <View style={[styles.bigStatCard, { backgroundColor: "#10b98115", borderColor: "#10b98130" }]}>
+                                                <Text style={[styles.bigStatValue, { color: "#10b981" }]}>{historicalStats.daysWorked}</Text>
+                                                <Text style={[styles.bigStatLabel, { color: "#059669" }]}>DAYS WORKED</Text>
                                             </View>
-                                        )}
-                                        <View>
-                                            <Text style={[styles.modalName, { color: colors.text }]}>{u.surname || u.name}</Text>
-                                            <Text style={[styles.modalEmail, { color: colors.textDim }]}>{u.email}</Text>
+                                            <View style={[styles.bigStatCard, { backgroundColor: "#f9731615", borderColor: "#f9731630" }]}>
+                                                <Text style={[styles.bigStatValue, { color: "#f97316" }]}>{historicalStats.daysLate}</Text>
+                                                <Text style={[styles.bigStatLabel, { color: "#ea580c" }]}>DAYS LATE</Text>
+                                            </View>
                                         </View>
-                                    </View>
-                                ))
+                                    ) : (
+                                        <Text style={[styles.emptyModalText, { color: colors.textDim }]}>Could not load statistics.</Text>
+                                    )}
+                                </View>
                             )}
-                        </ScrollView>
+                        </Pressable>
                     </Pressable>
-                </Pressable>
-            </Modal>
+                </Modal>
 
-            {/* Historical Stats Modal */}
-            <Modal
-                visible={statsModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setStatsModalVisible(false)}
-            >
-                <Pressable style={styles.modalOverlay} onPress={() => setStatsModalVisible(false)}>
-                    <Pressable style={[styles.statsModalCard, { backgroundColor: colors.surface }]}>
-                        <TouchableOpacity
-                            style={styles.closeBtn}
-                            onPress={() => setStatsModalVisible(false)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close"
-                            hitSlop={8}
-                        >
-                            <Ionicons name="close" size={24} color={colors.textDim} />
-                        </TouchableOpacity>
-
-                        {selectedStatsMember && (
-                            <View style={styles.statsModalHeader}>
-                                {selectedStatsMember.user.image ? (
-                                    <Image source={{ uri: selectedStatsMember.user.image }} style={styles.statsModalAvatar} />
-                                ) : (
-                                    <View style={[styles.statsModalAvatarFallback, { backgroundColor: colors.border }]}>
-                                        <Text style={{ color: colors.textDim, fontFamily: FONTS.semibold, fontSize: 24 }}>
-                                            {(selectedStatsMember.user.surname?.[0] || selectedStatsMember.user.name.charAt(0)).toUpperCase()}
-                                        </Text>
-                                    </View>
-                                )}
-                                <Text style={[styles.statsModalName, { color: colors.text }]}>
-                                    {selectedStatsMember.user.surname || selectedStatsMember.user.name}
-                                </Text>
-                                <Text style={[styles.statsModalEmail, { color: colors.textDim }]}>
-                                    {selectedStatsMember.user.email}
-                                </Text>
-
-                                {loadingStats ? (
-                                    <View style={{ paddingVertical: 40 }}>
-                                        <ActivityIndicator size="large" color={colors.primary} />
-                                    </View>
-                                ) : historicalStats ? (
-                                    <View style={styles.statsRow}>
-                                        <View style={[styles.bigStatCard, { backgroundColor: "#10b98115", borderColor: "#10b98130" }]}>
-                                            <Text style={[styles.bigStatValue, { color: "#10b981" }]}>{historicalStats.daysWorked}</Text>
-                                            <Text style={[styles.bigStatLabel, { color: "#059669" }]}>DAYS WORKED</Text>
-                                        </View>
-                                        <View style={[styles.bigStatCard, { backgroundColor: "#f9731615", borderColor: "#f9731630" }]}>
-                                            <Text style={[styles.bigStatValue, { color: "#f97316" }]}>{historicalStats.daysLate}</Text>
-                                            <Text style={[styles.bigStatLabel, { color: "#ea580c" }]}>DAYS LATE</Text>
-                                        </View>
-                                    </View>
-                                ) : (
-                                    <Text style={[styles.emptyModalText, { color: colors.textDim }]}>Could not load statistics.</Text>
-                                )}
-                            </View>
-                        )}
-                    </Pressable>
-                </Pressable>
-            </Modal>
-
-            <ConfirmationSheet
-                visible={checkOutSheetVisible}
-                title="Check out for the day?"
-                description="This will end your shift for today. You can't check in again until tomorrow."
-                tone="warning"
-                confirmLabel="Check Out"
-                cancelLabel="Cancel"
-                loading={actionLoading}
-                onConfirm={handleCheckOut}
-                onClose={() => setCheckOutSheetVisible(false)}
-            />
+                <ConfirmationSheet
+                    visible={checkOutSheetVisible}
+                    title="Check out for the day?"
+                    description="This will end your shift for today. You can't check in again until tomorrow."
+                    tone="warning"
+                    confirmLabel="Check Out"
+                    cancelLabel="Cancel"
+                    loading={actionLoading}
+                    onConfirm={handleCheckOut}
+                    onClose={() => setCheckOutSheetVisible(false)}
+                />
             </View>
         </SafeAreaView>
     );
@@ -928,16 +996,18 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
+    headerContainer: { paddingVertical: SPACING.md, gap: SPACING.sm },
+    headerTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    headerBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.xs },
     heading: { fontSize: 24, fontFamily: FONTS.bold },
     subheading: { fontSize: 13, marginTop: 2 },
     leaveBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
     leaveBtnText: { fontSize: 13, fontFamily: FONTS.bold },
 
     dateNav: { flexDirection: "row", alignItems: "center", gap: 4 },
-    dateNavBtn: { padding: 4 },
-    dateBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
-    dateText: { fontSize: 12, fontFamily: FONTS.semibold },
+    dateNavBtn: { width: 40, height: 40, borderRadius: BORDER_RADIUS.md, borderWidth: 1, justifyContent: "center", alignItems: "center" },
+    dateBadge: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 40, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
+    dateText: { fontSize: 13, fontFamily: FONTS.semibold },
 
     segmentContainer: { paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
     segmentTrack: { flexDirection: "row", padding: 4, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },

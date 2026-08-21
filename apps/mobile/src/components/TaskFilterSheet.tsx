@@ -71,9 +71,24 @@ export default function TaskFilterSheet({
     const [showDatePicker, setShowDatePicker] = useState<"after" | "before" | null>(null);
     const [showTimeOptions, setShowTimeOptions] = useState(false);
 
+    const [tagSearchQuery, setTagSearchQuery] = useState("");
+    const [showAllTags, setShowAllTags] = useState(false);
+
+    const filteredTags = useMemo(() => {
+        if (!tagSearchQuery.trim()) return tags;
+        return tags.filter(tag => tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase()));
+    }, [tags, tagSearchQuery]);
+
+    const displayedTags = useMemo(() => {
+        if (tagSearchQuery.trim() || showAllTags) return filteredTags;
+        return filteredTags.slice(0, 6);
+    }, [filteredTags, tagSearchQuery, showAllTags]);
+
     useEffect(() => {
         if (visible) {
             setLocalFilters(currentFilters);
+            setTagSearchQuery("");
+            setShowAllTags(false);
             loadData();
         }
     }, [visible]); // Refetch data when visible, but only update localFilters once when visible becomes true.
@@ -391,28 +406,67 @@ export default function TaskFilterSheet({
                         {/* Tags */}
                         {tags.length > 0 && (
                             <>
-                                <Text style={[styles.sectionTitle, { color: colors.textDim }]}>Tags</Text>
-                                <View style={styles.chipContainer}>
-                                    {tags.map((tag) => {
-                                        const selected = isSelected("tagId", tag.id);
-                                        return (
-                                            <TouchableOpacity
-                                                key={tag.id}
-                                                style={[
-                                                    styles.chip,
-                                                    { backgroundColor: colors.background, borderColor: colors.border },
-                                                    selected && [styles.chipSelected, { borderColor: colors.primary, backgroundColor: colors.activeTab }]
-                                                ]}
-                                                onPress={() => toggleFilter("tagId", tag.id)}
-                                            >
-                                                <Ionicons name="pricetag-outline" size={14} color={selected ? colors.primary : colors.textDim} />
-                                                <Text style={[styles.chipText, { color: colors.textDim }, selected && [styles.chipTextSelected, { color: colors.primary }]]}>
-                                                    {tag.name}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                    <Text style={[styles.sectionTitle, { color: colors.textDim, marginBottom: 0 }]}>Tags</Text>
                                 </View>
+
+                                {/* Tag Search Bar */}
+                                <View style={[styles.tagSearchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                                    <Ionicons name="search-outline" size={16} color={colors.textDim} style={{ marginRight: 8 }} />
+                                    <TextInput
+                                        style={[styles.tagSearchInput, { color: colors.text }]}
+                                        placeholder="Search tags..."
+                                        placeholderTextColor={colors.textDim}
+                                        value={tagSearchQuery}
+                                        onChangeText={setTagSearchQuery}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                    />
+                                    {tagSearchQuery.length > 0 && (
+                                        <TouchableOpacity onPress={() => setTagSearchQuery("")} style={{ padding: 4 }}>
+                                            <Ionicons name="close-circle" size={16} color={colors.textDim} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                {displayedTags.length === 0 ? (
+                                    <Text style={{ fontSize: 13, color: colors.textDim, fontStyle: "italic", marginVertical: 8, paddingHorizontal: 4 }}>
+                                        No matching tags found
+                                    </Text>
+                                ) : (
+                                    <View style={styles.chipContainer}>
+                                        {displayedTags.map((tag) => {
+                                            const selected = isSelected("tagId", tag.id);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={tag.id}
+                                                    style={[
+                                                        styles.chip,
+                                                        { backgroundColor: colors.background, borderColor: colors.border },
+                                                        selected && [styles.chipSelected, { borderColor: colors.primary, backgroundColor: colors.activeTab }]
+                                                    ]}
+                                                    onPress={() => toggleFilter("tagId", tag.id)}
+                                                >
+                                                    <Ionicons name="pricetag-outline" size={14} color={selected ? colors.primary : colors.textDim} />
+                                                    <Text style={[styles.chipText, { color: colors.textDim }, selected && [styles.chipTextSelected, { color: colors.primary }]]}>
+                                                        {tag.name}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+
+                                {filteredTags.length > 6 && !tagSearchQuery && (
+                                    <TouchableOpacity 
+                                        onPress={() => setShowAllTags(!showAllTags)}
+                                        style={styles.showMoreBtn}
+                                    >
+                                        <Text style={[styles.showMoreText, { color: colors.primary }]}>
+                                            {showAllTags ? "Show Less" : `Show More (+${filteredTags.length - 6})`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </>
                         )}
 
@@ -548,6 +602,31 @@ const styles = StyleSheet.create({
     },
     applyBtn: { borderRadius: BORDER_RADIUS.md, height: 52, justifyContent: "center", alignItems: "center" },
     applyBtnText: { color: "#fff", fontSize: 16, fontFamily: FONTS.bold },
+    tagSearchRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderRadius: BORDER_RADIUS.md,
+        paddingHorizontal: 12,
+        height: 40,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    tagSearchInput: {
+        flex: 1,
+        fontSize: 14,
+        padding: 0,
+        height: "100%",
+    },
+    showMoreBtn: {
+        alignSelf: "flex-start",
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        marginTop: 8,
+    },
+    showMoreText: {
+        fontSize: 13,
+        fontFamily: FONTS.semibold,
+    },
     dropdownButton: {
         height: 48,
         borderRadius: BORDER_RADIUS.md,

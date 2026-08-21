@@ -50,13 +50,15 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
         // Lite projection for list/picker views: everything the Projects list and
         // workspace project pickers render, WITHOUT the heavy projectMembers array
         // (per-member user objects incl. emails) or _count. `description` is kept
-        // because the Projects list renders it.
+        // because the Projects list renders it. `createdBy` is a cheap scalar and
+        // is required to derive `canManageMembers` without loading other members.
         id: true,
         workspaceId: true,
         name: true,
         slug: true,
         color: true,
         description: true,
+        createdBy: true,
     } : {
         id: true,
         name: true,
@@ -144,20 +146,42 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
         });
     }
 
+    // The lite projection omits `projectMembers`, so the caller's own project role
+    // is resolved in one extra query instead. This keeps other members' data (names,
+    // images, emails) out of the payload while still allowing the client to decide
+    // which project actions to offer.
+    let ownProjectRoles = new Map<string, string>();
+    if (lite && projects.length > 0) {
+        const ownMemberships = await prisma.projectMember.findMany({
+            where: {
+                workspaceMemberId: workspaceMember.id,
+                projectId: { in: projects.map((p: any) => p.id) },
+            },
+            select: { projectId: true, projectRole: true },
+        });
+        ownProjectRoles = new Map(
+            ownMemberships.map((m) => [m.projectId, m.projectRole as string])
+        );
+    }
+
     return projects.map((project: any) => {
         if (lite) {
+            const ownRole = ownProjectRoles.get(project.id);
             return {
                 id: project.id,
                 name: project.name,
                 slug: project.slug,
                 color: project.color,
                 description: project.description,
-                createdBy: undefined,
-                canManageMembers: undefined,
+                createdBy: project.createdBy,
+                canManageMembers:
+                    isOwnerOrAdmin ||
+                    ownRole === "PROJECT_MANAGER" ||
+                    project.createdBy === userId,
                 memberCount: undefined,
                 memberIds: undefined,
                 projectManagers: undefined,
-                isLead: undefined,
+                isLead: ownRole === "LEAD",
             };
         }
 
@@ -195,7 +219,7 @@ async function _getUserProjectsInternal(userId: string, workspaceId: string, lit
 // Cached version with Next.js unstable_cache (persists across requests)
 const getCachedUserProjects = (userId: string, workspaceId: string, lite = false) =>
     cached(
-        `user-projects-${userId}-${workspaceId}-${lite ? "lite" : "full"}-v4`,
+        `user-projects-${userId}-${workspaceId}-${lite ? "lite" : "full"}-v5`,
         async () => _getUserProjectsInternal(userId, workspaceId, lite),
         {
             tags: CacheTags.userProjects(userId, workspaceId),

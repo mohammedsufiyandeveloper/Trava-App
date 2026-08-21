@@ -17,12 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { haptics } from "../services/haptics";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import PressableScale from "./PressableScale";
-import GlassSurface from "./GlassSurface";
 
-/**
- * Tighter than MOTION.stagger (45ms): with six items that token would spread
- * the reveal over 225ms, which reads as slow rather than lively.
- */
 const ITEM_STAGGER = 26;
 
 export default function RadialMenu({
@@ -55,20 +50,19 @@ export default function RadialMenu({
     return (
         <Modal transparent visible={visible} animationType="none" onRequestClose={onClose} statusBarTranslucent>
             <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close create menu">
+                {/* Backdrop Blur & Dimmed background overlay */}
                 <Animated.View
                     entering={FadeIn.duration(MOTION.duration.fast)}
                     exiting={FadeOut.duration(MOTION.duration.fast)}
                     style={StyleSheet.absoluteFill}
                 >
-                    <BlurView intensity={isDark ? 30 : 20} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.3)" }]} />
+                    <BlurView intensity={isDark ? 60 : 45} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(10,10,10,0.85)" : "rgba(255,255,255,0.85)" }]} />
                 </Animated.View>
 
+                {/* Floating Radial items aligned to the right side */}
                 <View style={[styles.menuContainer, { bottom: Math.max(insets.bottom, 20) + 110 }]}>
                     {ACTIONS.map((item, index) => {
-                        // Items animate bottom-up; reverse the stagger so they appear
-                        // to rise from the FAB. Eased rather than sprung — a spring
-                        // loose enough to feel lively here overshoots and wobbles.
                         const entering = reducedMotion
                             ? FadeIn.duration(MOTION.duration.fast)
                             : FadeInDown.duration(MOTION.duration.base)
@@ -85,12 +79,14 @@ export default function RadialMenu({
                                     accessibilityRole="button"
                                     accessibilityLabel={`Create ${item.label}`}
                                 >
-                                    <GlassSurface level="elevated" intensity="sheet" radius="lg" elevation="sm" style={styles.labelContainer}>
+                                    {/* Opaque solid text label box */}
+                                    <View style={[styles.labelContainer, { backgroundColor: colors.surfaceSolid, borderColor: colors.border, borderWidth: 1 }]}>
                                         <Text style={[styles.labelText, { color: colors.text }]}>{item.label}</Text>
-                                    </GlassSurface>
-                                    <GlassSurface level="elevated" intensity="sheet" radius="full" elevation="sm" style={styles.iconBlob}>
+                                    </View>
+                                    {/* Opaque solid circular icon blob */}
+                                    <View style={[styles.iconBlob, { backgroundColor: colors.surfaceSolid, borderColor: colors.border, borderWidth: 1 }]}>
                                         <Ionicons name={item.icon as any} size={22} color={item.color} />
-                                    </GlassSurface>
+                                    </View>
                                 </PressableScale>
                             </Animated.View>
                         );

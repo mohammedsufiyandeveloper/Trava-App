@@ -330,18 +330,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             ) {
                 if (navigationRef.isReady()) {
                     if (actionType === "LEAVE_REQUEST_SUBMITTED" || actionType === "LEAVE_REQUEST_PENDING") {
-                        (navigationRef as any).navigate("AdminLeave");
+                        (navigationRef as any).navigate("Main", { screen: "Home", params: { screen: "AdminLeave" } });
                     } else {
-                        (navigationRef as any).navigate("Leave");
+                        (navigationRef as any).navigate("Main", { screen: "Home", params: { screen: "Leave" } });
                     }
                 }
             } else if (actionType === "CHECKED_IN" || actionType === "CHECKED_OUT") {
                 if (navigationRef.isReady()) {
-                    (navigationRef as any).navigate("Attendance");
+                    (navigationRef as any).navigate("Main", { screen: "Home", params: { screen: "Attendance" } });
                 }
             } else {
                 if (navigationRef.isReady()) {
-                    navigationRef.navigate("Notifications");
+                    (navigationRef as any).navigate("Main", { screen: "Home", params: { screen: "Notifications" } });
                 }
             }
         });

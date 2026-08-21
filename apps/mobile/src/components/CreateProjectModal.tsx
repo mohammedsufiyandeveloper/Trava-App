@@ -313,7 +313,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                             <Text style={[styles.label, { color: colors.textDim }]}>Company Name</Text>
                                             <TextInput
                                                 style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                                placeholder="e.g. Google"
+                                                placeholder=""
                                                 placeholderTextColor={colors.textDim}
                                                 value={companyName}
                                                 onChangeText={setCompanyName}
@@ -324,7 +324,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                     <Text style={[styles.label, { color: colors.textDim }]}>Registered Company Name</Text>
                                     <TextInput
                                         style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                        placeholder="Registered company name"
+                                        placeholder=""
                                         placeholderTextColor={colors.textDim}
                                         value={registeredCompanyName}
                                         onChangeText={setRegisteredCompanyName}
@@ -335,7 +335,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                             <Text style={[styles.label, { color: colors.textDim }]}>Director Name</Text>
                                             <TextInput
                                                 style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                                placeholder="eg: John Doe (MD)"
+                                                placeholder=""
                                                 placeholderTextColor={colors.textDim}
                                                 value={directorName}
                                                 onChangeText={setDirectorName}
@@ -346,7 +346,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                             <Text style={[styles.label, { color: colors.textDim }]}>Address</Text>
                                             <TextInput
                                                 style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                                placeholder="eg:#123, Street name"
+                                                placeholder=""
                                                 placeholderTextColor={colors.textDim}
                                                 value={address}
                                                 onChangeText={setAddress}
@@ -357,7 +357,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                     <Text style={[styles.label, { color: colors.textDim }]}>GST Number</Text>
                                     <TextInput
                                         style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                        placeholder="12ABCDE3456F7Z8"
+                                        placeholder=""
                                         placeholderTextColor={colors.textDim}
                                         value={gstNumber}
                                         onChangeText={setGstNumber}
@@ -374,7 +374,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                             <Text style={[styles.label, { color: colors.textDim }]}>Contact Person Name</Text>
                                             <TextInput
                                                 style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                                placeholder="e.g. John Doe"
+                                                placeholder=""
                                                 placeholderTextColor={colors.textDim}
                                                 value={contactPersonName}
                                                 onChangeText={setContactPersonName}
@@ -385,7 +385,7 @@ export default function CreateProjectModal({ visible, onClose }: CreateProjectMo
                                             <Text style={[styles.label, { color: colors.textDim }]}>Contact Number</Text>
                                             <TextInput
                                                 style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                                placeholder="e.g. +91 98765 43210"
+                                                placeholder=""
                                                 placeholderTextColor={colors.textDim}
                                                 value={contactNumber}
                                                 onChangeText={setContactNumber}

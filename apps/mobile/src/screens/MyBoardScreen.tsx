@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, StatusBar, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Platform, Modal, Dimensions, TouchableWithoutFeedback, LayoutAnimation, UIManager, TextInput, Animated, Alert } from "react-native";
+import { View, Text, StyleSheet, StatusBar, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Platform, Modal, Dimensions, TouchableWithoutFeedback, LayoutAnimation, UIManager, TextInput, Animated, Alert, FlatList } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -786,10 +786,7 @@ export default function MyBoardScreen() {
     const renderGanttSkeleton = () => {
         const rows = [1, 2, 3, 4, 5, 6, 7];
         const GANTT_NAME_W = 180;
-        const GANTT_ASSIGNEE_W = 100;
-        const GANTT_DAYS_W = 60;
-        const GANTT_DATES_W = 130;
-        const GANTT_TOTAL_W = GANTT_NAME_W + GANTT_ASSIGNEE_W + GANTT_DAYS_W + GANTT_DATES_W;
+        const GANTT_TOTAL_W = GANTT_NAME_W;
         const GANTT_HEADER_H = 44;
         const GANTT_ROW_H = 52;
 
@@ -800,15 +797,6 @@ export default function MyBoardScreen() {
                     <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: 1, height: GANTT_HEADER_H, borderBottomColor: colors.border, backgroundColor: isDark ? "#111" : colors.surface }}>
                         <View style={{ width: GANTT_NAME_W, paddingLeft: 12 }}>
                             <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.primary }}>TASK NAME</Text>
-                        </View>
-                        <View style={{ width: GANTT_ASSIGNEE_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>ASSIGNEE</Text>
-                        </View>
-                        <View style={{ width: GANTT_DAYS_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>DAYS</Text>
-                        </View>
-                        <View style={{ width: GANTT_DATES_W, justifyContent: "center", paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 9, fontFamily: FONTS.extrabold, letterSpacing: 1.2, color: colors.textDim }}>DATES</Text>
                         </View>
                     </View>
 
@@ -837,18 +825,6 @@ export default function MyBoardScreen() {
                                         )}
                                         <ShimmerBlock width={isSub ? 80 : 120} height={12} borderRadius={3} />
                                     </View>
-                                    {/* Assignee Cell */}
-                                    <View style={{ width: GANTT_ASSIGNEE_W, justifyContent: "center", paddingLeft: 8 }}>
-                                        <ShimmerBlock width={60} height={12} borderRadius={3} />
-                                    </View>
-                                    {/* Days Cell */}
-                                    <View style={{ width: GANTT_DAYS_W, justifyContent: "center", paddingLeft: 8 }}>
-                                        {isSub && <ShimmerBlock width={20} height={12} borderRadius={3} />}
-                                    </View>
-                                    {/* Dates Cell */}
-                                    <View style={{ width: GANTT_DATES_W, justifyContent: "center", paddingLeft: 8 }}>
-                                        {isSub && <ShimmerBlock width={70} height={12} borderRadius={3} />}
-                                    </View>
                                 </View>
                             );
                         })}
@@ -857,7 +833,6 @@ export default function MyBoardScreen() {
             </View>
         );
     };
-
     const renderSkeleton = () => {
         if (viewMode === "List") return renderListSkeleton();
         if (viewMode === "Kanban") return renderKanbanSkeleton();
@@ -867,6 +842,16 @@ export default function MyBoardScreen() {
 
     const renderContent = () => {
         if (viewMode === "List") {
+            const COL_ICONS: Record<string, string> = {
+                status: "flag-outline",
+                start: "calendar-outline",
+                due: "alarm-outline",
+                assignee: "person-outline",
+                reviewer: "eye-outline",
+                urgency: "alert-circle-outline",
+                tag: "pricetag-outline",
+            };
+
             return (
                 <View style={{ flex: 1, maxWidth: MAX_CONTENT_WIDTH, width: '100%', alignSelf: 'center' }}>
                     {/* STATIC HEADER ROW (Vertically static, horizontally synced) */}
@@ -879,18 +864,23 @@ export default function MyBoardScreen() {
                             bounces={false}
                         >
                             <View style={{ width: TOTAL_W, height: COL_H }}>
-                                <View style={[s.colHRow, { height: COL_H, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+                                <View style={[s.colHRow, { height: COL_H, backgroundColor: isDark ? "rgba(30,30,30,0.9)" : "rgba(255,255,255,0.9)", borderBottomColor: colors.border }]}>
                                     <View style={{ width: NAME_W }} />
-                                    {COLS.map(col => (
-                                        <View key={col.key} style={[s.colHCell, { width: col.w, borderRightColor: colors.border }]}>
-                                            <Text style={[s.colHTxt, { color: colors.textDim }]}>{col.label}</Text>
-                                        </View>
-                                    ))}
+                                    {COLS.map(col => {
+                                        const iconName = COL_ICONS[col.key];
+                                        return (
+                                            <View key={col.key} style={[s.colHCell, { width: col.w, borderRightColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }]}>
+                                                {iconName && <Ionicons name={iconName as any} size={11} color={colors.textDim} />}
+                                                <Text style={[s.colHTxt, { color: colors.textDim }]}>{col.label}</Text>
+                                            </View>
+                                        );
+                                    })}
                                 </View>
                             </View>
                         </ScrollView>
                         {/* Frozen Header (Top Left Corner) */}
-                        <View style={[s.frozenHeader, { width: NAME_W, height: COL_H, backgroundColor: colors.surface, borderBottomColor: colors.border, borderRightColor: colors.border }]}>
+                        <View style={[s.frozenHeader, { width: NAME_W, height: COL_H, backgroundColor: isDark ? "rgba(30,30,30,0.9)" : "rgba(255,255,255,0.9)", borderBottomColor: colors.border, borderRightColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 4 }]}>
+                            <Ionicons name="document-text-outline" size={11} color={colors.textDim} />
                             <Text style={[s.colHTxt, { color: colors.textDim }]}>TASK NAME</Text>
                         </View>
                     </View>
@@ -918,15 +908,15 @@ export default function MyBoardScreen() {
                             <View style={{ width: TOTAL_W }}>
                                 {sections.map(section => (
                                     <View key={section.key}>
-                                        <View style={[s.secRow, { height: SEC_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+                                        <View style={[s.secRow, { height: SEC_H, backgroundColor: isDark ? "#181818" : "#f9fafb", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)" }]}>
                                             <View style={{ width: NAME_W }} />
                                             <View style={{ flex: 1 }} />
                                         </View>
-                                        {!collapsed.has(section.key) && section.data.map(task => (
-                                            <View key={task.id} style={[s.row, { height: ROW_H, borderBottomColor: colors.border }]}>
+                                        {!collapsed.has(section.key) && section.data.map((task, rowIndex) => (
+                                            <View key={task.id} style={[s.row, { height: ROW_H, borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", backgroundColor: rowIndex % 2 === 0 ? colors.surface : (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.012)") }]}>
                                                 <View style={{ width: NAME_W }} />
                                                 {COLS.map(col => (
-                                                    <View key={col.key} style={[s.dataCell, { width: col.w, borderRightColor: colors.border }]}>
+                                                    <View key={col.key} style={[s.dataCell, { width: col.w, borderRightColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)" }]}>
                                                         <BoardCell task={task} col={col} colors={colors} tags={tags} />
                                                     </View>
                                                 ))}
@@ -951,6 +941,7 @@ export default function MyBoardScreen() {
                                 hasMore={hasMore}
                                 loadingMore={loadingMore}
                                 colors={colors}
+                                isDark={isDark}
                                 onToggle={toggle}
                                 onNavigate={handleNavigateToTask}
                                 onAddTask={handleOpenAddTask}
@@ -1105,9 +1096,6 @@ export default function MyBoardScreen() {
                     showsHorizontalScrollIndicator={false}
                     style={{ flex: 1 }}
                     contentContainerStyle={{ padding: SPACING.md, gap: SPACING.md }}
-                    refreshControl={
-                        <RefreshControl refreshing={kanbanRefreshing} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshKanbanCols(); }} tintColor={colors.primary} />
-                    }
                 >
                     {KANBAN_COLUMNS_DEF.map(col => {
                         const colState = kanbanCols[col.status];
@@ -1145,6 +1133,9 @@ export default function MyBoardScreen() {
                                     contentContainerStyle={{ padding: SPACING.sm, paddingBottom: SPACING.xl }}
                                     showsVerticalScrollIndicator={false}
                                     scrollEventThrottle={200}
+                                    refreshControl={
+                                        <RefreshControl refreshing={kanbanRefreshing} onRefresh={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); refreshKanbanCols(); }} tintColor={colors.primary} />
+                                    }
                                     onScroll={(e) => {
                                         const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
                                         const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 120;
@@ -1220,12 +1211,9 @@ export default function MyBoardScreen() {
                         </View>
                     ) : (
                         <View style={s.headerTitleArea}>
-                            <View style={[s.headerIcon, { backgroundColor: colors.primary + "15" }]}>
-                                <Ionicons name="grid" size={16} color={colors.primary} />
-                            </View>
                             <View style={s.headerTextCol}>
                                 <View style={s.headerTitleRow}>
-                                    <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={1}>All Projects</Text>
+                                    <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={1}>Tasks</Text>
 
                                     {/* "My Tasks" Checkbox for Owners/PMs */}
                                     {(isWorkspaceAdmin || managedProjectIds.length > 0) && (
@@ -1303,7 +1291,14 @@ export default function MyBoardScreen() {
                                     haptic="selection"
                                     style={[
                                         s.segmentPill,
-                                        active && { backgroundColor: colors.surface, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 3, elevation: 2 }
+                                        active && {
+                                            backgroundColor: colors.primary,
+                                            shadowColor: "#000",
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: 0.15,
+                                            shadowRadius: 3,
+                                            elevation: 2
+                                        }
                                     ]}
                                     onPress={() => setViewMode(opt.id as any)}
                                     accessibilityRole="tab"
@@ -1313,11 +1308,11 @@ export default function MyBoardScreen() {
                                     <Ionicons
                                         name={opt.icon as any}
                                         size={15}
-                                        color={active ? colors.primary : colors.textDim}
+                                        color={active ? colors.textInverse : colors.textDim}
                                     />
                                     <Text style={[
                                         s.viewTabLabel,
-                                        { color: active ? colors.primary : colors.textDim },
+                                        { color: active ? colors.textInverse : colors.textDim },
                                         active && { fontFamily: FONTS.bold }
                                     ]}>
                                         {opt.label}
@@ -1438,7 +1433,7 @@ const s = StyleSheet.create({
     headerIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: "center", alignItems: "center" },
     headerTextCol: { flex: 1, justifyContent: "center" },
     headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    headerTitle: { fontSize: 16, fontFamily: FONTS.bold, letterSpacing: -0.3 },
+    headerTitle: { fontSize: 20, fontFamily: FONTS.bold, letterSpacing: -0.3 },
     headerSubtitle: { fontSize: 10, fontFamily: FONTS.medium, marginTop: -1 },
 
     checkboxContainer: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -1532,17 +1527,18 @@ const s = StyleSheet.create({
     },
     segmentedControl: {
         flexDirection: "row",
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: 3,
-        alignSelf: "flex-start",
+        width: "100%",
     },
     segmentPill: {
+        flex: 1,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: TOUCH_TARGET.min - 6, // 3px vertical padding on the pill container accounts for the remainder
+        minHeight: TOUCH_TARGET.min - 6,
         paddingHorizontal: 14,
-        borderRadius: BORDER_RADIUS.sm,
+        borderRadius: BORDER_RADIUS.md,
         gap: 6,
     },
     viewTab: {
@@ -1671,6 +1667,7 @@ interface BoardNameColProps {
     hasMore: boolean;
     loadingMore: boolean;
     colors: any;
+    isDark: boolean;
     onToggle: (key: string) => void;
     onNavigate: (taskId: string, taskName: string) => void;
     onAddTask: () => void;
@@ -1683,6 +1680,7 @@ const BoardNameCol = React.memo(function BoardNameCol({
     hasMore,
     loadingMore,
     colors,
+    isDark,
     onToggle,
     onNavigate,
     onAddTask,
@@ -1694,12 +1692,12 @@ const BoardNameCol = React.memo(function BoardNameCol({
                     {/* Section header */}
                     <View style={{ flexDirection: "row", width: "100%", alignItems: "center" }} pointerEvents="box-none">
                         <TouchableOpacity
-                            style={[s.secFrozen, { width: NAME_W, height: SEC_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
+                            style={[s.secFrozen, { width: NAME_W, height: SEC_H, backgroundColor: isDark ? "#181818" : "#f9fafb", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }]}
                             onPress={() => onToggle(section.key)}
                             activeOpacity={0.7}
                         >
                             <Text style={[s.secTitle, { color: colors.text }]}>{section.title}</Text>
-                            <View style={s.secBadge}>
+                            <View style={[s.secBadge, { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }]}>
                                 <Text style={[s.secBadgeTxt, { color: colors.textDim }]}>
                                     {section.key === sections[0]?.key && totalCount !== null
                                         ? totalCount
@@ -1715,7 +1713,7 @@ const BoardNameCol = React.memo(function BoardNameCol({
                         </TouchableOpacity>
 
                         {/* Add task button */}
-                        <View style={{ flex: 1, height: SEC_H, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingRight: SPACING.md }} pointerEvents="box-none">
+                        <View style={{ flex: 1, height: SEC_H, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingRight: SPACING.md, backgroundColor: isDark ? "#181818" : "#f9fafb", borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", borderBottomWidth: StyleSheet.hairlineWidth }} pointerEvents="box-none">
                             <TouchableOpacity onPress={onAddTask} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Add task">
                                 <Ionicons name="add" size={20} color={colors.primary} />
                             </TouchableOpacity>
@@ -1723,10 +1721,10 @@ const BoardNameCol = React.memo(function BoardNameCol({
                     </View>
 
                     {/* Name cells */}
-                    {!collapsed.has(section.key) && section.data.map(task => (
+                    {!collapsed.has(section.key) && section.data.map((task, rowIndex) => (
                         <TouchableOpacity
                             key={task.id}
-                            style={[s.nameCell, { width: NAME_W, height: ROW_H, backgroundColor: colors.background, borderBottomColor: colors.border }]}
+                            style={[s.nameCell, { width: NAME_W, height: ROW_H, backgroundColor: rowIndex % 2 === 0 ? colors.surface : (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.012)"), borderBottomColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.045)", borderLeftWidth: 3, borderLeftColor: getStatusHex(task.status), paddingHorizontal: 8 }]}
                             activeOpacity={0.65}
                             onPress={() => onNavigate(task.id, task.name)}
                         >
