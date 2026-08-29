@@ -6,6 +6,7 @@ import units from "./routes/units";
 import tasks from "./routes/tasks";
 import user from "./routes/user";
 import { attendanceRouter } from "./routes/attendance";
+import { attendanceIntegrationRouter } from "./routes/attendance-integration";
 import { aiRouter } from "./routes/ai";
 import notifications from "./routes/notifications";
 import activities from "./routes/activities";
@@ -110,6 +111,10 @@ app.get("/health", (c) => {
 
 // Cron Job Routes (Secret-based Auth)
 app.route("/cron", cron);
+
+// Attendance Integration API (API-key auth via TRAVA_ATTENDANCE_API_KEY).
+// Mounted before authMiddleware: external callers have no session token.
+app.route("/integrations/attendance", attendanceIntegrationRouter);
 
 
 // ─── Helper: inject surname into a user object ────────────────────────────────

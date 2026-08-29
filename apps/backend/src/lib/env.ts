@@ -30,6 +30,10 @@ const envSchema = z.object({
 
   CRON_SECRET: z.string().optional(),
 
+  // Shared key for the machine-to-machine attendance endpoint
+  // (GET /api/integrations/attendance/summary). Unset = endpoint disabled.
+  TRAVA_ATTENDANCE_API_KEY: z.string().min(32).optional(),
+
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_S3_BUCKET_NAME: z.string().min(1).optional(),
   NEXT_PUBLIC_PUSHER_KEY: z.string().min(1).optional(),

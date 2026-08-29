@@ -23,6 +23,7 @@ vi.mock("@/lib/db", () => {
         WorkspaceMember: mockModel("WorkspaceMember"),
         workspaceMember: mockModel("workspaceMember"),
         workspace: mockModel("workspace"),
+        attendance: mockModel("attendance"),
         project: mockModel("project"),
         projectMember: mockModel("projectMember"),
         task: mockModel("task"),

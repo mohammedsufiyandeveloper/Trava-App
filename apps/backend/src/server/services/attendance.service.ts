@@ -316,4 +316,126 @@ export class AttendanceService {
             };
         });
     }
+
+    /**
+     * Daily present/late/absent breakdown for a workspace.
+     *
+     * Mirrors the register semantics in `getTeamRegister`: every workspace member
+     * is bucketed exactly once, and a member with neither an attendance record nor
+     * an approved leave counts as ABSENT.
+     *
+     * Pass `includePeople` to also get the per-member list behind those counts.
+     */
+    static async getAttendanceSummary(
+        workspaceId: string,
+        date: Date,
+        options: { includePeople?: boolean } = {}
+    ) {
+        // Attendance rows are keyed by UTC midnight (see `checkIn`), so normalise
+        // the requested day the same way.
+        const dateOnly = new Date(date);
+        dateOnly.setUTCHours(0, 0, 0, 0);
+
+        const [members, attendanceRecords, leaveRequests] = await Promise.all([
+            prisma.workspaceMember.findMany({
+                where: { workspaceId },
+                select: {
+                    id: true,
+                    user: { select: { id: true, name: true, surname: true, email: true } },
+                },
+            }),
+            prisma.attendance.findMany({
+                where: { workspaceId, date: dateOnly },
+                select: {
+                    workspaceMemberId: true,
+                    status: true,
+                    checkIn: true,
+                    checkOut: true,
+                },
+            }),
+            prisma.leave_request.findMany({
+                where: {
+                    workspaceId,
+                    status: LeaveStatus.APPROVED,
+                    startDate: { lte: dateOnly },
+                    endDate: { gte: dateOnly },
+                },
+                select: { workspaceMemberId: true },
+            }),
+        ]);
+
+        const recordByMember = new Map(attendanceRecords.map(r => [r.workspaceMemberId, r]));
+        const onLeaveMembers = new Set(leaveRequests.map(l => l.workspaceMemberId));
+
+        const counts = {
+            present: 0,
+            late: 0,
+            absent: 0,
+            halfDay: 0,
+            onLeave: 0,
+        };
+        let checkedOut = 0;
+        const people: {
+            userId: string | undefined;
+            name: string | null;
+            email: string | undefined;
+            status: AttendanceStatus;
+            checkIn: string | null;
+            checkOut: string | null;
+        }[] = [];
+
+        for (const member of members) {
+            const record = recordByMember.get(member.id);
+            let status: AttendanceStatus;
+
+            if (!record) {
+                status = onLeaveMembers.has(member.id)
+                    ? AttendanceStatus.ON_LEAVE
+                    : AttendanceStatus.ABSENT;
+            } else {
+                status = record.status;
+                if (record.checkOut) checkedOut++;
+            }
+
+            switch (status) {
+                case AttendanceStatus.PRESENT:
+                    counts.present++;
+                    break;
+                case AttendanceStatus.LATE:
+                    counts.late++;
+                    break;
+                case AttendanceStatus.HALF_DAY:
+                    counts.halfDay++;
+                    break;
+                case AttendanceStatus.ON_LEAVE:
+                    counts.onLeave++;
+                    break;
+                default:
+                    counts.absent++;
+            }
+
+            if (options.includePeople) {
+                const user = (member as any).user;
+                people.push({
+                    userId: user?.id,
+                    // The app stores the display name in `surname` (see auth intercept).
+                    name: user?.surname || user?.name || null,
+                    email: user?.email,
+                    status,
+                    checkIn: record?.checkIn ? record.checkIn.toISOString() : null,
+                    checkOut: record?.checkOut ? record.checkOut.toISOString() : null,
+                });
+            }
+        }
+
+        return {
+            workspaceId,
+            date: dateOnly.toISOString().slice(0, 10),
+            totalMembers: members.length,
+            ...counts,
+            checkedIn: counts.present + counts.late + counts.halfDay,
+            checkedOut,
+            ...(options.includePeople ? { people } : {}),
+        };
+    }
 }
